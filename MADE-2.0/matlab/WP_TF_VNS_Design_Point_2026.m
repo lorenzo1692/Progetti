@@ -1,6 +1,6 @@
 clearvars; close all; clc
 %%
-Increm = 1.000; % Per passare a dimensioni a Tamb (1.003)
+Increm = 1.000; % To switch to dimensions at Tamb (1.003)
 counter = 0;
 iter = 0;
 maxdim = 30;
@@ -20,7 +20,7 @@ shape_cable = 201;      % RIS = 200 - Rect = 201
 
 corr_B_WP       = 1.05;
 
-%% Input esplorazione
+%% Exploration inputs
 n_TF = 12;
 B0(dp) = 5.7;
 R0(dp) = 2.83;
@@ -34,7 +34,7 @@ R_VV = RTFi(dp)*1.05;                  % [m]
 %% Storage name
 TitleName = sprintf('TF VNS LTS %s.xlsx',today("datetime"));
 
-%% Ammissibili acciaio
+%% Steel allowables
 S_amm_JT = (667*1e6);
 S_amm_VT = (667*1e6);
 S_amm_Cu = (100*1e6);
@@ -43,20 +43,20 @@ safety_membrane = 1.3;
 %% Maximum Tension
 V_MAX = 2500; % [V]
 
-%% Parametri operativi
+%% Operating parameters
 Mu_0 = 4e-7*pi;
 theta_TF = 2*pi/n_TF;
 amp_corr_R0 = 1/(R0(dp)/RTFi(dp))*(1+1/((R0(dp)/RTFi(dp))^n_TF-1)+1/((RTFo(dp)/R0(dp))^n_TF-1));
 NI = (2*pi*R0(dp)*B0(dp)/Mu_0)/n_TF*1e-6;            % Total TF current [MA]
 
-dr_plasma_side  = 0.020; % [m] Spessore case fronte plasma
+dr_plasma_side  = 0.020; % [m] Case thickness on the plasma-facing side
 
 B_PHI_TF = Mu_0*n_TF*NI*1e6/(2*pi*RTFi(dp)-dr_plasma_side);         % Max field on TF
 B_PHI_0 = B_PHI_TF*amp_corr_R0;
 NI = NI*1e6;                              % Total TF current [A]
 R_TF_Outerleg = RTFo(dp);                 % Outer-leg inner radius
 R_TF_Innerleg = RTFi(dp);                 % Inner-leg outer radius
-S_VV = 90*1e6; % VV Yeld limit
+S_VV = 90*1e6; % VV yield limit
 Tau_discharge1 = B0(dp)*NI*n_TF*(R0(dp)/A(dp))^2/(R_VV*S_VV);
 
 B_PHI_TF        = B_PHI_TF*corr_B_WP;  % Max field on TF correction
@@ -71,9 +71,9 @@ GoundIns        = 0.005; % Ground insulation WP
 WP_w_max        = 2*(R_TF_Innerleg-dr_plasma_side-GoundIns)*tan(theta_TF/2)-2*lateral_w_min(dp); % WP width
 WP_w_min        = 2*(R_TF_Innerleg-dr_plasma_side-GoundIns)*tan(theta_TF/2)-2*lateral_w_max(dp); % WP width
 % WP_w            = WP_w_max-2*GoundIns;
-INS_grades      = 0.0005;         % Spessore isolante tra i Grades
+INS_grades      = 0.0005;         % Insulation thickness between grades
 
-%% Dati configurazioni da iterare
+%% Configuration data to iterate over
 n_grades = 3;
 Iop_max = 7.0e4;  % Operative current - max
 Iop_min = 1.0e4;  % Operative current - min
@@ -82,15 +82,15 @@ Ntlmin = ceil(NI/Iop_max);
 min_size_CICC = 0.015; % min CICC size
 max_size_CICC = 0.06; % max CICC size
 min_JT = 0.002;
-% NOTA (fix #2): il vincolo sul numero di layer radiali era basato su una
-% costante "0.5" non documentata, scollegata da WP_w_max/WP_w_min (che sono
-% larghezze toroidali, non l'estensione radiale della WP). Viene qui
-% esplicitata come stima di ingombro radiale massimo della WP, usata solo
-% per delimitare lo spazio combinatorio esplorato: le combinazioni non
-% fisicamente valide vengono comunque scartate più avanti dai controlli
-% geometrici e di Tresca. Da rivedere/parametrizzare se la stima non è
-% più rappresentativa della geometria in esame.
-WP_radial_build_max_est = 0.5; % [m] Stima ingombro radiale massimo WP
+% NOTE (fix #2): the constraint on the number of radial layers was based on
+% an undocumented "0.5" constant, unrelated to WP_w_max/WP_w_min (which are
+% toroidal widths, not the WP's radial extent). It is now made explicit as
+% an estimate of the WP's maximum radial build, used only to bound the
+% combinatorial search space: physically invalid combinations are still
+% discarded later on by the geometric and Tresca checks. Review/parametrize
+% this if the estimate is no longer representative of the geometry under
+% study.
+WP_radial_build_max_est = 0.5; % [m] Estimated maximum WP radial build
 n_turns_max = ceil((WP_w_max-GoundIns*2)/min_size_CICC); % Maximum feasible layers
 n_turns_min = ceil((WP_w_min-GoundIns*2)/max_size_CICC); % Minimum feasible layers
 max_n_layers = min(ceil((WP_radial_build_max_est-GoundIns*2)/min_size_CICC),floor(Ntlmax/n_turns_min)); % Maximum feasible layers
@@ -108,14 +108,14 @@ layers_comb = min_n_layers:min(max_n_layers,maxdim);
 % % % turns_comb = n_turns_min:2:n_turns_max;              % Turns combinations
 % % % n_grades = min_n_layers:2:max_n_layers;
 
-%% Definition of the desing layouts - all possible combination
+%% Definition of the design layouts - all possible combination
 % for i = 1:size(n_grades,2) t{i} = nchoosek(turns_comb,n_grades(i)); t_{i}
 % = turns_comb'.*ones(size(turns_comb,2),n_grades(i)); t{i} = vertcat(t{i},t_{i});
 % t_{i} = sort(t{i}); aa{i} = sum(t{i},2)>min(n_spire) & sum(t{i},2)<max(n_spire);
 % x{i} = aa{i}.*t{i}; ind = find(sum(x{i},2)==0); x{i}(ind,:) = []; combT{i} =
 % x{i}; n_spire_tot{i} = sum(combT{i},2); end
 
-%% Definition of the desing layouts - limited (equal turns for each grades)
+%% Definition of the design layouts - limited (equal turns for each grades)
 combT = cell(1,size(layers_comb,2));
 for i = 1:size(layers_comb,2)
     t{i}  = turns_comb'.*ones(size(turns_comb,2),layers_comb(i));
@@ -170,11 +170,11 @@ for lateral_w = lateral_w_min(dp):0.02:lateral_w_max(dp)
             SC_h = zeros(1,n_layers);
             S_CICC = zeros(1,n_layers);           S_JT = zeros(1,n_layers);
             Ri = zeros(1,n_layers);               Re = zeros(1,n_layers);
-            % Fix #3: Ke_cavo_rad/Ke_cavo_tor non venivano azzerati ad ogni
-            % nuova combinazione turns/layers. Se un'iterazione precedente
-            % aveva un n_layers maggiore, restavano valori residui che
-            % potevano essere sommati in Ke_WP_rad (riga ~sum(...)) insieme
-            % ai valori della combinazione corrente.
+            % Fix #3: Ke_cavo_rad/Ke_cavo_tor were not being reset for each
+            % new turns/layers combination. If a previous iteration had a
+            % larger n_layers, leftover values remained and could be summed
+            % into Ke_WP_rad (in the sum(...) below) together with the
+            % values of the current combination.
             Ke_cavo_rad = zeros(1,maxdim);        Ke_cavo_tor = zeros(1,maxdim);
 
 %% Operative current definition
@@ -183,12 +183,12 @@ for lateral_w = lateral_w_min(dp):0.02:lateral_w_max(dp)
               continue
             end
 
-%% Definition of the magnetic field peak in each grade (linera beahvior from B(Re)= Bmax to B(Ri) = 0
+%% Definition of the magnetic field peak in each grade (linear behavior from B(Re)= Bmax to B(Ri) = 0
             Re(1,1) = R_TF_Innerleg-dr_plasma_side-GoundIns; % WP innerl-leg outer radius (non-insulated)
             B_TF = B_PHI_TF; % (n_TF*n_spire_(1,1)*Iop*Mu_0)/(2*pi*Re(1,1));
-            B_layers = B_TF.*(n_spire_./n_spire_(1,1)); % Ottengo B considerando un andamento lineare nel WP
+            B_layers = B_TF.*(n_spire_./n_spire_(1,1)); % Obtain B assuming a linear trend within the WP
 
-%% Induttanza TF modello shell
+%% TF inductance, shell model
             clear L Tau_discharge
             % L = Mu_0*R0(dp)*(n_TF*n_spire_(1,1))^2*(1-sqrt(1-(R0(dp)-RTFi(dp))/R0(dp)))/n_TF*1.1;
             % L = Mu_0*R0(dp)*(n_TF*n_spire_(1,1))^2*(1-sqrt(1-(RTFo(dp)-RTFi(dp))/2/R0(dp)))/n_TF;
@@ -198,7 +198,7 @@ for lateral_w = lateral_w_min(dp):0.02:lateral_w_max(dp)
             Ntot = (n_TF*n_spire_(1,1));
             L = Mu_0*(Ntot*k_bf)^2*r_bf/2*(besseli(0, k_bf)+ 2*besseli(1, k_bf)+ besseli(2, k_bf))/n_TF;
 
-            Tau_discharge2 = (L*Iop/V_MAX); % [s] - scarico in gruppi di n bobine
+            Tau_discharge2 = (L*Iop/V_MAX); % [s] - discharge in groups of n coils
             Tau_discharge = max([Tau_discharge1 Tau_discharge2 4]);
             E = 1/2*L*n_TF*Iop^2*1e-6;
 %%
@@ -228,7 +228,7 @@ for lateral_w = lateral_w_min(dp):0.02:lateral_w_max(dp)
                 THS(1,var:n_layers) = THS(1,var);
             end
 
-%% Definisco sezioni cavi in ogni layers
+%% Define cable cross-sections in each layer
 
             R_WP_IL = R_TF_Innerleg;
             R_WP_OL = R_TF_Outerleg;
@@ -236,7 +236,7 @@ for lateral_w = lateral_w_min(dp):0.02:lateral_w_max(dp)
             T_bf = 0.5*(k_bf*n_TF*(n_spire_(1,1)*Iop)^2*Mu_0/(2*pi)); % Hoop tension along TF longitudinal axis
             Fr = (n_TF*(n_spire_(1,1)*Iop)^2*Mu_0/2)*(1-(1/sqrt(1-(R_WP_IL/R0(dp))^2)));
             %
-            WP_w0(1,1) = 2*Re(1,1)*tan(theta_TF/2)-lateral_w*2-GoundIns*2; % massimo ingombro toroidale WP
+            WP_w0(1,1) = 2*Re(1,1)*tan(theta_TF/2)-lateral_w*2-GoundIns*2; % maximum toroidal WP envelope
             S_z_JT =  T_bf/(WP_w0(1,1)^2)/2;
             n_turns_add = 0;
             p_rs = B_TF^2/(2*Mu_0);                                 % Magnetic pressure, thin WP
@@ -250,9 +250,9 @@ for lateral_w = lateral_w_min(dp):0.02:lateral_w_max(dp)
                 %     p_rs = B_layers(flip(jump_grade(idx)))^2/(2*Mu_0);
                 % end
 
-                % Definisco dimensioni interne del cavo CICC per l'i-esimo grade
-                r_SC(1,var)              = (0.005)*Increm; %JT(1,var);   % Impogno raggio curvatura corner cavo = a spessore Jakcet
-                tins(1,var)               = (0.001)*Increm; % Isolante di spira
+                % Define the internal CICC cable dimensions for the i-th grade
+                r_SC(1,var)              = (0.005)*Increm; %JT(1,var);   % Impose cable corner curvature radius = jacket thickness
+                tins(1,var)               = (0.001)*Increm; % Turn insulation
                 Cond_w(1,var)            = WP_w0(1,1)/n_turns(1,1);
                 if cell2sym(type_cable(1,var)) == 'HTS'
                     E_cbl = E_cbl_HTS;
@@ -261,9 +261,9 @@ for lateral_w = lateral_w_min(dp):0.02:lateral_w_max(dp)
                 end
                 if shape_cable == 200
                     SC_w(1,var)              = 2*sqrt(S_Cable(1,var)/pi);
-                    SC_h(1,var)              = SC_w(1,var);   % Ottengo altezza cavo SC
-                    R_J(1,var)               = r_SC(1,var);   % Raggio di curvatura corner Jacket
-                    Cond_h(1,var)            = Cond_w(1,var); % Ottengo l'altezza del cavo RIS_
+                    SC_h(1,var)              = SC_w(1,var);   % Obtain SC cable height
+                    R_J(1,var)               = r_SC(1,var);   % Jacket corner curvature radius
+                    Cond_h(1,var)            = Cond_w(1,var); % Obtain the RIS_ cable height
                     JT(1,var)                = (Cond_w(1,var)-2*tins(1,var)-SC_w(1,var))/2;
                     Ke_cavo_rad(1,var)       = 2*E_jckt*JT(1,var)/Cond_h(1,var)+2*tins(1,var)*E_ins/Cond_h(1,var)+...
                     +(1/(E_cbl*SC_w(1,var)/SC_h(1,var))+2/(E_jckt*Cond_w(1,var)/JT(1,var))+2/(E_ins*Cond_w(1,var)/tins(1,var)))^-1;
@@ -277,13 +277,13 @@ for lateral_w = lateral_w_min(dp):0.02:lateral_w_max(dp)
                         jt_iter = jt_iter+1;
                         if jt_iter > 1e5
                             error('WP_TF_VNS:JT_sizing_not_converged', ...
-                                'Fix #4: dimensionamento JT (grade %d) non converge dopo %d iterazioni: verificare i parametri di input.', var, jt_iter);
+                                'Fix #4: JT sizing (grade %d) did not converge after %d iterations: check the input parameters.', var, jt_iter);
                         end
                         JT(1,var) = JT(1,var) + 1e-4;
-                        SC_w(1,var)              = Cond_w(1,var)-JT(1,var)*2-tins(1,var)*2; % Ottengo larghezza cavo SC
-                        SC_h(1,var)              = (S_Cable(1,var)+(4-pi)*r_SC(1,var)^2)/SC_w(1,var); % Ottengo altezza cavo SC
-                        R_J(1,var)               = r_SC(1,var) + JT(1,var); % Raggio di curvatura corner Jacket
-                        Cond_h(1,var)            = SC_h(1,var)+JT(1,var)*2+tins(1,var)*2; % Ottengo l'altezza del cavo Rect
+                        SC_w(1,var)              = Cond_w(1,var)-JT(1,var)*2-tins(1,var)*2; % Obtain SC cable width
+                        SC_h(1,var)              = (S_Cable(1,var)+(4-pi)*r_SC(1,var)^2)/SC_w(1,var); % Obtain SC cable height
+                        R_J(1,var)               = r_SC(1,var) + JT(1,var); % Jacket corner curvature radius
+                        Cond_h(1,var)            = SC_h(1,var)+JT(1,var)*2+tins(1,var)*2; % Obtain rectangular cable height
                         Ke_cavo_rad(1,var)       = 2*E_jckt*JT(1,var)/Cond_h(1,var)+2*tins(1,var)*E_ins/Cond_h(1,var)+...
                         +(1/(E_cbl*SC_w(1,var)/SC_h(1,var))+2/(E_jckt*Cond_w(1,var)/JT(1,var))+2/(E_ins*Cond_w(1,var)/tins(1,var)))^-1;
                         Ke_cavo_tor(1,var)       = 2*E_jckt*JT(1,var)/Cond_w(1,var)+2*tins(1,var)*E_ins/Cond_w(1,var)+...
@@ -291,20 +291,20 @@ for lateral_w = lateral_w_min(dp):0.02:lateral_w_max(dp)
                         K_jckt                   = 2*JT(1,var)/Cond_h(1,var)*E_jckt;
                         dcr_jckt                 = K_jckt/Ke_cavo_rad(1,var);
                         r_steel                  = (Cond_w(1,var)-2*tins(1,var))/(2*JT(1,var));
-                        S_rm_grades(1,var)       = p_rs*r_steel*dcr_jckt+S_z_JT;      % Radial memebrane stress Jacket innermost layer
+                        S_rm_grades(1,var)       = p_rs*r_steel*dcr_jckt+S_z_JT;      % Radial membrane stress, innermost Jacket layer
                     end
                 end
-                S_CICC(1,var)             = ((Cond_w(1,var)-2*tins(1,var))*(Cond_h(1,var)-2*tins(1,var)))-((4-pi)*R_J(1,var)^2); % Sezione cavo non isolato
-                S_JT(1,var)               = S_CICC(1,var)-S_Cable(1,var); % Sezione di acciaio
-                Ri(1,var)                = Re(1,var)-Cond_h(1,var)*n_layers_(1,var); % Raggio interno grade i-esimo del WP
-                Re(1,var+1)              = Ri(1,var)-INS_grades;   % Raggio esterno grade (i+1)-esimo del WP
-                WP_w0(1,var)             = Cond_w(1,var)*n_turns(1,var); % massimo ingombro toroidale WP
+                S_CICC(1,var)             = ((Cond_w(1,var)-2*tins(1,var))*(Cond_h(1,var)-2*tins(1,var)))-((4-pi)*R_J(1,var)^2); % Non-insulated cable cross-section
+                S_JT(1,var)               = S_CICC(1,var)-S_Cable(1,var); % Steel cross-section
+                Ri(1,var)                = Re(1,var)-Cond_h(1,var)*n_layers_(1,var); % Inner radius of the i-th grade of the WP
+                Re(1,var+1)              = Ri(1,var)-INS_grades;   % Outer radius of the (i+1)-th grade of the WP
+                WP_w0(1,var)             = Cond_w(1,var)*n_turns(1,var); % maximum toroidal WP envelope
                 check_w = 2*Ri(1,var)*tan(theta_TF/2);
                 while (check_w-(WP_w0(1,var)+GoundIns*2))/2 <= toroidal_gap
                         n_turns(1,var) = n_turns(1,var)-2;
-                        % Definisco dimensioni interne del cavo CICC per l'i-esimo grade
-                        r_SC(1,var)              = (0.005)*Increm; %JT(1,var);   % Impogno raggio curvatura corner cavo = a spessore Jakcet
-                        tins(1,var)               = (0.001)*Increm; % Isolante di spira
+                        % Define the internal CICC cable dimensions for the i-th grade
+                        r_SC(1,var)              = (0.005)*Increm; %JT(1,var);   % Impose cable corner curvature radius = jacket thickness
+                        tins(1,var)               = (0.001)*Increm; % Turn insulation
                         Cond_w(1,var)            = WP_w0(1,1)/n_turns(1,1);
                     if cell2sym(type_cable(1,var)) == 'HTS'
                         E_cbl = E_cbl_HTS;
@@ -313,9 +313,9 @@ for lateral_w = lateral_w_min(dp):0.02:lateral_w_max(dp)
                     end
                     if shape_cable == 200
                         SC_w(1,var)              = 2*sqrt(S_Cable(1,var)/pi);
-                        SC_h(1,var)              = SC_w(1,var);   % Ottengo altezza cavo SC
-                        R_J(1,var)               = r_SC(1,var);   % Raggio di curvatura corner Jacket
-                        Cond_h(1,var)            = Cond_w(1,var); % Ottengo l'altezza del cavo RIS_
+                        SC_h(1,var)              = SC_w(1,var);   % Obtain SC cable height
+                        R_J(1,var)               = r_SC(1,var);   % Jacket corner curvature radius
+                        Cond_h(1,var)            = Cond_w(1,var); % Obtain the RIS_ cable height
                         JT(1,var)                = (Cond_w(1,var)-2*tins(1,var)-SC_w(1,var))/2;
                         Ke_cavo_rad(1,var) = 2*E_jckt*JT(1,var)/Cond_h(1,var)+2*tins(1,var)*E_ins/Cond_h(1,var)+...
                         +(1/(E_cbl*SC_w(1,var)/SC_h(1,var))+2/(E_jckt*Cond_w(1,var)/JT(1,var))+2/(E_ins*Cond_w(1,var)/tins(1,var)))^-1;
@@ -329,13 +329,13 @@ for lateral_w = lateral_w_min(dp):0.02:lateral_w_max(dp)
                         jt_iter = jt_iter+1;
                         if jt_iter > 1e5
                             error('WP_TF_VNS:JT_sizing_not_converged', ...
-                                'Fix #4: dimensionamento JT (grade %d, turn-reduction) non converge dopo %d iterazioni: verificare i parametri di input.', var, jt_iter);
+                                'Fix #4: JT sizing (grade %d, turn-reduction) did not converge after %d iterations: check the input parameters.', var, jt_iter);
                         end
                         JT(1,var) = JT(1,var) + 1e-4;
-                        SC_w(1,var)              = Cond_w(1,var)-JT(1,var)*2-tins(1,var)*2; % Ottengo larghezza cavo SC
-                        SC_h(1,var)              = (S_Cable(1,var)+(4-pi)*r_SC(1,var)^2)/SC_w(1,var); % Ottengo altezza cavo SC
-                        R_J(1,var)               = r_SC(1,var) + JT(1,var); % Raggio di curvatura corner Jacket
-                        Cond_h(1,var)            = SC_h(1,var)+JT(1,var)*2+tins(1,var)*2; % Ottengo l'altezza del cavo Rect
+                        SC_w(1,var)              = Cond_w(1,var)-JT(1,var)*2-tins(1,var)*2; % Obtain SC cable width
+                        SC_h(1,var)              = (S_Cable(1,var)+(4-pi)*r_SC(1,var)^2)/SC_w(1,var); % Obtain SC cable height
+                        R_J(1,var)               = r_SC(1,var) + JT(1,var); % Jacket corner curvature radius
+                        Cond_h(1,var)            = SC_h(1,var)+JT(1,var)*2+tins(1,var)*2; % Obtain rectangular cable height
                         Ke_cavo_rad(1,var) = 2*E_jckt*JT(1,var)/Cond_h(1,var)+2*tins(1,var)*E_ins/Cond_h(1,var)+...
                         +(1/(E_cbl*SC_w(1,var)/SC_h(1,var))+2/(E_jckt*Cond_w(1,var)/JT(1,var))+2/(E_ins*Cond_w(1,var)/tins(1,var)))^-1;
                         Ke_cavo_tor(1,var) = 2*E_jckt*JT(1,var)/Cond_w(1,var)+2*tins(1,var)*E_ins/Cond_w(1,var)+...
@@ -343,14 +343,14 @@ for lateral_w = lateral_w_min(dp):0.02:lateral_w_max(dp)
                         K_jckt = 2*JT(1,var)/Cond_h(1,var)*E_jckt;
                         dcr_jckt = K_jckt/Ke_cavo_rad(1,var);
                         r_steel = (Cond_w(1,var)-2*tins(1,var))/(2*JT(1,var));
-                        S_rm_grades(1,var) = p_rs*r_steel*dcr_jckt+S_z_JT;      % Radial memebrane stress Jacket innermost layer
+                        S_rm_grades(1,var) = p_rs*r_steel*dcr_jckt+S_z_JT;      % Radial membrane stress, innermost Jacket layer
                     end
                     end
-                    S_CICC(1,var)            = ((Cond_w(1,var)-2*tins(1,var))*(Cond_h(1,var)-2*tins(1,var)))-((4-pi)*R_J(1,var)^2); % Sezione cavo non isolato
-                    S_JT(1,var)              = S_CICC(1,var)-S_Cable(1,var); % Sezione di acciaio
-                    Ri(1,var)                = Re(1,var)-Cond_h(1,var); % Raggio interno grade i-esimo del WP
-                    Re(1,var+1)              = Ri(1,var)-INS_grades;   % Raggio esterno grade (i+1)-esimo del WP
-                    WP_w0(1,var)             = Cond_w(1,var)*n_turns(1,var); % massimo ingombro toroidale WP
+                    S_CICC(1,var)            = ((Cond_w(1,var)-2*tins(1,var))*(Cond_h(1,var)-2*tins(1,var)))-((4-pi)*R_J(1,var)^2); % Non-insulated cable cross-section
+                    S_JT(1,var)              = S_CICC(1,var)-S_Cable(1,var); % Steel cross-section
+                    Ri(1,var)                = Re(1,var)-Cond_h(1,var); % Inner radius of the i-th grade of the WP
+                    Re(1,var+1)              = Ri(1,var)-INS_grades;   % Outer radius of the (i+1)-th grade of the WP
+                    WP_w0(1,var)             = Cond_w(1,var)*n_turns(1,var); % maximum toroidal WP envelope
                     check_w = 2*Ri(1,var)*tan(theta_TF/2);
                     n_turns_add = n_spire_(1)-sum(n_turns(1:size(combT{i}(j,:),2)));
                 end
@@ -378,9 +378,9 @@ for lateral_w = lateral_w_min(dp):0.02:lateral_w_max(dp)
                     Cond_w(1,var)            = WP_w0(1,1)/n_turns(1,1);
                     S_Cable(1,var)           = S_Cable(1,var-1);
                     type_cable(1,var)        = type_cable(1,var-1);
-                    % Definisco dimensioni interne del cavo CICC per l'i-esimo grade
-                    r_SC(1,var)              = (0.005)*Increm; %JT(1,var);   % Impogno raggio curvatura corner cavo = a spessore Jakcet
-                    tins(1,var)               = (0.001)*Increm; % Isolante di spira
+                    % Define the internal CICC cable dimensions for the i-th grade
+                    r_SC(1,var)              = (0.005)*Increm; %JT(1,var);   % Impose cable corner curvature radius = jacket thickness
+                    tins(1,var)               = (0.001)*Increm; % Turn insulation
                     Cond_w(1,var)            = WP_w0(1,1)/n_turns(1,1);
                     if cell2sym(type_cable(1,var)) == 'HTS'
 						E_cbl = E_cbl_HTS;
@@ -389,9 +389,9 @@ for lateral_w = lateral_w_min(dp):0.02:lateral_w_max(dp)
                     end
                     if shape_cable == 200
                         SC_w(1,var)              = 2*sqrt(S_Cable(1,var)/pi);
-                        SC_h(1,var)              = SC_w(1,var);   % Ottengo altezza cavo SC
-                        R_J(1,var)               = r_SC(1,var);   % Raggio di curvatura corner Jacket
-                        Cond_h(1,var)            = Cond_w(1,var); % Ottengo l'altezza del cavo RIS_
+                        SC_h(1,var)              = SC_w(1,var);   % Obtain SC cable height
+                        R_J(1,var)               = r_SC(1,var);   % Jacket corner curvature radius
+                        Cond_h(1,var)            = Cond_w(1,var); % Obtain the RIS_ cable height
                         JT(1,var)                = (Cond_w(1,var)-2*tins(1,var)-SC_w(1,var))/2;
                         Ke_cavo_rad(1,var) = 2*E_jckt*JT(1,var)/Cond_h(1,var)+2*tins(1,var)*E_ins/Cond_h(1,var)+...
                                      +(1/(E_cbl*SC_w(1,var)/SC_h(1,var))+2/(E_jckt*Cond_w(1,var)/JT(1,var))+2/(E_ins*Cond_w(1,var)/tins(1,var)))^-1;
@@ -405,13 +405,13 @@ for lateral_w = lateral_w_min(dp):0.02:lateral_w_max(dp)
                             jt_iter = jt_iter+1;
                             if jt_iter > 1e5
                                 error('WP_TF_VNS:JT_sizing_not_converged', ...
-                                    'Fix #4: dimensionamento JT (grade %d, layer aggiuntivo) non converge dopo %d iterazioni: verificare i parametri di input.', var, jt_iter);
+                                    'Fix #4: JT sizing (grade %d, extra layer) did not converge after %d iterations: check the input parameters.', var, jt_iter);
                             end
                             JT(1,var) = JT(1,var) + 1e-4;
-                            SC_w(1,var)              = Cond_w(1,var)-JT(1,var)*2-tins(1,var)*2; % Ottengo larghezza cavo SC
-                            SC_h(1,var)              = (S_Cable(1,var)+(4-pi)*r_SC(1,var)^2)/SC_w(1,var); % Ottengo altezza cavo SC
-                            R_J(1,var)               = r_SC(1,var) + JT(1,var); % Raggio di curvatura corner Jacket
-                            Cond_h(1,var)            = SC_h(1,var)+JT(1,var)*2+tins(1,var)*2; % Ottengo l'altezza del cavo Rect
+                            SC_w(1,var)              = Cond_w(1,var)-JT(1,var)*2-tins(1,var)*2; % Obtain SC cable width
+                            SC_h(1,var)              = (S_Cable(1,var)+(4-pi)*r_SC(1,var)^2)/SC_w(1,var); % Obtain SC cable height
+                            R_J(1,var)               = r_SC(1,var) + JT(1,var); % Jacket corner curvature radius
+                            Cond_h(1,var)            = SC_h(1,var)+JT(1,var)*2+tins(1,var)*2; % Obtain rectangular cable height
                             Ke_cavo_rad(1,var) = 2*E_jckt*JT(1,var)/Cond_h(1,var)+2*tins(1,var)*E_ins/Cond_h(1,var)+...
                                      +(1/(E_cbl*SC_w(1,var)/SC_h(1,var))+2/(E_jckt*Cond_w(1,var)/JT(1,var))+2/(E_ins*Cond_w(1,var)/tins(1,var)))^-1;
                             Ke_cavo_tor(1,var) = 2*E_jckt*JT(1,var)/Cond_w(1,var)+2*tins(1,var)*E_ins/Cond_w(1,var)+...
@@ -419,21 +419,21 @@ for lateral_w = lateral_w_min(dp):0.02:lateral_w_max(dp)
                             K_jckt = 2*JT(1,var)/Cond_h(1,var)*E_jckt;
                             dcr_jckt = K_jckt/Ke_cavo_rad(1,var);
                             r_steel = (Cond_w(1,var)-2*tins(1,var))/(2*JT(1,var));
-                            S_rm_grades(1,var) = p_rs*r_steel*dcr_jckt+S_z_JT;      % Radial memebrane stress Jacket innermost layer
+                            S_rm_grades(1,var) = p_rs*r_steel*dcr_jckt+S_z_JT;      % Radial membrane stress, innermost Jacket layer
                         end
                     end
-                    S_CICC(1,var)            = ((Cond_w(1,var)-2*tins(1,var))*(Cond_h(1,var)-2*tins(1,var)))-((4-pi)*R_J(1,var)^2); % Sezione cavo non isolato
-                    S_JT(1,var)              = S_CICC(1,var)-S_Cable(1,var); % Sezione di acciaio
-                    Ri(1,var)                = Re(1,var)-Cond_h(1,var); % Raggio interno grade i-esimo del WP
-                    Re(1,var+1)              = Ri(1,var)-INS_grades;    % Raggio esterno grade (i+1)-esimo del WP
-                    WP_w0(1,var)             = Cond_w(1,var)*n_turns(1,var); % massimo ingombro toroidale WP
+                    S_CICC(1,var)            = ((Cond_w(1,var)-2*tins(1,var))*(Cond_h(1,var)-2*tins(1,var)))-((4-pi)*R_J(1,var)^2); % Non-insulated cable cross-section
+                    S_JT(1,var)              = S_CICC(1,var)-S_Cable(1,var); % Steel cross-section
+                    Ri(1,var)                = Re(1,var)-Cond_h(1,var); % Inner radius of the i-th grade of the WP
+                    Re(1,var+1)              = Ri(1,var)-INS_grades;    % Outer radius of the (i+1)-th grade of the WP
+                    WP_w0(1,var)             = Cond_w(1,var)*n_turns(1,var); % maximum toroidal WP envelope
                 end
             end
             if n_layers > maxdim || n_layers < 0
                 continue
             end
 
-%% Ricalcolo B grades
+%% Recompute B per grade
             n_spire_ = zeros(1,n_layers);
             n_spire_(1,1) = sum(n_turns(1:n_layers));
             for var = 2:n_layers
@@ -442,25 +442,25 @@ for lateral_w = lateral_w_min(dp):0.02:lateral_w_max(dp)
             B_layers = B_TF.*(n_spire_/n_spire_(1,1));
             Iop = ceil(NI/n_spire_(1,1));
 
-%% Dati WP
+%% WP data
             WP_w = WP_w0(1,1);
             WP_w_tot = WP_w+2*GoundIns;
             WP_h = sum(Cond_h(1:n_layers));
             WP_h_tot = WP_h+2*GoundIns;
             A_WP = sum(Cond_h(1:n_layers).*Cond_w(1:n_layers).*n_turns(1:n_layers));
-            A_CICC_tot = sum(S_CICC(1:n_layers).*n_turns(1:n_layers));  % Sezione totale cavo non isolato
-            A_SC_tot = sum(S_Cable(1:n_layers).*n_turns(1:n_layers));   % Sezione totale S/C+stabilizer
-            A_JT_tot = sum(S_JT(1:n_layers).*n_turns(1:n_layers));      % Sezione totale acciaio nei jacket
-            Ri_ = R_TF_Innerleg;                            % Quota a raggio esterno Case
-            Rj_ = Ri_-WP_h-dr_plasma_side-GoundIns*2;       % Quota a raggio interno WP con Ground
+            A_CICC_tot = sum(S_CICC(1:n_layers).*n_turns(1:n_layers));  % Total non-insulated cable cross-section
+            A_SC_tot = sum(S_Cable(1:n_layers).*n_turns(1:n_layers));   % Total S/C+stabilizer cross-section
+            A_JT_tot = sum(S_JT(1:n_layers).*n_turns(1:n_layers));      % Total steel cross-section in jackets
+            Ri_ = R_TF_Innerleg;                            % Radius at outer Case
+            Rj_ = Ri_-WP_h-dr_plasma_side-GoundIns*2;       % Radius at inner WP including ground insulation
 
-            check_w(1,1:n_layers) = 2*Ri(1,1:n_layers).*tan(theta_TF/2);          % massimo ingombro toroidale Case
+            check_w(1,1:n_layers) = 2*Ri(1,1:n_layers).*tan(theta_TF/2);          % maximum toroidal Case envelope
             if min((check_w-(WP_w0(1,1:n_layers)+GoundIns*2))/2) < toroidal_gap
                 continue
             end
 
-%% Cechck geometrico sulle dimensioni ottenute nel cavo
-            r_cable(1:n_layers) = Cond_w(1:n_layers)./Cond_h(1:n_layers);             % Aspect ratio cavi di ogni grades
+%% Geometric check on the obtained cable dimensions
+            r_cable(1:n_layers) = Cond_w(1:n_layers)./Cond_h(1:n_layers);             % Aspect ratio of the cables for each grade
             if min(SC_w) <= 0.005 || min(r_cable(1:n_layers))< 0.99 || min(JT(1:n_layers)) < min_JT
                 continue
             end
@@ -490,23 +490,24 @@ for lateral_w = lateral_w_min(dp):0.02:lateral_w_max(dp)
             K_jckt = 2*JT(1,var)/Cond_h(1,var)*E_jckt;
             dcr_jckt = K_jckt/Ke_cavo_rad(1,var);
             r_steel = (Cond_w(n_layers)-2*tins(n_layers))/(2*JT(n_layers));
-            S_rm = p_rs*r_steel*scf*dcr_jckt; % Radial memebrane stress Jacket innermost layer
+            S_rm = p_rs*r_steel*scf*dcr_jckt; % Radial membrane stress, innermost Jacket layer
 
 %%
             clear Rk_ DTF S_T_JT S_T_VT S_c_VT S_rm_JT Ke_WP_rad Ke_WP_tor K_ps_rad K_ps_tor dcr_vault_tor dcr_WP_rad K_vault_rad K_vault_tor K_lat_rad K_lat_tor
-            DTF = 0.05;    % Vaul width
+            DTF = 0.05;    % Vault width
             S_T_JT = 1e30;
             S_T_VT = 1e30; % Test value for vault Tresca stress
-            % Fix #1: S_c_VT e S_rm_JT venivano letti nella condizione del
-            % while senza essere mai stati inizializzati per la geometria
-            % corrente (il "clear" sopra li cancellava, ma non venivano
-            % riassegnati prima del primo controllo). Alla prima iterazione
-            % utile dello script questo genera un errore "Unrecognized
-            % variable"; nelle iterazioni successive il check leggeva invece
-            % valori residui della combinazione turns/layers precedente,
-            % potendo uscire dal loop prima di aver dimensionato DTF per la
-            % geometria attuale. Inizializzati esplicitamente a un valore
-            % che forza almeno un giro di ricalcolo.
+            % Fix #1: S_c_VT and S_rm_JT were read in the while condition
+            % without ever having been assigned for the current geometry
+            % (the "clear" above removed them, but they were not
+            % reassigned before the first check). On the very first useful
+            % iteration of the script this raises an "Unrecognized
+            % variable" error; on later iterations the check instead read
+            % leftover values from the previous turns/layers combination,
+            % which could exit the loop before DTF had actually been sized
+            % for the current geometry. They are now explicitly
+            % initialized to a value that forces at least one recompute
+            % pass.
             S_c_VT = 1e30;
             S_rm_JT = 1e30;
             dtf_iter = 0;
@@ -514,23 +515,23 @@ for lateral_w = lateral_w_min(dp):0.02:lateral_w_max(dp)
                 dtf_iter = dtf_iter+1;
                 if dtf_iter > 1e5
                     error('WP_TF_VNS:DTF_sizing_not_converged', ...
-                        'Fix #4: dimensionamento DTF non converge dopo %d iterazioni: verificare i parametri di input.', dtf_iter);
+                        'Fix #4: DTF sizing did not converge after %d iterations: check the input parameters.', dtf_iter);
                 end
-                DTF = DTF+0.001; % Se supero Tresca incremento spessore naso TF
+                DTF = DTF+0.001; % If Tresca is exceeded, increase the TF nose thickness
                 Rk_ = Rj_-DTF; % Innermost Case radius
                 CASE_w_l = 2*Rk_*tan(theta_TF/2); % Case low part width
                 A_tot = (CASE_w+CASE_w_l)*(Ri_-Rk_)/2;
                 A_CASE = A_tot-A_WP;
-                A_VT = (2*Rj_*tan(theta_TF/2)+CASE_w_l)*(Rj_-Rk_)/2; % Vault section trp
-                A_VT_circ = pi*(Rj_^2-Rk_^2)*1/n_TF; % Vault section circ
-                % Rigidezze radiali
+                A_VT = (2*Rj_*tan(theta_TF/2)+CASE_w_l)*(Rj_-Rk_)/2; % Vault section (trapezoidal)
+                A_VT_circ = pi*(Rj_^2-Rk_^2)*1/n_TF; % Vault section (circular)
+                % Radial stiffnesses
                 Ke_WP_rad = sum(1./(Ke_cavo_rad(1:n_layers).*n_turns(1:n_layers)))^-1;
                 K_ps_rad = E_case/dr_plasma_side*(2*Ri_*tan(theta_TF/2));
                 K_lat_rad = E_case*(lateral_w/2)/WP_h;
                 K_vault_rad = (E_case*CASE_w_l/DTF);
                 Ke_case_rad = (1/(Ke_WP_rad+2*K_lat_rad)+1/K_vault_rad+1/K_ps_rad)^-1;
                 dcr_WP_rad = Ke_WP_rad/Ke_case_rad;
-                S_rm_JT = S_rm*dcr_WP_rad; % Radial memebrane stress Jacket innermost layer correction
+                S_rm_JT = S_rm*dcr_WP_rad; % Radial membrane stress, innermost Jacket layer correction
 
                 h_unit = 1;
                 k_steel_tor = E_case*(h_unit*(Ri_-Rk_)*2*pi*(Ri_+Rk_)/2); % full steel casing
@@ -541,7 +542,7 @@ for lateral_w = lateral_w_min(dp):0.02:lateral_w_max(dp)
                 dcr_vault_tor = k_steel_tor/(k_SC_tor+k_JT_tor+k_vault_tor);
 
                 beta = Rk_/Ri_;
-                S_c_VT = 2/(1-beta^2)*p_rs*dcr_vault_tor; % @ Rk_ correggere con
+                S_c_VT = 2/(1-beta^2)*p_rs*dcr_vault_tor; % @ Rk_ - to be refined with
 
                 k_bf = 0.5*log(RTFo(dp)/RTFi(dp)); % k bending free
                 T_bf = 0.5*(k_bf*n_TF*(n_spire_(1,1)*Iop)^2*Mu_0/(2*pi)); % Hoop tension along TF longitudinal axis
@@ -551,7 +552,7 @@ for lateral_w = lateral_w_min(dp):0.02:lateral_w_max(dp)
                 S_T_VT = (S_z+S_c_VT); % Vault Tresca stress
                 S_T_JT = (S_z+S_rm_JT);  % Jacket Tresca stress
             end
-            V = L*Iop/Tau_discharge*1e-3; % Tensione max singolo TF
+            V = L*Iop/Tau_discharge*1e-3; % Max voltage, single TF coil
 %%
             if S_T_VT < S_amm_JT && S_T_JT < S_amm_JT && S_T_JT>0 && S_T_VT>0
                 counter =  counter+1;
@@ -573,7 +574,7 @@ for lateral_w = lateral_w_min(dp):0.02:lateral_w_max(dp)
     end
 end
 
-%% Scrivo matrice soluzione prodotte
+%% Write the resulting solution matrix
 if size(DATA,1) ~=0
    writetable(DATA,TitleName)
 end
