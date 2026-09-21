@@ -91,26 +91,39 @@ A_WP = sum(Cond_h.*Cond_w.*n_turns);
 A_SC_tot = sum(S_Cable.*n_turns);
 A_JT_tot = sum(S_JT.*n_turns);
 
-%% Primary radial stress (Pm+Pb) - evaluated at the last layer, as in
-% search/scan_wp_designs.m ("Primary radial stress" section)
-var = n_layers;
-param = Cond_w(var)/SC_w(var);
+%% Primary radial stress (Pm+Pb) - evaluated at every layer, keeping the
+% worst case (matches search/scan_wp_designs.m). Layers 6/7 (the grade1/
+% grade2 row boundary) get the provisional transition SCF - see
+% TF_FEM_benchmark_2026_findings.md for the calibration and its caveats.
+SCF_transition_provisional = 3.15;
+is_transition = false(1,n_layers);
+is_transition([6 7]) = true;
+
 xxx = [1.087,1.136,1.190,1.250,1.316,1.389,1.471,1.563,1.667,1.786,1.923,2.083,2.273,2.500,2.778];
 if strcmp(type_cable,'LTS')
     yyy = [1.01,1.03,1.06,1.10,1.16,1.22,1.29,1.36,1.43,1.50,1.57,1.64,1.71,1.78,1.85];
 else
     yyy = [1.01,1.02,1.02,1.04,1.06,1.07,1.11,1.13,1.16,1.18,1.22,1.27,1.29,1.29,1.31];
 end
-if param > 1 && param < 2.8
-    pf = polyfit(xxx,yyy,5);
-    scf = polyval(pf,param);
-else
-    scf = 1.5;
+S_rm_per_layer = zeros(1,n_layers);
+for var = 1:n_layers
+    param = Cond_w(var)/SC_w(var);
+    if param > 1 && param < 2.8
+        pf = polyfit(xxx,yyy,5);
+        scf = polyval(pf,param);
+    else
+        scf = 1.5;
+    end
+    K_jckt = 2*JT(var)/Cond_h(var)*E_jckt;
+    dcr_jckt = K_jckt/Ke_rad(var);
+    r_steel = (Cond_w(var)-2*tins(var))/(2*JT(var));
+    S_rm_var = p_rs*r_steel*scf*dcr_jckt;
+    if is_transition(var)
+        S_rm_var = S_rm_var*SCF_transition_provisional;
+    end
+    S_rm_per_layer(var) = S_rm_var;
 end
-K_jckt = 2*JT(var)/Cond_h(var)*E_jckt;
-dcr_jckt = K_jckt/Ke_rad(var);
-r_steel = (Cond_w(var)-2*tins(var))/(2*JT(var));
-S_rm = p_rs*r_steel*scf*dcr_jckt;
+S_rm = max(S_rm_per_layer);
 
 %% Case/vault, single evaluation at the FEM-confirmed DTF (see size_case_vault.m)
 CASE_w_l = 2*Rk_*tan(theta_TF/2);

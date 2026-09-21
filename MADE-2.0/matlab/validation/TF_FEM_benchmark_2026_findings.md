@@ -26,43 +26,74 @@ grade as the current analytical model assumes (see below).
 ## Forward evaluation of the current analytical formulas
 
 `validate_TF_FEM_benchmark_2026.m` evaluates `size_cicc_cable.m`'s stiffness
-formula and `size_case_vault.m`'s stress-balance formula **once**, at this
-exact FEM geometry (no sizing search), for two material assumptions:
+formula and `size_case_vault.m`'s stress-balance formula at this exact FEM
+geometry (no sizing search), for two material assumptions.
+
+**Round 1 — checking only the last layer (original code):**
 
 | Test | E_cbl | r_SC | S_T_JT (Jacket) | S_T_VT (Vault) |
 |---|---:|---:|---:|---:|
-| A — FEM-matched | 10 GPa | 4 mm | **450.2 MPa** | **671.8 MPa** |
-| B — current tool defaults | 0.1 GPa | 5 mm | **487.4 MPa** | **695.7 MPa** |
+| A — FEM-matched | 10 GPa | 4 mm | 450.2 MPa | 671.8 MPa |
+| B — current tool defaults | 0.1 GPa | 5 mm | 487.4 MPa | 695.7 MPa |
 | FEM reference (SINT) | — | — | 979.6 MPa | 773.6 MPa |
+
+**Round 2 — checking every layer, still no transition correction:** 458.5 MPa
+(grade 1 rows) vs 450.2 MPa (grade 2 rows) for Test A — checking every layer
+instead of only the last one closes only **~2%** of the gap. The FEM peak
+location (row 6, the grade1/grade2 boundary) is confirmed but a uniform
+per-layer formula cannot reproduce it: geometry is identical within each
+grade, so the formula gives essentially the same answer everywhere in that
+grade.
+
+**Round 3 — with `SCF_transition_provisional` = 3.15 applied to the two
+layers adjacent to a grade change (rows 6 and 7 here):**
+
+| Test | S_T_JT (Jacket) | vs FEM SINT (979.6 MPa) |
+|---|---:|---:|
+| A — FEM-matched (calibration case) | **979.0 MPa** | −0.06% |
+| B — current tool defaults | **1068.8 MPa** | +9.1% |
 
 ## Reading the gap
 
-1. **Vault/Case stress is in the right ballpark** (−10 to −13% vs FEM SINT).
-   The stiffness-ratio coupling in `size_case_vault.m` is not badly wrong.
-2. **Jacket stress is under-predicted by roughly a factor of 2** (−50 to
-   −54%). This is the dominant error, not the Case side.
-3. **The E_cbl mismatch (0.1 vs 10 GPa) is a minor factor** (8% difference
-   between Test A and B), contrary to the initial hypothesis raised in
-   chat — the dominant gap is elsewhere.
-4. The most likely explanation: `size_cicc_cable.m`'s "Primary radial
-   stress (Pm+Pb)" check only evaluates the **last** layer (innermost grade),
-   while the FEM's true peak sits at the **grade transition** (row 6/7
-   boundary) — a location this formula never checks. A lumped
-   membrane+bending-via-stiffness-ratio model also cannot capture a true 2D
-   bending/contact stress concentration at a material discontinuity like
-   that transition.
+1. **Vault/Case stress was already in the right ballpark** (−10 to −13% vs
+   FEM SINT, unaffected by this change) — the stiffness-ratio coupling in
+   `size_case_vault.m` is not badly wrong.
+2. **The Jacket gap is not a location bug.** Checking every layer instead of
+   only the last barely moves the number (2%). The FEM peak comes from local
+   bending/deformation at the grade-transition stiffness discontinuity,
+   which a lumped stiffness-network model cannot produce by construction.
+3. **The E_cbl mismatch (0.1 vs 10 GPa) is a minor factor on its own**
+   (~8% swing) but **compounds with the transition SCF**: calibrated under
+   FEM-matched materials (Test A, exact match), the same SCF overshoots by
+   +9% when combined with the tool's current E_cbl_LTS=0.1 GPa default
+   (Test B). This is a second, independent piece of evidence (after the
+   review's own audit) that `E_cbl_LTS` should probably be corrected to
+   match the real cable modulus (~10 GPa) rather than 0.1 GPa - not done
+   in this pass, flagged for a separate decision.
+4. `SCF_transition_provisional` (now in `input/WP_TF_input_template.xlsx`,
+   category "Structural corrections (provisional)") is a **single-point
+   calibration** - it makes the tool stop grossly under-predicting the
+   Jacket peak, but it is not validated across geometries, currents, or
+   grade counts. Treat it as a stopgap, not physics.
+
+## Implemented (this pass)
+
+- `search/scan_wp_designs.m`: the "Primary radial stress (Pm+Pb)" check now
+  loops over **every** layer (previously only `var = n_layers`) and keeps
+  the worst case; layers adjacent to a grade transition (from `jump_grade`)
+  are multiplied by `p.SCF_transition_provisional`.
+- New parameter `SCF_transition_provisional` (default 3.15) added to the
+  input template and to `read_machine_input.m`'s required list.
 
 ## Suggested next step
 
-Before building a fully coupled Jacket/Case equilibrium solver, first
-address the Jacket-side gap, since it is the larger of the two:
-- Evaluate the "Primary radial stress" check at **every** layer (not only
-  the last), and in particular at grade transitions, keeping the maximum.
-- Consider whether the lumped Pm+Pb formula needs a stress-concentration or
-  local-bending correction near grade transitions, informed by this FEM
-  case.
-- Re-run this same forward evaluation after any change, to track whether
-  the Jacket gap actually closes.
+Phase 2 (agreed, not yet started): replace `SCF_transition_provisional`
+with a physics-based local-bending correction at the layer-stiffness
+discontinuity (e.g. treating adjacent grades as elastically-coupled rings/
+beams with a compatibility condition at the interface), so the correction
+generalizes to geometries other than this one benchmark case. Re-run this
+same forward evaluation after any change, and revisit the E_cbl_LTS default
+question above.
 
 Not yet addressed by this comparison (still open, lower priority for now):
 thermal contraction (TUNIF=4.2K cooldown), contact nonlinearity, and the

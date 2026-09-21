@@ -229,33 +229,61 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                 continue
             end
 
-            % Primary radial stress (Pm+Pb)
-            var = n_layers;
+            % Primary radial stress (Pm+Pb) - evaluated at every layer,
+            % keeping the worst case, instead of only the last layer.
+            %
+            % NOTE: even checking every layer, a lumped stiffness-network
+            % model like this one cannot reproduce the local bending stress
+            % a true 2D FEM shows at a grade transition (see
+            % validation/TF_FEM_benchmark_2026_findings.md: the FEM Jacket
+            % peak sits at the grade1/grade2 row boundary, roughly 2x higher
+            % than this formula predicts there). p.SCF_transition_provisional
+            % is an explicit, clearly-flagged empirical multiplier applied
+            % only to layers adjacent to a grade change, calibrated against
+            % that single FEM benchmark point - a placeholder for the
+            % physics-based local-bending correction still to be developed,
+            % not a validated general law. Revisit once more FEM points are
+            % available.
             p_rs = B_TF^2/(2*Mu_0);
-            param = Cond_w(var)/SC_w(var);
-            if param > 1 && param < 2.8
-                xxx = [1.087,1.136,1.190,1.250,1.316,1.389,1.471,1.563,1.667,1.786,1.923,2.083,2.273,2.500,2.778];
-                if strcmp(type_cable{var}, 'LTS')
-                    E_cbl = p.E_cbl_LTS;
-                    yyy = [1.01,1.03,1.06,1.10,1.16,1.22,1.29,1.36,1.43,1.50,1.57,1.64,1.71,1.78,1.85];
-                elseif strcmp(type_cable{var}, 'HTS')
-                    E_cbl = p.E_cbl_HTS;
-                    yyy = [1.01,1.02,1.02,1.04,1.06,1.07,1.11,1.13,1.16,1.18,1.22,1.27,1.29,1.29,1.31];
-                end
-                pf = polyfit(xxx, yyy, 5);
-                scf = polyval(pf, param);
-            else
-                scf = 1.5;
+            is_transition = false(1, n_layers);
+            for k = 2:numel(jump_grade)
+                is_transition(max(jump_grade(k)-1, 1)) = true;
+                is_transition(jump_grade(k)) = true;
             end
 
-            Ke_cavo_rad(var) = 2*p.E_jckt*JT(var)/Cond_h(var)+2*tins(var)*p.E_ins/Cond_h(var)+...
-                +(1/(E_cbl*SC_w(var)/SC_h(var))+2/(p.E_jckt*Cond_w(var)/JT(var))+2/(p.E_ins*Cond_w(var)/tins(var)))^-1;
-            Ke_cavo_tor(var) = 2*p.E_jckt*JT(var)/Cond_w(var)+2*tins(var)*p.E_ins/Cond_w(var)+...
-                +(1/(E_cbl*SC_h(var)/SC_w(var))+2/(p.E_jckt*JT(var)/Cond_w(var))+2/(p.E_ins*tins(var)/Cond_w(var)))^-1;
-            K_jckt = 2*JT(var)/Cond_h(var)*p.E_jckt;
-            dcr_jckt = K_jckt/Ke_cavo_rad(var);
-            r_steel = (Cond_w(n_layers)-2*tins(n_layers))/(2*JT(n_layers));
-            S_rm = p_rs*r_steel*scf*dcr_jckt; % Radial membrane stress, innermost Jacket layer
+            S_rm_per_layer = zeros(1, n_layers);
+            E_cbl_per_layer = zeros(1, n_layers);
+            xxx = [1.087,1.136,1.190,1.250,1.316,1.389,1.471,1.563,1.667,1.786,1.923,2.083,2.273,2.500,2.778];
+            yyy_LTS = [1.01,1.03,1.06,1.10,1.16,1.22,1.29,1.36,1.43,1.50,1.57,1.64,1.71,1.78,1.85];
+            yyy_HTS = [1.01,1.02,1.02,1.04,1.06,1.07,1.11,1.13,1.16,1.18,1.22,1.27,1.29,1.29,1.31];
+            for var = 1:n_layers
+                if strcmp(type_cable{var}, 'HTS')
+                    E_cbl_var = p.E_cbl_HTS;
+                    yyy = yyy_HTS;
+                else
+                    E_cbl_var = p.E_cbl_LTS;
+                    yyy = yyy_LTS;
+                end
+                param = Cond_w(var)/SC_w(var);
+                if param > 1 && param < 2.8
+                    pf = polyfit(xxx, yyy, 5);
+                    scf = polyval(pf, param);
+                else
+                    scf = 1.5;
+                end
+
+                K_jckt = 2*p.E_jckt*JT(var)/Cond_h(var);
+                dcr_jckt = K_jckt/Ke_cavo_rad(var);
+                r_steel = (Cond_w(var)-2*tins(var))/(2*JT(var));
+                S_rm_var = p_rs*r_steel*scf*dcr_jckt; % Radial membrane stress, this Jacket layer
+                if is_transition(var)
+                    S_rm_var = S_rm_var*p.SCF_transition_provisional;
+                end
+                S_rm_per_layer(var) = S_rm_var;
+                E_cbl_per_layer(var) = E_cbl_var;
+            end
+            [S_rm, worst_var] = max(S_rm_per_layer);
+            E_cbl = E_cbl_per_layer(worst_var);
 
             % Case/vault sizing (fix #1 + fix #4 live in size_case_vault.m)
             ctx = struct();
