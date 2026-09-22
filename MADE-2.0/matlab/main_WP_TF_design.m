@@ -67,3 +67,9 @@ fprintf('\n%d feasible design point(s) saved to %s\n', height(DATA), results_fil
 
 sel_idx = browse_solutions(DATA);
 plot_solution(DATA, sel_idx, tag);
+
+%% 6. Optional: export the chosen design point as an ANSYS APDL input file
+export_answer = strtrim(input('Export this design point as an ANSYS input file for FEM verification? [y/N]: ', 's'));
+if strcmpi(export_answer, 'y')
+    export_ansys_input(DATA(sel_idx,:), p, pwd, sprintf('%s_%d', tag, sel_idx));
+end
