@@ -64,12 +64,13 @@ layers adjacent to a grade change (rows 6 and 7 here):**
    which a lumped stiffness-network model cannot produce by construction.
 3. **The E_cbl mismatch (0.1 vs 10 GPa) is a minor factor on its own**
    (~8% swing) but **compounds with the transition SCF**: calibrated under
-   FEM-matched materials (Test A, exact match), the same SCF overshoots by
-   +9% when combined with the tool's current E_cbl_LTS=0.1 GPa default
-   (Test B). This is a second, independent piece of evidence (after the
-   review's own audit) that `E_cbl_LTS` should probably be corrected to
-   match the real cable modulus (~10 GPa) rather than 0.1 GPa - not done
-   in this pass, flagged for a separate decision.
+   FEM-matched materials (Test A, exact match), the same SCF overshot by
+   +9% when combined with the tool's old E_cbl_LTS=0.1 GPa default
+   (Test B). This was a second, independent piece of evidence (after the
+   review's own audit) that `E_cbl_LTS` should be corrected to match the
+   real cable modulus - **now done**: the input template default is 10 GPa
+   (see "Implemented" below), so Test A is now simply "current tool
+   defaults" and the +9% overshoot no longer applies.
 4. `SCF_transition_provisional` (now in `input/WP_TF_input_template.xlsx`,
    category "Structural corrections (provisional)") is a **single-point
    calibration** - it makes the tool stop grossly under-predicting the
@@ -84,6 +85,11 @@ layers adjacent to a grade change (rows 6 and 7 here):**
   are multiplied by `p.SCF_transition_provisional`.
 - New parameter `SCF_transition_provisional` (default 3.15) added to the
   input template and to `read_machine_input.m`'s required list.
+- `input/WP_TF_input_template.xlsx`: `E_cbl_LTS` default corrected from
+  0.1 GPa to 10 GPa, matching the FEM's actual cable structural modulus
+  (ANSYS material 1, EX=1e10 Pa) confirmed in `TFBM_model.txt`. Test A/B
+  above are no longer "FEM-matched vs tool defaults" - both point to the
+  same value now.
 
 ## Suggested next step
 
