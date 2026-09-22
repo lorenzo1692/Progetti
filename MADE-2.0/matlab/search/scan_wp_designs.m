@@ -23,8 +23,7 @@ maxdim = p.maxdim;
 theta_TF = g.theta_TF;
 Mu_0 = g.Mu_0;
 
-r_SC_const = 0.005*p.Increm;   % Cable corner curvature radius = jacket thickness
-tins_const = 0.001*p.Increm;   % Turn insulation
+tins_const = p.turn_insulation_nominal*p.Increm;   % Turn insulation
 
 counter = 0;
 % DATA is intentionally left undefined here: like the original script, it
@@ -116,9 +115,9 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                 Cond_w(var) = WP_w0(1)/n_turns(1);
                 E_cbl = pick_E_cbl(type_cable{var}, p.E_cbl_HTS, p.E_cbl_LTS);
 
-                sized = size_grade_cable(Cond_w(var), S_Cable(var), r_SC_const, tins_const, ...
+                sized = size_grade_cable(Cond_w(var), S_Cable(var), p.r_SC_min, p.r_SC_max, tins_const, ...
                     p.E_jckt, E_cbl, p.E_ins, p.shape_cable, p_rs, S_z_JT, ...
-                    p.S_amm_JT, p.safety_membrane, p.min_JT, p.max_sizing_iterations);
+                    p.S_amm_JT, p.safety_membrane, p.min_JT, p.JT_step, p.max_sizing_iterations);
                 tins(var) = tins_const;
                 Cond_h(var) = sized.Cond_h; JT(var) = sized.JT;
                 SC_w(var) = sized.SC_w;     SC_h(var) = sized.SC_h; R_J(var) = sized.R_J;
@@ -133,7 +132,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                 shrink_iter = 0;
                 while (check_w - (WP_w0(var) + p.GoundIns*2))/2 <= p.toroidal_gap
                     shrink_iter = shrink_iter + 1;
-                    if shrink_iter > maxdim*50
+                    if shrink_iter > p.max_sizing_iterations
                         error('scan_wp_designs:turn_shrink_not_converged', ...
                             'Turn-count reduction for grade %d did not converge: check the input parameters.', var);
                     end
@@ -141,9 +140,9 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                     Cond_w(var) = WP_w0(1)/n_turns(1);
                     E_cbl = pick_E_cbl(type_cable{var}, p.E_cbl_HTS, p.E_cbl_LTS);
 
-                    sized = size_grade_cable(Cond_w(var), S_Cable(var), r_SC_const, tins_const, ...
+                    sized = size_grade_cable(Cond_w(var), S_Cable(var), p.r_SC_min, p.r_SC_max, tins_const, ...
                         p.E_jckt, E_cbl, p.E_ins, p.shape_cable, p_rs, S_z_JT, ...
-                        p.S_amm_JT, p.safety_membrane, p.min_JT, p.max_sizing_iterations);
+                        p.S_amm_JT, p.safety_membrane, p.min_JT, p.JT_step, p.max_sizing_iterations);
                     Cond_h(var) = sized.Cond_h; JT(var) = sized.JT;
                     SC_w(var) = sized.SC_w;     SC_h(var) = sized.SC_h; R_J(var) = sized.R_J;
                     Ke_cavo_rad(var) = sized.Ke_rad; Ke_cavo_tor(var) = sized.Ke_tor;
@@ -181,9 +180,9 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                     type_cable(var) = type_cable(var-1);
                     E_cbl = pick_E_cbl(type_cable{var}, p.E_cbl_HTS, p.E_cbl_LTS);
 
-                    sized = size_grade_cable(Cond_w(var), S_Cable(var), r_SC_const, tins_const, ...
+                    sized = size_grade_cable(Cond_w(var), S_Cable(var), p.r_SC_min, p.r_SC_max, tins_const, ...
                         p.E_jckt, E_cbl, p.E_ins, p.shape_cable, p_rs, S_z_JT, ...
-                        p.S_amm_JT, p.safety_membrane, p.min_JT, p.max_sizing_iterations);
+                        p.S_amm_JT, p.safety_membrane, p.min_JT, p.JT_step, p.max_sizing_iterations);
                     tins(var) = tins_const;
                     Cond_h(var) = sized.Cond_h; JT(var) = sized.JT;
                     SC_w(var) = sized.SC_w;     SC_h(var) = sized.SC_h; R_J(var) = sized.R_J;
@@ -225,7 +224,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
 
             % Geometric check on the obtained cable dimensions
             r_cable(1:n_layers) = Cond_w(1:n_layers)./Cond_h(1:n_layers);
-            if min(SC_w) <= 0.005 || min(r_cable(1:n_layers)) < 0.99 || min(JT(1:n_layers)) < p.min_JT
+            if min(SC_w) <= p.min_SC_w || min(r_cable(1:n_layers)) < p.min_cable_aspect_ratio || min(JT(1:n_layers)) < p.min_JT
                 continue
             end
 
@@ -297,7 +296,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
             ctx.dr_plasma_side = p.dr_plasma_side;
             ctx.S_amm_VT = p.S_amm_VT; ctx.S_amm_JT = p.S_amm_JT; ctx.safety_membrane = p.safety_membrane;
             ctx.Ke_cavo_rad = Ke_cavo_rad(1:n_layers); ctx.n_turns = n_turns(1:n_layers);
-            ctx.DTF0 = 0.05; ctx.DTF_step = 0.001; ctx.max_iter = p.max_sizing_iterations;
+            ctx.DTF0 = p.DTF_initial; ctx.DTF_step = p.DTF_step; ctx.max_iter = p.max_sizing_iterations;
 
             cv = size_case_vault(ctx);
             Rk_ = cv.Rk_; S_T_VT = cv.S_T_VT; S_T_JT = cv.S_T_JT;
@@ -355,12 +354,13 @@ else
 end
 end
 
-function sized = size_grade_cable(Cond_w, S_Cable_var, r_SC, tins, E_jckt, E_cbl, E_ins, ...
-    shape_cable, p_rs, S_z_JT, S_amm_JT, safety_membrane, min_JT, max_iter)
+function sized = size_grade_cable(Cond_w, S_Cable_var, r_SC_min, r_SC_max, tins, E_jckt, E_cbl, E_ins, ...
+    shape_cable, p_rs, S_z_JT, S_amm_JT, safety_membrane, min_JT, JT_step, max_iter)
 %SIZE_GRADE_CABLE Thin convenience wrapper around SIZE_CICC_CABLE.
-in.Cond_w = Cond_w; in.S_Cable_var = S_Cable_var; in.r_SC = r_SC; in.tins = tins;
+in.Cond_w = Cond_w; in.S_Cable_var = S_Cable_var;
+in.r_SC_min = r_SC_min; in.r_SC_max = r_SC_max; in.tins = tins;
 in.E_jckt = E_jckt; in.E_cbl = E_cbl; in.E_ins = E_ins; in.shape_cable = shape_cable;
 in.p_rs = p_rs; in.S_z_JT = S_z_JT; in.S_amm_JT = S_amm_JT; in.safety_membrane = safety_membrane;
-in.min_JT = min_JT; in.max_iter = max_iter;
+in.min_JT = min_JT; in.JT_step = JT_step; in.max_iter = max_iter;
 sized = size_cicc_cable(in);
 end

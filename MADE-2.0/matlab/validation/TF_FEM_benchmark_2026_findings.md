@@ -77,6 +77,20 @@ layers adjacent to a grade change (rows 6 and 7 here):**
    Jacket peak, but it is not validated across geometries, currents, or
    grade counts. Treat it as a stopgap, not physics.
 
+## Update — all hardcoded parameters exposed, r_SC now a clamp rule
+
+Every remaining hardcoded numeric literal in the physics/search modules
+(sizing-loop steps, geometric feasibility thresholds, the cable corner
+fillet radius, the vacuum-vessel margin factor) is now an input-template
+parameter — see the "Numerical settings" and "WP dimensioning" categories.
+The cable corner fillet radius `r_SC` is no longer a flat constant: it now
+follows `r_SC = clamp(JT, r_SC_min, r_SC_max)` (default 2-6 mm), i.e. it
+tracks the jacket thickness up to 6 mm and is fixed beyond that. Re-running
+the forward evaluation with this rule (JT=3.5mm -> r_SC=3.5mm here) and the
+corrected E_cbl_LTS=10GPa gives **S_T_JT=978.5 MPa, S_T_VT=669.7 MPa**,
+essentially unchanged from the round-3 numbers above (r_SC has a small
+effect, as already suggested by the E_cbl-driven Test A/B comparison).
+
 ## Implemented (this pass)
 
 - `search/scan_wp_designs.m`: the "Primary radial stress (Pm+Pb)" check now

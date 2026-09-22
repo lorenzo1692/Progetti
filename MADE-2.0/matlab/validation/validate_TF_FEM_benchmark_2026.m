@@ -60,24 +60,27 @@ lateral_w = (CASE_w_at_Re1 - Cond_w(1)*n_turns(1) - 2*GoundIns)/2;
 FEM_Jacket_SINT = 979.6e6; FEM_Jacket_SEQV = 898.0e6;
 FEM_Case_SINT   = 773.6e6; FEM_Case_SEQV   = 698.4e6;
 
-fprintf('%-55s %10s %10s\n','Test','S_T_JT','S_T_VT');
-run_case(10e9, 0.004, 'A: FEM-matched (E_cbl=10GPa, r_SC=4mm)', 'LTS', ...
+% Cable corner fillet radius: not a free input (see physics/size_cicc_cable.m) -
+% r_SC = JT clamped to [r_SC_min, r_SC_max]. Here JT=3.5mm falls inside
+% [2,6]mm so r_SC=JT=3.5mm for every layer.
+r_SC_min = 0.002; r_SC_max = 0.006;
+
+fprintf('%-45s %10s %10s\n','Test','S_T_JT','S_T_VT');
+run_case(10e9, r_SC_min, r_SC_max, 'Current tool defaults (E_cbl=10GPa)', 'LTS', ...
     n_layers,Cond_h,Cond_w,JT,tins,n_turns,E_jckt,E_case,E_ins,p_rs,T_bf, ...
-    Ri_,CASE_w,theta_TF,lateral_w,Rj_fem,Rk_fem,DTF_fem);
-run_case(0.1e9, 0.005, 'B: current tool defaults (E_cbl=0.1GPa, r_SC=5mm)', 'LTS', ...
-    n_layers,Cond_h,Cond_w,JT,tins,n_turns,E_jckt,E_case,E_ins,p_rs,T_bf, ...
-    Ri_,CASE_w,theta_TF,lateral_w,Rj_fem,Rk_fem,DTF_fem);
+    Ri_,CASE_w,theta_TF,lateral_w,Rj_fem,Rk_fem,DTF_fem,dr_plasma_side);
 
 fprintf('\nFEM reference: Jacket SINT=%.1f MPa SEQV=%.1f MPa | Case SINT=%.1f MPa SEQV=%.1f MPa\n', ...
     FEM_Jacket_SINT/1e6, FEM_Jacket_SEQV/1e6, FEM_Case_SINT/1e6, FEM_Case_SEQV/1e6);
 
-function run_case(E_cbl, r_SC, label, type_cable, n_layers,Cond_h,Cond_w,JT,tins,n_turns, ...
-    E_jckt,E_case,E_ins,p_rs,T_bf,Ri_,CASE_w,theta_TF,lateral_w,Rj_,Rk_,DTF)
+function run_case(E_cbl, r_SC_min, r_SC_max, label, type_cable, n_layers,Cond_h,Cond_w,JT,tins,n_turns, ...
+    E_jckt,E_case,E_ins,p_rs,T_bf,Ri_,CASE_w,theta_TF,lateral_w,Rj_,Rk_,DTF,dr_plasma_side)
 
+r_SC = min(max(JT, r_SC_min), r_SC_max); % per layer, see physics/size_cicc_cable.m
 SC_h = Cond_h - 2*JT - 2*tins;
 SC_w = Cond_w - 2*JT - 2*tins;
 R_J = r_SC + JT;
-S_Cable = SC_h.*SC_w - (4-pi)*r_SC^2;
+S_Cable = SC_h.*SC_w - (4-pi)*r_SC.^2;
 S_CICC = (Cond_w-2*tins).*(Cond_h-2*tins) - (4-pi)*R_J.^2;
 S_JT = S_CICC - S_Cable;
 
@@ -131,7 +134,7 @@ A_tot = (CASE_w + CASE_w_l)*(Ri_ - Rk_)/2;
 A_CASE = A_tot - A_WP;
 
 Ke_WP_rad = sum(1./(Ke_rad.*n_turns))^-1;
-K_ps_rad = E_case/0.02*(2*Ri_*tan(theta_TF/2)); % dr_plasma_side hardcoded (CASE_THICK)
+K_ps_rad = E_case/dr_plasma_side*(2*Ri_*tan(theta_TF/2));
 K_lat_rad = E_case*(lateral_w/2)/WP_h;
 K_vault_rad = E_case*CASE_w_l/DTF;
 Ke_case_rad = (1/(Ke_WP_rad+2*K_lat_rad) + 1/K_vault_rad + 1/K_ps_rad)^-1;

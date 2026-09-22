@@ -13,19 +13,26 @@ function out = size_cicc_cable(in)
 %   if the input parameters never let it converge.
 %
 %   in fields (all scalars):
-%     Cond_w, S_Cable_var, r_SC, tins, E_jckt, E_cbl, E_ins, shape_cable,
-%     p_rs, S_z_JT, S_amm_JT, safety_membrane, min_JT, max_iter
+%     Cond_w, S_Cable_var, r_SC_min, r_SC_max, tins, E_jckt, E_cbl, E_ins,
+%     shape_cable, p_rs, S_z_JT, S_amm_JT, safety_membrane, min_JT,
+%     JT_step, max_iter
+%
+%   The cable corner fillet radius r_SC is not a free input: it is derived
+%   from the jacket thickness JT being sized, clamped to [r_SC_min,
+%   r_SC_max] (general rule: r_SC = JT up to r_SC_max, fixed beyond that,
+%   never below r_SC_min).
 %
 %   out fields:
-%     SC_w, SC_h, R_J, Cond_h, JT, Ke_rad, Ke_tor, S_CICC, S_JT, iterations
+%     SC_w, SC_h, R_J, Cond_h, JT, r_SC, Ke_rad, Ke_tor, S_CICC, S_JT, iterations
 
 switch in.shape_cable
     case 200
         SC_w = 2*sqrt(in.S_Cable_var/pi);
         SC_h = SC_w;                       % SC cable height
-        R_J  = in.r_SC;                    % Jacket corner curvature radius
         Cond_h = in.Cond_w;                % RIS_ cable height
         JT = (in.Cond_w - 2*in.tins - SC_w)/2;
+        r_SC = min(max(JT, in.r_SC_min), in.r_SC_max);
+        R_J  = r_SC;                       % Jacket corner curvature radius
         [Ke_rad, Ke_tor] = cavo_stiffness(in.E_jckt, in.E_cbl, in.E_ins, ...
             JT, in.tins, Cond_h, in.Cond_w, SC_w, SC_h);
         iterations = 0;
@@ -40,10 +47,11 @@ switch in.shape_cable
                 error('size_cicc_cable:not_converged', ...
                     'JT sizing did not converge after %d iterations: check the input parameters.', iterations);
             end
-            JT = JT + 1e-4;
+            JT = JT + in.JT_step;
+            r_SC = min(max(JT, in.r_SC_min), in.r_SC_max);
             SC_w = in.Cond_w - JT*2 - in.tins*2;                          % SC cable width
-            SC_h = (in.S_Cable_var + (4-pi)*in.r_SC^2)/SC_w;              % SC cable height
-            R_J  = in.r_SC + JT;                                          % Jacket corner curvature radius
+            SC_h = (in.S_Cable_var + (4-pi)*r_SC^2)/SC_w;                 % SC cable height
+            R_J  = r_SC + JT;                                             % Jacket corner curvature radius
             Cond_h = SC_h + JT*2 + in.tins*2;                             % Rectangular cable height
             [Ke_rad, Ke_tor] = cavo_stiffness(in.E_jckt, in.E_cbl, in.E_ins, ...
                 JT, in.tins, Cond_h, in.Cond_w, SC_w, SC_h);
@@ -65,6 +73,7 @@ out.SC_h = SC_h;
 out.R_J = R_J;
 out.Cond_h = Cond_h;
 out.JT = JT;
+out.r_SC = r_SC;
 out.Ke_rad = Ke_rad;
 out.Ke_tor = Ke_tor;
 out.S_CICC = S_CICC;
