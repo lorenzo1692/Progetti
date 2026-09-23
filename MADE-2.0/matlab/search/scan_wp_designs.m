@@ -64,6 +64,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
             N_Sc = zeros(1, maxdim);     N_Cu = zeros(1, maxdim);
             THS = zeros(1, maxdim);      S_Cu_HTS = zeros(1, maxdim);
             S_REBCO = zeros(1, maxdim);  Ke_cavo_rad = zeros(1, maxdim);
+            B_grade = zeros(1, maxdim);  % field each grade's cable was sized at
             Ke_cavo_tor = zeros(1, maxdim);
 
             N_tot = zeros(1, n_layers);
@@ -91,7 +92,9 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
             for var = jump_grade
                 B = B_layers(var);
                 [type_cable(var), N_Cu(var), N_Sc(var), N_tot(var), S_Cable(var), ...
-                    S_REBCO(var), S_Cu_HTS(var), THS(var)] = cicc(B, Iop, Tau_discharge, p.WP_SC_type);
+                    S_REBCO(var), S_Cu_HTS(var), THS(var)] = cicc(B, Iop, Tau_discharge, p.WP_SC_type, ...
+                    p.THS_max_LTS, p.THS_max_HTS);
+                B_grade(var:n_layers) = B;
 
                 type_cable(var:n_layers) = type_cable(var);
                 N_Cu(var:n_layers) = N_Cu(var);
@@ -178,7 +181,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                     Cond_w(var) = WP_w0(1)/n_turns(1);
                     S_Cable(var) = S_Cable(var-1);
                     type_cable(var) = type_cable(var-1);
-                    THS(var) = THS(var-1);
+                    THS(var) = THS(var-1); B_grade(var) = B_grade(var-1);
                     N_Sc(var) = N_Sc(var-1); N_Cu(var) = N_Cu(var-1);
                     S_REBCO(var) = S_REBCO(var-1); S_Cu_HTS(var) = S_Cu_HTS(var-1);
                     E_cbl = pick_E_cbl(type_cable{var}, p.E_cbl_HTS, p.E_cbl_LTS);
@@ -336,10 +339,10 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                 radial_build = Ri_-Rk_;
 
                 row = table(S_T_VT,S_T_JT,R_0,g.B_PHI_0,B_TF,Iop,JENG,L,E,Ri_,Rj_,Rk_,radial_build,Nose,WP_h,WP_w,...
-                    lateral_w,n_cond,n_layers,n_turns,type_cable,Cond_w,Cond_h,JT,r_cable,N_Sc,N_Cu,S_Cable,S_REBCO,S_Cu_HTS,THS,Tau_discharge, ...
+                    lateral_w,n_cond,n_layers,n_turns,type_cable,Cond_w,Cond_h,JT,r_cable,N_Sc,N_Cu,S_Cable,S_REBCO,S_Cu_HTS,THS,B_grade,Tau_discharge, ...
                     'VariableNames', {'S_T_VT','S_T_JT','R_0','B_PHI_0','B_TF','Iop','JENG','L','E','Ri_','Rj_','Rk_', ...
                     'radial_build','Nose','WP_h','WP_w','lateral_w','n_cond','n_layers','n_turns','type_cable','Cond_w', ...
-                    'Cond_h','JT','r_cable','N_Sc','N_Cu','S_Cable','S_REBCO','S_Cu_HTS','THS','Tau_discharge'});
+                    'Cond_h','JT','r_cable','N_Sc','N_Cu','S_Cable','S_REBCO','S_Cu_HTS','THS','B_grade','Tau_discharge'});
                 DATA(counter,:) = row;
             end
         end

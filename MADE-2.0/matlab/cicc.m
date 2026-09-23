@@ -1,15 +1,24 @@
-function [type_cable,N_Cu,N_Sc,N_tot,S_Cable,S_REBCO,S_Cu_HTS,THS,mat,Ic_sc] = cicc(B,Iop,Tau_discharge,WP_SC_type)
+function [type_cable,N_Cu,N_Sc,N_tot,S_Cable,S_REBCO,S_Cu_HTS,THS,mat,Ic_sc] = cicc(B,Iop,Tau_discharge,WP_SC_type,THS_max_LTS,THS_max_HTS)
+%CICC Size one CICC grade (SC strands/tapes + segregated Cu) at field B.
+%
+%   The hot-spot limit is type-specific: THS_max_LTS for LTS (default
+%   250 K) and THS_max_HTS for HTS (default 150 K). Pass them explicitly
+%   (e.g. p.THS_max_LTS/p.THS_max_HTS from the input Excel) to override
+%   the defaults in cicc_params.m. All other constants: cicc_params.m.
 
-CunonCu         = 1;
-S_tapes         = (4*1e-7);        % [m2]
-d_fili          = 0.001 + 0*0.00082;         % [m] 
-theta           = 30;
-T_dim           = 20;
-d_cc            = 0.005;           % Diametro del cooling channel [m] 
-cos_theta       = 0.97;            % cos(theta) tiene conto del fatto che i fili sono twistati, quindi la sezione effettiva di fili è maggiore
-VF              = 0.7;             % Void Fraction nel conduttore 
-% N_fili          = [1500 1440 1350 1296 1200 1152 1080 972 960 900 864 810 768 720 675 648 540 486 360 324 300 216 180 162 144]; 
-N_fili          = 1:1500;
+cp = cicc_params();
+if nargin < 5 || isempty(THS_max_LTS), THS_max_LTS = cp.THS_max_LTS; end
+if nargin < 6 || isempty(THS_max_HTS), THS_max_HTS = cp.THS_max_HTS; end
+
+CunonCu         = cp.CunonCu;
+S_tapes         = cp.S_tapes;        % [m2]
+d_fili          = cp.d_fili;         % [m]
+theta           = cp.theta;
+T_dim           = cp.T_dim;
+d_cc            = cp.d_cc;           % cooling channel diameter [m]
+cos_theta       = cp.cos_theta;      % twisted strands: effective strand cross-section is larger
+VF              = cp.VF;             % void fraction
+N_fili          = 1:cp.N_fili_max;
 N_Cu            = 0;
 N_tot           = 0;
 type_cable      = {'X'};
@@ -34,7 +43,7 @@ switch WP_SC_type
     case 102
         % Hybrid option:
         % HTS above 15 T, LTS below 15 T
-        if B > 15
+        if B > cp.B_hybrid_HTS
             [Ic_sc, type_cable, mat, Tlim] = select_HTS(B,T_dim,theta);
         else
             [Ic_sc, type_cable, mat, Tlim] = select_LTS(B,d_fili);
@@ -60,7 +69,7 @@ if N_Sc > max(N_fili)
         case 102
             % In hybrid mode, if the LTS solution requires too many strands,
             % force the use of HTS.
-            [Ic_sc, type_cable, mat, Tlim] = select_HTS(B,20,theta);
+            [Ic_sc, type_cable, mat, Tlim] = select_HTS(B,T_dim,theta);
 
             N_Sc = ceil(Iop/Ic_sc);
 
@@ -81,17 +90,17 @@ function [Ic_sc,type_cable,mat,Tlim] = select_HTS(B,T,theta)
     % Ic_sst33 signature: Ic_sst33(B,T,theta,opt)
     Ic_sc = Ic_sst33(B,T,theta,[3,4]);
     mat = 2;     % 0 = Nb3Sn, 1 = NbTi, 2 = REBCO
-    Tlim = 150;
+    Tlim = THS_max_HTS;
 end
 
 
 function [Ic_sc,type_cable,mat,Tlim] = select_LTS(B,d_fili)
 % LTS selection:
-%   B < 5 T  -> NbTi
-%   B >= 5 T -> Nb3Sn
+%   B < cp.B_NbTi_max  -> NbTi
+%   B >= cp.B_NbTi_max -> Nb3Sn
     type_cable = {'LTS'};
-    Tlim = 250;
-    if B < 6
+    Tlim = THS_max_LTS;
+    if B < cp.B_NbTi_max
         Ic_sc = Ic_NbTi(B,d_fili*1e3);
         mat = 1;     % NbTi
     else
@@ -112,7 +121,7 @@ N_Cu0 = linspace(1,10000,div);
 while true
     THS = zeros(size(N_Cu0,2),1);
     for j=1:size(N_Cu0,2)         
-        THS(j) = heat_balance_cicc_ode(N_Sc,N_Cu0(j),d_fili,CunonCu,Iop,B,Tau_discharge,mat,d_cc,VF,cos_theta,S_tapes);           
+        THS(j) = heat_balance_cicc_ode(N_Sc,N_Cu0(j),d_fili,CunonCu,Iop,B,Tau_discharge,mat,d_cc,VF,cos_theta,S_tapes,cp.Tau_delay);           
     end    
     [~,indx] = min(abs(THS-Tlim)); 
     %

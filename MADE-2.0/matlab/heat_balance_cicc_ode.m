@@ -1,6 +1,14 @@
-function THS = heat_balance_cicc_ode(N_Sc,N_Cu,d_fili,CunonCu,Iop0,B0,Tau_discharge,mat,d_cc,VF,costheta,S_tapes)
+function [THS, t, TF] = heat_balance_cicc_ode(N_Sc,N_Cu,d_fili,CunonCu,Iop0,B0,Tau_discharge,mat,d_cc,VF,costheta,S_tapes,Tau_delay)
+%HEAT_BALANCE_CICC_ODE Adiabatic hot-spot transient of a CICC after a quench.
+%
+%   THS = HEAT_BALANCE_CICC_ODE(...) returns the peak hot-spot temperature [K].
+%   [THS, t, TF] = HEAT_BALANCE_CICC_ODE(...) also returns the full
+%   temperature history TF(t), used by postprocess/plot_hotspot_transient.m.
+%   Tau_delay [s] is optional (default 1 s, see cicc_params.m).
 
-    Tau_delay = 1;
+    if nargin < 13 || isempty(Tau_delay)
+        Tau_delay = 1;
+    end
     tspan = [0, (-Tau_discharge*log(1/Iop0)+Tau_delay)];
 
     % Initial temperature -> Tc

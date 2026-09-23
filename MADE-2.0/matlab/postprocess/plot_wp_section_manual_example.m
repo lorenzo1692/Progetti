@@ -28,13 +28,29 @@ row.Ri_ = 1.18;   % [m] Case outer (plasma-side) radius
 row.Rj_ = 0.8354; % [m] WP inner boundary radius
 row.Rk_ = 0.70;   % [m] Case nose tip radius
 
-% Only needed for plot_wp_diagnostics (hot-spot/field/current-density
-% profile) - fill these in from a cicc() run or a saved DATA row if you
-% want that plot too; plot_wp_section alone does not need them.
-row.B_TF = 13.489;               % [T] peak field on the WP (BSUM)
-row.THS  = [65 66 67 68 69 70 72 73 74 75 76]; % [K] hot-spot temperature per layer
+% Field on the WP (BSUM peak): needed by plot_wp_diagnostics and to size
+% the cable of each grade below.
+row.B_TF = 13.489;               % [T]
+row.Tau_discharge = 20;          % [s] discharge time constant
+
+% Conductor grades: first layer of each grade. Each grade's cable is sized
+% by cicc() at the smeared field of its first layer (as the scan does);
+% set row.N_Sc / row.N_Cu / row.type_cable by hand instead to test a
+% specific cable.
+grade_start = [1 7];
+n_spire_ = sum(row.n_turns) - [0 cumsum(row.n_turns(2:end))];
+B_layers = row.B_TF * n_spire_/n_spire_(1);
+row.N_Sc = zeros(1, row.n_layers); row.N_Cu = zeros(1, row.n_layers);
+row.THS = zeros(1, row.n_layers);  row.B_grade = zeros(1, row.n_layers);
+for k = grade_start
+    [tc, N_Cu, N_Sc, ~, ~, ~, ~, THS] = cicc(B_layers(k), row.Iop, row.Tau_discharge, ...
+        p.WP_SC_type, p.THS_max_LTS, p.THS_max_HTS);
+    row.type_cable(k:end) = tc; row.N_Sc(k:end) = N_Sc; row.N_Cu(k:end) = N_Cu;
+    row.THS(k:end) = THS;       row.B_grade(k:end) = B_layers(k);
+end
 
 %% Plot
 plot_wp_section(row, p, 'Manual what-if configuration');
 plot_wp_section_bfield(row, p, 'Manual what-if configuration');
 plot_wp_diagnostics(row, p, 'Manual what-if configuration');
+plot_hotspot_transient(row, p, 'Manual what-if configuration - hot spot');

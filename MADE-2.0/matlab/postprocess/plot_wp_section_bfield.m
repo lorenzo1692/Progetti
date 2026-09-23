@@ -4,8 +4,8 @@ function plot_wp_section_bfield(row, p, fig_title)
 %   PLOT_WP_SECTION_BFIELD(row, p) reproduces the field-colored section
 %   plot from the original Plot_WP_TF.m (Case trapezoid in gray, turn
 %   insulation/jacket rings, cable region colored by a jet colormap), but
-%   colors each individual turn by the exact discrete Biot-Savart field at
-%   that turn (COMPUTE_DISCRETE_FIELD_PROFILE) instead of the per-grade
+%   colors each individual turn by the peak discrete Biot-Savart field on
+%   that turn's cable, self-field included (COMPUTE_DISCRETE_FIELD_PROFILE), instead of the per-grade
 %   smeared B_layers value the original used - every turn gets its own
 %   color, not just its layer's.
 %
@@ -94,9 +94,9 @@ for k = 1:n_layers
 end
 
 colormap(cmap);
-clim([B_min B_max]);
+set(gca, 'CLim', [B_min B_max]);
 c = colorbar;
-c.Label.String = 'B [T] (exact, discrete Biot-Savart)';
+ylabel(c, 'Peak B on cable [T] (discrete Biot-Savart + self-field)');
 
 xlabel('Toroidal x [m]');
 ylabel('Radial y [m]');

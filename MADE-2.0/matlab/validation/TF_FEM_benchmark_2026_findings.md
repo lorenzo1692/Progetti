@@ -121,3 +121,20 @@ WP_h/Rj_ summary formula in `search/scan_wp_designs.m` not including the
 10×0.5mm inter-row insulation gaps that the layer-by-layer Re/Ri chain does
 account for (~5 mm effect on Rj_/DTF, i.e. a few percent of the 135.4 mm
 nose thickness in this case).
+
+## Discrete field model vs FEM (peak BSUM on conductor)
+
+`physics/compute_discrete_field_profile.m` on the benchmark geometry
+(11 layers, n_turns 6x10 + 5x8, Cond_w 46 mm, Cond_h 32.6/22.8 mm, JT 3.5 mm,
+Iop 62.3 kA, n_TF 12):
+
+| Model | Peak B on conductor |
+|---|---|
+| FEM (BSUM) | 13.489 T |
+| Smeared Ampere (scan, B_TF) | 13.489 T |
+| Old: line filaments at centroids, no self-field | 12.92 T (-4.2%) |
+| New: coil-1 turns as uniform rectangles (self-field incl.), peak over 3x3 points per cable | 13.480 T (-0.07%) |
+
+The old model also under-predicted the low-field layers by up to ~50%
+(layer 11: 1.7 T vs 3.4 T), because there the turn's own self-field
+(~mu0*I/(2*pi*a) ~ 1 T) dominates.
