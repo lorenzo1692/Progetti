@@ -36,4 +36,5 @@ row.THS  = [65 66 67 68 69 70 72 73 74 75 76]; % [K] hot-spot temperature per la
 
 %% Plot
 plot_wp_section(row, p, 'Manual what-if configuration');
+plot_wp_section_bfield(row, p, 'Manual what-if configuration');
 plot_wp_diagnostics(row, p, 'Manual what-if configuration');

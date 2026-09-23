@@ -57,8 +57,8 @@ axis equal
 col_case   = [0.85 0.85 0.85];
 col_ground = [0.55 0.80 0.55];   % ground insulation (green)
 col_layer_ins = [0.55 0.80 0.55]; % inter-layer insulation, same family as ground
-col_jacket = [0.55 0.55 0.60];   % steel
-col_tins   = [0.95 0.90 0.60];   % turn insulation (pale yellow)
+col_jacket = [0.5 0.5 0.5];      % steel (matches the original Plot_WP_TF.m)
+col_tins   = [0.0588 1.0 1.0];   % turn insulation (cyan, matches the original Plot_WP_TF.m)
 col_LTS    = [0.20 0.45 0.85];
 col_HTS    = [0.85 0.35 0.15];
 
@@ -110,17 +110,19 @@ for k = 1:n_layers
     sc_h = h - 2*JT(k) - 2*tins;
     for t = 1:n_turns(k)
         xc = x0 + (t-1)*Cond_w(k);
-        % Jacket steel (full cell)
-        rj = rectangle('Position', [xc, y0, Cond_w(k), h], ...
-            'FaceColor', col_jacket, 'EdgeColor', [0.2 0.2 0.2]);
-        if isempty(h_jacket_leg), h_jacket_leg = rj; end
-        % Turn insulation ring (inset by JT)
-        if Cond_w(k)-2*JT(k) > 0 && h-2*JT(k) > 0
-            rt = rectangle('Position', [xc+JT(k), y0+JT(k), Cond_w(k)-2*JT(k), h-2*JT(k)], ...
-                'FaceColor', col_tins, 'EdgeColor', 'none');
-            if isempty(h_tins_leg), h_tins_leg = rt; end
+        % Turn insulation (full cell, outermost - wraps the jacket from
+        % the outside, as in the original Plot_WP_TF.m and physically:
+        % cable -> jacket -> turn insulation -> next turn)
+        rt = rectangle('Position', [xc, y0, Cond_w(k), h], ...
+            'FaceColor', col_tins, 'EdgeColor', [0.2 0.2 0.2]);
+        if isempty(h_tins_leg), h_tins_leg = rt; end
+        % Jacket steel (inset by tins)
+        if Cond_w(k)-2*tins > 0 && h-2*tins > 0
+            rj = rectangle('Position', [xc+tins, y0+tins, Cond_w(k)-2*tins, h-2*tins], ...
+                'FaceColor', col_jacket, 'EdgeColor', 'none');
+            if isempty(h_jacket_leg), h_jacket_leg = rj; end
         end
-        % Cable (inset by JT+tins)
+        % Cable (inset by tins+JT)
         if sc_w > 0 && sc_h > 0
             rc = rectangle('Position', [xc+JT(k)+tins, y0+JT(k)+tins, sc_w, sc_h], ...
                 'FaceColor', col, 'EdgeColor', 'none');
@@ -144,13 +146,13 @@ if ~isempty(h_ground)
     legend_handles(end+1) = h_ground;
     legend_labels{end+1} = 'Ground/layer insulation';
 end
-if ~isempty(h_jacket_leg)
-    legend_handles(end+1) = patch(nan, nan, col_jacket, 'EdgeColor', [0.2 0.2 0.2]);
-    legend_labels{end+1} = 'Jacket (steel)';
-end
 if ~isempty(h_tins_leg)
-    legend_handles(end+1) = patch(nan, nan, col_tins, 'EdgeColor', 'none');
+    legend_handles(end+1) = patch(nan, nan, col_tins, 'EdgeColor', [0.2 0.2 0.2]);
     legend_labels{end+1} = 'Turn insulation';
+end
+if ~isempty(h_jacket_leg)
+    legend_handles(end+1) = patch(nan, nan, col_jacket, 'EdgeColor', 'none');
+    legend_labels{end+1} = 'Jacket (steel)';
 end
 if ~isempty(h_lts)
     legend_handles(end+1) = patch(nan, nan, col_LTS, 'EdgeColor', 'none');
