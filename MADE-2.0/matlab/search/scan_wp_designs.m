@@ -178,6 +178,9 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                     Cond_w(var) = WP_w0(1)/n_turns(1);
                     S_Cable(var) = S_Cable(var-1);
                     type_cable(var) = type_cable(var-1);
+                    THS(var) = THS(var-1);
+                    N_Sc(var) = N_Sc(var-1); N_Cu(var) = N_Cu(var-1);
+                    S_REBCO(var) = S_REBCO(var-1); S_Cu_HTS(var) = S_Cu_HTS(var-1);
                     E_cbl = pick_E_cbl(type_cable{var}, p.E_cbl_HTS, p.E_cbl_LTS);
 
                     sized = size_grade_cable(Cond_w(var), S_Cable(var), p.r_SC_min, p.r_SC_max, tins_const, ...
@@ -225,6 +228,25 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
             % Geometric check on the obtained cable dimensions
             r_cable(1:n_layers) = Cond_w(1:n_layers)./Cond_h(1:n_layers);
             if min(SC_w) <= p.min_SC_w || min(r_cable(1:n_layers)) < p.min_cable_aspect_ratio || min(JT(1:n_layers)) < p.min_JT
+                continue
+            end
+
+            % Hot-spot temperature check (CICC): the allowable depends on
+            % the cable type (LTS/HTS), so it cannot be folded into a
+            % single scalar threshold.
+            ths_exceeded = false;
+            for var = 1:n_layers
+                if strcmp(type_cable{var}, 'HTS')
+                    ths_limit = p.THS_max_HTS;
+                else
+                    ths_limit = p.THS_max_LTS;
+                end
+                if THS(var) > ths_limit
+                    ths_exceeded = true;
+                    break
+                end
+            end
+            if ths_exceeded
                 continue
             end
 
