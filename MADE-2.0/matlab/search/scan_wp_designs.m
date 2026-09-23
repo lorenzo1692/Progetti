@@ -12,6 +12,10 @@ function DATA = scan_wp_designs(p, g, env, combT)
 %   monolithic script (minus the vestigial "dp" design-point index, since
 %   this solver now handles one machine input per run).
 %
+%   Prints a self-overwriting progress line to the console (total
+%   candidates, analyzed, passed, remaining, elapsed/ETA), updated ~500
+%   times over the whole scan so it stays cheap even for very large scans.
+%
 %   This function is a direct, line-by-line port of the scan loop from
 %   WP_TF_VNS_Design_Point_2026.m: it calls the external CICC(...) sizing
 %   function exactly as before, and keeps the same array layout and
@@ -32,9 +36,40 @@ counter = 0;
 % from that first row. If no candidate ever succeeds, it is set to an
 % empty table just before returning (see bottom of this function).
 
+% Progress reporting: total candidates = every (lateral_w, turns/layers
+% combination) pair, regardless of how far each one gets before a
+% "continue" - so the count and the ETA are stable from the first candidate.
+n_lateral_w = numel(env.lateral_w_min:p.lateral_w_step:env.lateral_w_max);
+n_combT_tot = 0;
+for i_ = 1:numel(combT)
+    n_combT_tot = n_combT_tot + size(combT{i_}, 1);
+end
+total_candidates = n_lateral_w * n_combT_tot;
+examined = 0;
+progress_every = max(1, round(total_candidates/500)); % ~500 console updates over the whole scan
+progress_msg_len = 0;
+progress_t0 = tic;
+fprintf('Scanning %d candidate(s)...\n', total_candidates);
+
 for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
     for i = 1:numel(combT)
         for j = 1:size(combT{i}, 1)
+
+            examined = examined + 1;
+            if mod(examined, progress_every) == 0 || examined == total_candidates
+                elapsed = toc(progress_t0);
+                remaining = total_candidates - examined;
+                rate = examined / max(elapsed, eps);
+                eta_s = remaining / max(rate, eps);
+                msg = sprintf('  %d/%d analyzed (%.1f%%) | %d passed | %d remaining | elapsed %s | ETA %s', ...
+                    examined, total_candidates, 100*examined/total_candidates, counter, remaining, ...
+                    format_hms(elapsed), format_hms(eta_s));
+                fprintf('%s%s', repmat(char(8), 1, progress_msg_len), msg);
+                progress_msg_len = length(msg);
+                if examined == total_candidates
+                    fprintf('\n');
+                end
+            end
 
             n_layers = env.layers_comb(i);
             n_layers0 = n_layers;     % turns/layers count before any grade is added back
@@ -349,9 +384,21 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
     end
 end
 
+if progress_msg_len > 0 && examined < total_candidates
+    fprintf('\n'); % make sure the cursor isn't left mid-progress-line on an early return path
+end
+
 if counter == 0
     DATA = table();
 end
+end
+
+function s = format_hms(seconds)
+%FORMAT_HMS Render a duration in seconds as HH:MM:SS for the progress line.
+if ~isfinite(seconds), seconds = 0; end
+seconds = max(0, round(seconds));
+h = floor(seconds/3600); m = floor(mod(seconds,3600)/60); sec = mod(seconds,60);
+s = sprintf('%02d:%02d:%02d', h, m, sec);
 end
 
 function jump_grade = pick_jump_grades(n_grades, B_layers, target2, target3)
