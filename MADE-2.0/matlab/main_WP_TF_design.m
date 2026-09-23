@@ -79,6 +79,7 @@ fprintf('\n%d feasible design point(s) saved to %s (+ .mat companion)\n', height
 sel_idx = browse_solutions(DATA);
 plot_solution(DATA, sel_idx, tag);
 plot_wp_section(DATA(sel_idx,:), p, sprintf('%s - design #%d', tag, sel_idx));
+plot_wp_diagnostics(DATA(sel_idx,:), sprintf('%s - design #%d', tag, sel_idx));
 
 %% 6. Optional: export the chosen design point as an ANSYS APDL input file
 export_answer = strtrim(input('Export this design point as an ANSYS input file for FEM verification? [y/N]: ', 's'));
