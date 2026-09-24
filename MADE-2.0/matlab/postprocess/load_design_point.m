@@ -42,7 +42,7 @@ end
 p = read_machine_input(input_file);
 
 T = readtable(results_file, 'VariableNamingRule', 'preserve');
-array_cols = {'n_turns','Cond_w','Cond_h','JT','r_cable','N_Sc','N_Cu','S_Cable','S_REBCO','S_Cu_HTS','THS','type_cable'};
+array_cols = {'n_turns','Cond_w','Cond_h','JT','r_cable','N_Sc','N_Cu','S_Cable','S_REBCO','S_Cu_HTS','THS','B_grade','type_cable'};
 row = struct();
 for c = 1:width(T)
     name = T.Properties.VariableNames{c};
