@@ -138,3 +138,67 @@ Iop 62.3 kA, n_TF 12):
 The old model also under-predicted the low-field layers by up to ~50%
 (layer 11: 1.7 T vs 3.4 T), because there the turn's own self-field
 (~mu0*I/(2*pi*a) ~ 1 T) dominates.
+
+## Design 7 (EM_2D007 FEM run, 24-Sep-2026)
+
+Scan design point 7: 13 layers x 8 turns (104 turns), 3 grades (4 + 3 + 6
+layers, Cond_h 34.2 / 26.1 / 24.2 mm, Cond_w 43.0 mm, JT 3.1/3.0/3.0 mm),
+Iop = 64.628 kA, Ri_ = 1.2594 m, Rk_ = 0.7301 m. Script:
+`validate_TF_FEM_design7_2026.m` (uses `forward_eval_wp_stress.m`).
+
+**Geometry notes.** (1) The FEM nose is 133.0 mm, the scan row says 139.0 mm:
+the scan's `Rj_` omitted the (n_layers-1) inter-layer insulation gaps
+(12 x 0.5 mm) - **fixed** in `search/scan_wp_designs.m`. The FEM (built with
+`export_ansys_input`'s WPH) already had the right stack. (2) The FEM mesh has
+JT = 3.0 mm in grade 1 (cable 35.0 x 26.2 mm) where the row has 3.1 mm.
+
+### Field - discrete model confirmed, smeared model under-predicts
+
+| | Peak B on conductor |
+|---|---|
+| FEM BSUM | **14.482 T** |
+| Discrete model (`compute_discrete_field_profile`) | **14.472 T** (-0.07%) |
+| Smeared B_TF used by the scan | 13.483 T (-6.9%) |
+
+Field each grade's cable was **sized at** vs the real peak on that grade:
+13.48 -> 14.47 T (+7%), 9.33 -> 11.24 T (+20%), 6.22 -> 8.97 T (+44%).
+With `Ic_Nb3Sn` at the real field, the three grades carry only
+**0.64 / 0.60 / 0.53 x Iop** (sized for 1.00 x Iop): the smeared
+(Ampere, continuous-shell) field is not safe for sizing the cable,
+especially in the low-field grades. (The first benchmark matched only
+because its B_TF was taken from the FEM.) Note: `TFBM_em.txt` has no B
+data ("requested B data is not available") - the EM results were not
+loaded before PRNSOL; the peak was read from EM_2D002.png.
+
+### Stress
+
+| | Jacket | Case |
+|---|---:|---:|
+| FEM SINT | **1124.4 MPa** (L13) | **800.5 MPa** |
+| Scan row | 651.1 (-42%) | 666.2 (-17%) |
+| Analytical, FEM geometry, B smeared, transition SCF | 647 | 669 |
+| Analytical, FEM geometry, B discrete, transition SCF | 717 (-36%) | 742 (**-7%**) |
+| Analytical, FEM geometry, B discrete, no SCF | 355 | 742 |
+
+- **Case:** with the correct field, -7% vs FEM (benchmark: -13%). The vault
+  model is acceptable; most of the scan's -17% came from the field.
+- **Jacket: the transition SCF is not the right model.** FEM SINT per
+  layer is high everywhere and rises toward the nose within each grade:
+  674, 864, 932, **977** (last of grade 1), 879, 929, **958**, 939, 965,
+  984, 1004, 1025, **1124** MPa (L13, outermost turn, cable fillet corner
+  next to the nose/side wall). The first benchmark shows the same pattern
+  (613 -> 980 in grade 1, 695 -> 876 in grade 2): there the peak happened
+  to be the last layer of grade 1, which is why a "transition" factor fitted
+  it. The FEM/analytical ratio (no SCF) goes from 1.9 (L1) to 3.2 (L13),
+  so 3.15 at the transitions gives the right number only by coincidence.
+- **What the formula misses** (FEM jacket components, central turns):
+  axial SZ 160-290 MPa (analytical S_z = 187 MPa - OK); radial compression
+  in the side walls that **accumulates with depth**, +45 -> -312 MPa (the
+  analytical radial term is the same in every layer); **toroidal wedging
+  compression** -200 to -305 MPa in the top/bottom walls (absent from the
+  analytical jacket formula); corner shear/bending at the fillet (SXY up to
+  500 MPa at the peak node).
+- A one-parameter depth-dependent fit (accumulated radial pressure) over
+  both FEM runs still leaves ~11% rms / 28% max error: a proper per-layer
+  jacket model (accumulated radial + wedging + corner factor) needs to be
+  developed and calibrated on both runs (24 layer data points).

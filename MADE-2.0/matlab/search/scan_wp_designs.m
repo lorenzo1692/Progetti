@@ -256,7 +256,12 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
             A_SC_tot = sum(S_Cable(1:n_layers).*n_turns(1:n_layers));
             A_JT_tot = sum(S_JT(1:n_layers).*n_turns(1:n_layers));
             Ri_ = g.R_TF_Innerleg;
-            Rj_ = Ri_ - WP_h - p.dr_plasma_side - p.GoundIns*2;
+            % WP inner radius: cells + inter-layer insulation + ground insulation
+            % (same radial stack as the Re/Ri recursion above, the section plot
+            % and export_ansys_input's WPH; before, the (n_layers-1)*INS_grades
+            % gaps were missing, so the nose DTF was over-estimated - by 6 mm
+            % on the 13-layer design 7 checked against FEM).
+            Rj_ = Ri_ - WP_h - (n_layers-1)*p.INS_grades - p.dr_plasma_side - p.GoundIns*2;
 
             check_w_arr = 2*Ri(1:n_layers)*tan(theta_TF/2); % maximum toroidal Case envelope
             if min((check_w_arr - (WP_w0(1:n_layers)+p.GoundIns*2))/2) < p.toroidal_gap
