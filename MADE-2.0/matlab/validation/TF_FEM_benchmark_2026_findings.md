@@ -202,3 +202,56 @@ loaded before PRNSOL; the peak was read from EM_2D002.png.
   both FEM runs still leaves ~11% rms / 28% max error: a proper per-layer
   jacket model (accumulated radial + wedging + corner factor) needs to be
   developed and calibrated on both runs (24 layer data points).
+
+## 2D FE mechanical surrogate (physics/wp_mech_surrogate.m)
+
+The lumped analytical model cannot give the jacket stress: the FEM jacket
+stress comes from the true equilibrium of the section (radial load
+accumulating towards the nose, toroidal wedging compression, bending of
+the walls around the fillets, WP/case and cable/jacket sliding). A light
+FE model that solves that equilibrium from the design point alone was
+built and validated against both ANSYS runs:
+
+- geometry as the FEM: rounded turns (cable fillet r_SC, jacket outer
+  radius r_SC+JT, insulation r_SC+JT+tins, corner filler), inter-layer and
+  ground insulation, case with flat plasma side, radial flanks and nose arc
+  of radius Rk_/cos(pi/n_TF), cavity = convex hull of the layers + GIT,
+  wedge insulation;
+- boundary conditions as the FEM: zero normal displacement on the flanks,
+  free sliding (the FEM wedge insulation is constrained only normally, so
+  its mu = 0.2 carries no load), generalized plane strain with Fz = T_bf;
+- contacts as the FEM: WP/case and cable/jacket unilateral with Coulomb
+  friction mu = 0.2 (penalty + stick/slip iterations);
+- loads: Lorentz force from the discrete field model (per-turn force
+  within 0.03% of the ANSYS LDREAD loads), cool-down 293 -> 4.2 K with the
+  benchmark CTEs (orthotropic insulation), axial force.
+
+Validation (`validate_mech_surrogate_2026.m`, surrogate/FEM):
+
+| | Benchmark (11 layers) | Design 7 (13 layers) |
+|---|---|---|
+| axial strain eps_z | +0.4% | +0.0% |
+| jacket straight-wall sections, Pm / Pm+Pb (mean +- std) | 1.00+-0.04 / 1.01+-0.04 (1400) | 0.99+-0.06 / 0.99+-0.07 (1456) |
+| jacket fillet sections (45 deg), Pm / Pm+Pb | 0.98 / 0.98 | 0.95 / 0.94 |
+| jacket peak in the fillet, per layer | 0.92 .. 1.05 | 0.89 .. 1.05 |
+| global jacket peak | 923 vs 980 MPa (-6%) | 1020 vs 1124 MPa (-9%) |
+| case nose / vault SCL Pm | -3% / -2% | -5% / -3% |
+| case side-wall SCLs | -2 .. +2% | +3% |
+
+Peaks are located in the same fillets as in the FEM. What matters most,
+learned while building it: the rounded corners (turns touch only along the
+flat parts: with square corners the WP is 20-30% too stiff toroidally) and
+the cable/jacket frictional contact (bonded: peaks -5..-26%; frictionless:
+edge-turn peaks +27%).
+
+**Figure of merit.** The surrogate reports the primary-stress criteria in
+ITER / ASME III style, on the linearized stresses (Tresca) of every jacket
+wall and fillet section and of the case SCLs: Pm <= Sm and Pm+Pb <= 1.5 Sm
+(Sm = S_amm_JT / S_amm_VT), plus the fillet peak for information (local
+stress: fatigue / FEM check). Design 7: jacket Pm 549 MPa (0.82 Sm), Pm+Pb
+882 MPa (0.88 x 1.5 Sm), peak 1020 MPa; case Pm 630 MPa (0.94 Sm) -
+satisfied. The linearized quantities are the robust ones (they do not
+depend on the contact details); the peak carries a -11..+5% model
+uncertainty. Run time: ~2 min in Octave, expected well under a minute in
+MATLAB; used on the chosen design point (main_WP_TF_design step 5b), not
+inside the combinatorial scan.

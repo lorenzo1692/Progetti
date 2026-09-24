@@ -54,3 +54,7 @@ plot_wp_section(row, p, 'Manual what-if configuration');
 plot_wp_section_bfield(row, p, 'Manual what-if configuration');
 plot_wp_diagnostics(row, p, 'Manual what-if configuration');
 plot_hotspot_transient(row, p, 'Manual what-if configuration - hot spot');
+
+% 2D FE mechanical surrogate (true equilibrium, rounded turns, contacts)
+mech = wp_mech_surrogate(row, p);
+plot_wp_mech_surrogate(mech, p, 'Manual what-if configuration');
