@@ -366,7 +366,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
             cv = size_case_vault(ctx);
             Rk_ = cv.Rk_; S_T_VT = cv.S_T_VT; S_T_JT = cv.S_T_JT;
 
-            if S_T_VT < p.S_amm_JT && S_T_JT < p.S_amm_JT && S_T_JT > 0 && S_T_VT > 0
+            if S_T_VT < p.S_amm_VT && S_T_JT < p.S_amm_JT && S_T_JT > 0 && S_T_VT > 0   % vault vs its own allowable (review C07)
                 counter = counter + 1;
                 n_cond = n_spire_(1);
                 WP_w = WP_w0(1);

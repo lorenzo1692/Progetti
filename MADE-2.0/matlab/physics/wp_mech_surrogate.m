@@ -3,7 +3,10 @@ function out = wp_mech_surrogate(row, p, opts)
 %
 %   out = WP_MECH_SURROGATE(row, p) solves, from the design point alone, the
 %   same problem as the ANSYS 2D generalized-plane-strain model of the
-%   inner leg (one coil sector) with a light, self-meshing linear FE model:
+%   inner leg (one coil sector). It is a self-contained, self-meshing FE
+%   model (not a reduced-order model): "surrogate" only means that it takes
+%   the place of the ANSYS run when a design point is verified.
+%   Model content:
 %     - every turn with its real rounded geometry (curved 8-node quads):
 %       jacket (cable fillet r_SC, outer radius r_SC+JT), turn insulation,
 %       corner fillers and inter-layer insulation; cable interiors,
@@ -14,11 +17,18 @@ function out = wp_mech_surrogate(row, p, opts)
 %     - wedging: zero normal displacement on the flank lines, sliding free
 %       (the wedge insulation is only normal-constrained, as in the FEM);
 %     - frictional unilateral contact (Coulomb, mu = 0.2 as the FEM)
-%       between WP and case and between every cable and its jacket;
+%       between WP and case and between every cable and its jacket, with
+%       incremental friction over the load steps;
 %     - loads: Lorentz force J x B in every cable (WP_FIELD_AT_POINTS),
 %       cool-down T_ref -> T_op (orthotropic insulation, filler, cable and
 %       steel CTEs), and the vertical force T_bf per leg as generalized
-%       plane strain.
+%       plane strain; loads applied together in one step (as the ANSYS runs)
+%       or cool-down first and then energization (surrogate_load_sequence).
+%   Two load cases: all loads (P+Q) and Lorentz + axial only (P), for the
+%   primary/secondary classification of the stresses. Every result carries
+%   validity checks (out.checks, out.valid): mesh area, Jacobians, contact
+%   convergence, linear-solve residual, global force and axial balance,
+%   SCL coverage; a failed check makes the figure of merit INVALID.
 %
 %   Validated against two ANSYS runs (validation/validate_mech_surrogate_2026.m,
 %   TF_FEM_benchmark_2026_findings.md): axial strain within 0.4%; linearized
@@ -55,6 +65,10 @@ opts = set_default(opts, 'verbose', true);
 opts = set_default(opts, 'interface_case', 'sliding');   % 'sliding' | 'bonded'
 opts = set_default(opts, 'mu_case', get_or(p, 'mu_case', 0.2));    % WP / case friction
 opts = set_default(opts, 'mu_cable', get_or(p, 'mu_cable', 0.2));  % cable / jacket friction
+opts = set_default(opts, 'load_sequence', get_or(p, 'surrogate_load_sequence', 0)); % 0 together, 1 cool-down then energize
+opts = set_default(opts, 'n_em_steps', get_or(p, 'surrogate_em_steps', 4));
+opts = set_default(opts, 'classify', get_or(p, 'surrogate_classify', 1));  % primary-only case too
+opts = set_default(opts, 'contact_tol', get_or(p, 'surrogate_contact_tol', 5e-3));
 opts = set_default(opts, 'interface_cable', 'contact');              % 'contact' | 'bonded'
 opts = set_default(opts, 'mu_flank', get_or(p, 'mu_flank', 0));    % flank: the wedge insulation is
 % only normal-constrained on its outer face, so it slides with the case (as in the FEM)
@@ -81,17 +95,30 @@ if ~isfield(opts, 'T_bf') || isempty(opts.T_bf)
     opts.T_bf = 0.5*g.k_bf*p.n_TF*NI^2*(4e-7*pi)/(2*pi);
 end
 
-sol = surr_solve(mesh, mat, geo, row.Iop, opts.T_bf, opts);
+sys = surr_assemble(mesh, mat, geo, row.Iop, opts.T_bf);
+% total case (all loads): what the FEM computes; primary case (Lorentz +
+% axial, no cool-down): used for the primary-stress classification (C04)
+sol = surr_solve_case(sys, mesh, load_steps(sys, 'total', opts), true, opts);
 t_solve = toc(t_start) - t_mesh;
-
-out = surr_postprocess(mesh, sol, geo);
-out.fom = surr_fom(out, p);
+out = surr_postprocess(mesh, sol, geo, true);
+if opts.classify
+    solp = surr_solve_case(sys, mesh, load_steps(sys, 'primary', opts), false, opts);
+    outp = surr_postprocess(mesh, solp, geo, false);
+    out.primary = struct('turn', outp.turn, 'layer', outp.layer, 'case_scl', outp.case_scl, ...
+        'eps_z', solp.eps_z, 'contact', solp.contact);
+else
+    out.primary = [];
+end
 out.geo = geo; out.mesh = mesh; out.sol = sol; out.T_bf = opts.T_bf;
+out.load_sequence = opts.load_sequence;
+out.checks = surr_checks(out, sys, geo, opts);
+out.valid = out.checks.all_ok;
+out.fom = surr_fom(out, p);
 out.time = struct('mesh', t_mesh, 'solve', t_solve, 'total', toc(t_start));
 if opts.verbose
     fprintf(['wp_mech_surrogate: %d nodes, %d quads, %d triangles, eps_z = %.3e | ' ...
-        'mesh %.1f s, solve+post %.1f s\n'], size(mesh.xy,1), size(mesh.q8,1), ...
-        size(mesh.t6,1), sol.eps_z, t_mesh, toc(t_start)-t_mesh);
+        'mesh %.1f s, total %.1f s | checks: %s\n'], size(mesh.xy,1), size(mesh.q8,1), ...
+        size(mesh.t6,1), sol.eps_z, t_mesh, toc(t_start), out.checks.summary);
 end
 end
 
@@ -400,7 +427,13 @@ for e = 1:size(q8,1)
         end
     end
 end
-mesh.area_check = [sum(abs(area)) + Aq, domain_area(geo)];
+At = 0;
+gt = [1/6 1/6; 2/3 1/6; 1/6 2/3];
+for e = 1:size(mesh.t6,1)
+    Xe = xy(mesh.t6(e,:),:);
+    for i = 1:3, [~, dJ] = elem_B(Xe, @t6_dN, gt(i,:)); At = At + dJ/6; end
+end
+mesh.area_check = [At + Aq, domain_area(geo)];     % isoparametric areas (curved edges)
 end
 
 function x = C_fan_x(c, Ro, na)
@@ -504,9 +537,12 @@ n = size(C,1);
 cable_of = zeros(n,1); in_quads = false(n,1);
 for t = 1:size(geo.cells,1)
     c = geo.cable_rr(t,:); cl = geo.cells(t,:);
-    inc = C(:,1) > cl(1) & C(:,1) < cl(2) & C(:,2) > cl(3) & C(:,2) < cl(4);
+    % closed intervals: a centroid lying exactly on the boundary shared by
+    % two cells is inside the quad region too (found by the area check)
+    tb = 1e-12;
+    inc = C(:,1) >= cl(1)-tb & C(:,1) <= cl(2)+tb & C(:,2) >= cl(3)-tb & C(:,2) <= cl(4)+tb;
     if cl(5) < geo.n_layers
-        ins = C(:,1) > cl(1) & C(:,1) < cl(2) & C(:,2) > cl(3) - geo.INS & C(:,2) <= cl(3);
+        ins = C(:,1) >= cl(1)-tb & C(:,1) <= cl(2)+tb & C(:,2) > cl(3) - geo.INS & C(:,2) <= cl(3);
         in_quads = in_quads | ins;
     end
     if ~any(inc), continue, end
@@ -730,11 +766,13 @@ end
 end
 
 %% ======================================================================
-function sol = surr_solve(mesh, mat, geo, Iop, T_bf, opts)
+function sys = surr_assemble(mesh, mat, geo, Iop, T_bf)
+% Stiffness (with layer ties) and the three load vectors kept separate,
+% so that load cases and load sequences can be combined afterwards:
+% F_th (cool-down), F_lor (Lorentz), F_ax (axial force, eps_z row).
 xy = mesh.xy; N = size(xy,1);
 ndof = 2*N + 1; iz = ndof;
 
-% Gauss rules
 g = sqrt(3/5); w1 = 5/9; w2 = 8/9;
 [GX, GY] = meshgrid([-g 0 g], [-g 0 g]); [WX, WY] = meshgrid([w1 w2 w1], [w1 w2 w1]);
 gq = [GX(:), GY(:)]; wq = WX(:).*WY(:);
@@ -743,9 +781,11 @@ gt = [1/6 1/6; 2/3 1/6; 1/6 2/3]; wt = [1 1 1]'/6;
 nq = size(mesh.q8,1); nt = size(mesh.t6,1);
 nnz_est = nq*17^2 + nt*13^2;
 I = zeros(nnz_est,1); Jc = I; V = I; ptr = 0;
-F = zeros(ndof,1);
+F_th = zeros(ndof,1); F_lor = zeros(ndof,1);
+min_detJ = Inf;
 
-% Lorentz body force at the cable Gauss points (triangles; one field call)
+% Lorentz body force at the cable Gauss points (one field call), current
+% uniform over the real rounded cable section (review C08)
 ec = find(mesh.t6_turn > 0);
 Pg = zeros(numel(ec)*3, 2);
 Nt = t6_N(gt);
@@ -753,8 +793,8 @@ for a = 1:numel(ec)
     Pg(3*a-2:3*a,:) = Nt*xy(mesh.t6(ec(a),:),:);
 end
 [Bx, By] = wp_field_at_points(Pg(:,1), Pg(:,2), geo.cable(:,1), geo.cable(:,2), ...
-    geo.cable(:,3), geo.cable(:,4), Iop, geo.n_TF);
-Jd = Iop./geo.cable_area;                  % current density per turn (rounded cable)
+    geo.cable(:,3), geo.cable(:,4), Iop, geo.n_TF, geo.cable_rr(:,5));
+Jd = Iop./geo.cable_area;
 fbx = zeros(nt, 3); fby = zeros(nt, 3);
 for a = 1:numel(ec)
     Jt = Jd(mesh.t6_turn(ec(a)));
@@ -762,57 +802,59 @@ for a = 1:numel(ec)
     fby(ec(a),:) =  Jt*Bx(3*a-2:3*a)';
 end
 
-% quads (jacket and insulation rings): identical turns share element
-% matrices, cached by the element shape relative to its first node
 cache = containers.Map();
-sol.qD = cell(nq,1); sol.qeth = cell(nq,1);
+sys.qD = cell(nq,1); sys.qeth = cell(nq,1);
 for e = 1:nq
     nodes = mesh.q8(e,:); X = xy(nodes,:);
     [D, eth] = mat_D(mat{mesh.q8_mat(e)}, mesh.q8_phi(e));
-    sol.qD{e} = D; sol.qeth{e} = eth;
+    sys.qD{e} = D; sys.qeth{e} = eth;
     rel = round((X - X(1,:))'/1e-9);
     key = [sprintf('%d_', rel(:)), sprintf('%d_%.6f', mesh.q8_mat(e), mesh.q8_phi(e))];
     if isKey(cache, key)
         kk = cache(key); Ke = kk{1}; fe = kk{2};
     else
-        [Ke, fe] = elem_K(X, D, eth, @q8_N, @q8_dN, gq, wq);
+        [Ke, fe, dJ] = elem_K(X, D, eth, @q8_N, @q8_dN, gq, wq);
+        min_detJ = min(min_detJ, dJ);
         cache(key) = {Ke, fe};
     end
     dofs = [reshape([2*nodes-1; 2*nodes], 1, []), iz];
     [ii, jj] = ndgrid(dofs, dofs);
     m = numel(Ke);
     I(ptr+1:ptr+m) = ii(:); Jc(ptr+1:ptr+m) = jj(:); V(ptr+1:ptr+m) = Ke(:); ptr = ptr + m;
-    F(dofs) = F(dofs) + fe;
+    F_th(dofs) = F_th(dofs) + fe;
 end
-sol.tD = cell(nt,1); sol.teth = cell(nt,1);
+sys.tD = cell(nt,1); sys.teth = cell(nt,1);
 for e = 1:nt
     nodes = mesh.t6(e,:); X = xy(nodes,:);
     [D, eth] = mat_D(mat{mesh.t6_mat(e)}, mesh.t6_phi(e));
-    sol.tD{e} = D; sol.teth{e} = eth;
-    [Ke, fe] = elem_K(X, D, eth, @t6_N, @t6_dN, gt, wt);
-    if mesh.t6_turn(e) > 0
-        fe = fe + elem_body(X, @t6_N, @t6_dN, gt, wt, fbx(e,:)', fby(e,:)');
-    end
+    sys.tD{e} = D; sys.teth{e} = eth;
+    [Ke, fe, dJ] = elem_K(X, D, eth, @t6_N, @t6_dN, gt, wt);
+    min_detJ = min(min_detJ, dJ);
     dofs = [reshape([2*nodes-1; 2*nodes], 1, []), iz];
+    if mesh.t6_turn(e) > 0
+        fl = elem_body(X, @t6_N, @t6_dN, gt, wt, fbx(e,:)', fby(e,:)');
+        F_lor(dofs) = F_lor(dofs) + fl;
+    end
     [ii, jj] = ndgrid(dofs, dofs);
     m = numel(Ke);
     I(ptr+1:ptr+m) = ii(:); Jc(ptr+1:ptr+m) = jj(:); V(ptr+1:ptr+m) = Ke(:); ptr = ptr + m;
-    F(dofs) = F(dofs) + fe;
+    F_th(dofs) = F_th(dofs) + fe;
+end
+if ~(min_detJ > 0)
+    error('wp_mech_surrogate:jacobian', ['Non-positive element Jacobian at a Gauss point ' ...
+        '(min detJ = %.3e): distorted mesh.'], min_detJ);
 end
 K = sparse(I(1:ptr), Jc(1:ptr), V(1:ptr), ndof, ndof);
-K = (K + K')/2;                 % exact symmetry -> Cholesky in backslash
+K = (K + K')/2;
 
-% Axial force (generalized plane strain)
-F(iz) = F(iz) + T_bf;
-
-% Layer-to-layer ties where the nodes do not coincide (penalty)
+% layer-to-layer ties where the nodes do not coincide (penalty)
 kt = 1e3*max(diag(K));
 if isfield(mesh, 'tie') && ~isempty(mesh.tie)
     Ii = []; Jj = []; Vv = [];
     for q = 1:numel(mesh.tie)
         nd = [mesh.tie(q).slave, mesh.tie(q).master];
         cw = [1, -mesh.tie(q).w];
-        for d = 0:1                                  % x then y
+        for d = 0:1
             dofs = 2*nd - 1 + d;
             [ii, jj] = ndgrid(dofs, dofs);
             Ii = [Ii; ii(:)]; Jj = [Jj; jj(:)]; Vv = [Vv; kt*reshape(cw'*cw, [], 1)]; %#ok<AGROW>
@@ -820,27 +862,61 @@ if isfield(mesh, 'tie') && ~isempty(mesh.tie)
     end
     K = K + sparse(Ii, Jj, Vv, ndof, ndof);
 end
-
-% Contacts (penalty + active set, Coulomb friction):
-%  - flanks: bilateral zero normal displacement (as the FEM), friction mu_flank
-%  - cavity: WP ground insulation / case, unilateral, friction mu_case
-kp = 1e3*max(diag(K));
-[U, cinfo] = solve_contacts(K, F, mesh, kp, opts);
-sol.contact = cinfo;
-sol.U = U(1:end-1); sol.eps_z = U(end);
-sol.Fz_check = T_bf;
+F_ax = zeros(ndof,1); F_ax(iz) = T_bf;
+sys.K = K; sys.F_th = F_th; sys.F_lor = F_lor; sys.F_ax = F_ax;
+sys.kp = 1e3*max(diag(K)); sys.min_detJ = min_detJ; sys.T_bf = T_bf;
 end
 
-function [U, info] = solve_contacts(K, F, mesh, kp, opts)
-% Penalty contact with Coulomb friction (stick/slip return mapping on the
-% total slip, as a one-step implicit FEM contact solution):
+function sol = surr_solve_case(sys, mesh, steps, thermal, opts)
+% Solve one load case given as a sequence of load vectors (proportional
+% steps); thermal = false for the primary-stress case (cool-down off, so
+% the stress recovery uses no thermal strain either).
+[U, cinfo] = solve_contacts(sys.K, steps, mesh, sys.kp, opts);
+sol.contact = cinfo;
+sol.U = U(1:end-1); sol.eps_z = U(end);
+sol.qD = sys.qD; sol.tD = sys.tD;
+if thermal
+    sol.qeth = sys.qeth; sol.teth = sys.teth;
+else
+    sol.qeth = cellfun(@(e) 0*e, sys.qeth, 'UniformOutput', false);
+    sol.teth = cellfun(@(e) 0*e, sys.teth, 'UniformOutput', false);
+end
+end
+
+function steps = load_steps(sys, kind, opts)
+% total: cool-down + Lorentz + axial; primary: Lorentz + axial only.
+% load_sequence 0 = all loads together in one step (as the ANSYS runs);
+% 1 = cool-down first, then energization in n_em proportional steps.
+seq = opts.load_sequence; n = max(1, opts.n_em_steps*(seq == 1) + (seq ~= 1));
+EM = sys.F_lor + sys.F_ax;
+steps = {};
+if strcmp(kind, 'total')
+    if seq == 1
+        steps{end+1} = sys.F_th;
+        for k = 1:n, steps{end+1} = sys.F_th + k/n*EM; end %#ok<AGROW>
+    else
+        steps{1} = sys.F_th + EM;
+    end
+else
+    for k = 1:n, steps{end+1} = k/n*EM; end %#ok<AGROW>
+end
+end
+
+function [U, info] = solve_contacts(K, steps, mesh, kp, opts)
+% Penalty contact with incremental Coulomb friction, over a sequence of
+% load steps (review C02). In every step, fixed-point iterations on the
+% contact state:
 %  - normal: closed pairs get a penalty spring kp on the gap; a pair opens
 %    when its gap becomes positive (tension) and closes when it penetrates;
 %    flank pairs are bilateral (always closed);
-%  - tangential: stick = penalty spring kp; a pair slips when the stick
-%    force exceeds mu*N and then carries the sliding force mu*N; it sticks
-%    again if the slip reverses. Stops when fewer than 0.5% of the pairs
-%    change state and the contact forces are stable within 1%.
+%  - tangential (elastic-perfectly-plastic slip, return mapping on the
+%    increment): a stuck pair has T = -kp*(g_t - g_s), with g_s the slip
+%    accumulated in the previous steps; it slips when |T| > mu*N and then
+%    carries mu*N; it sticks again if its motion reverses within the step.
+%    At the end of the step g_s is updated.
+% A step is converged when no more than contact_tol x (number of pairs)
+% change state and the normal forces are stable within 1%; the result is
+% flagged (info.converged) otherwise (review C01).
 ndof = size(K,1);
 fa = mesh.flank_nodes; fnv = mesh.flank_normal;
 ca = mesh.cpair(:,1); cb = mesh.cpair(:,2); cnv = mesh.cnorm;
@@ -851,52 +927,74 @@ mu = [opts.mu_flank*ones(size(fa)); opts.mu_case*ones(size(ca)); opts.mu_cable*o
 info.group = [ones(size(fa)); 2*ones(size(ca)); 3*ones(size(ka))];
 t = [-n(:,2), n(:,1)];
 np_ = numel(a);
-closed = true(np_,1);
-slip = zeros(np_,1);             % 0 stick, +-1 slipping along +-t
-N = zeros(np_,1);
-info.hist = [];
+gb = b > 0;
+closed = true(np_,1); slip = zeros(np_,1); N = zeros(np_,1);
+gs = zeros(np_,1); gt_prev = zeros(np_,1);
 maxit = get_or(opts, 'contact_maxit', 40);
-done = false;
-for it = 1:maxit
-    [Kn_i, Kn_j, Kn_v] = pair_matrix(a(closed), b(closed), n(closed,:), kp);
-    st = closed & slip == 0 & mu > 0;
-    [Kt_i, Kt_j, Kt_v] = pair_matrix(a(st), b(st), t(st,:), kp);
-    Kc = K + sparse([Kn_i; Kt_i], [Kn_j; Kt_j], [Kn_v; Kt_v], ndof, ndof);
-    Fc = F;
+tolc = get_or(opts, 'contact_tol', 5e-3);
+info.hist = []; info.step = struct('iter', {}, 'converged', {}, 'n_changes', {}, 'dN', {});
+for st_i = 1:numel(steps)
+    F = steps{st_i};
+    done = false;
+    for it = 1:maxit
+        [Kn_i, Kn_j, Kn_v] = pair_matrix(a(closed), b(closed), n(closed,:), kp);
+        stk = closed & slip == 0 & mu > 0;
+        [Kt_i, Kt_j, Kt_v] = pair_matrix(a(stk), b(stk), t(stk,:), kp);
+        Kc = K + sparse([Kn_i; Kt_i], [Kn_j; Kt_j], [Kn_v; Kt_v], ndof, ndof);
+        % tangential force on a along t: stick -kp*(g_t - g_s) (constant part
+        % kp*g_s goes to the load), slip -mu*N*sign
+        ft = zeros(np_,1);
+        ft(stk) = kp*gs(stk);
+        sl = closed & slip ~= 0;
+        ft(sl) = -mu(sl).*max(N(sl),0).*slip(sl);
+        Fc = F + accumarray([2*a-1; 2*a], [ft.*t(:,1); ft.*t(:,2)], [ndof 1]);
+        Fc = Fc - accumarray([2*b(gb)-1; 2*b(gb)], [ft(gb).*t(gb,1); ft(gb).*t(gb,2)], [ndof 1]);
+        U = spd_solve(Kc, Fc);
+        ua = [U(2*a-1), U(2*a)];
+        ub = zeros(np_,2); ub(gb,:) = [U(2*b(gb)-1), U(2*b(gb))];
+        gn = sum((ub - ua).*n, 2);                 % >0: open
+        gt = sum((ua - ub).*t, 2);
+        Tlast = zeros(np_,1);                      % tangential force on a, this solve
+        Tlast(stk) = -kp*(gt(stk) - gs(stk)); Tlast(sl) = ft(sl);
+        N_new = -kp*gn; N_new(~closed) = 0;
+        closed_new = bil | (closed & gn <= 0) | (~closed & gn < 0);
+        Tst = -kp*(gt - gs);
+        slip_new = slip;
+        q = closed_new & mu > 0 & slip == 0 & abs(Tst) > mu.*max(N_new,0);
+        slip_new(q) = sign(gt(q) - gs(q));
+        q = closed_new & slip ~= 0 & (gt - gt_prev).*slip < 0;
+        slip_new(q) = 0;
+        slip_new(~closed_new) = 0;
+        dN = max(abs(N_new - N))/max([abs(N_new); 1]);
+        nchg = sum(closed_new ~= closed) + sum(slip_new ~= slip);
+        info.hist(end+1,:) = [st_i, it, sum(closed_new), sum(slip_new ~= 0), nchg, dN];
+        done = nchg <= max(2, tolc*np_) && dN < 1e-2;
+        closed = closed_new; slip = slip_new; N = N_new;
+        if done, break, end
+    end
+    info.step(st_i) = struct('iter', it, 'converged', done, 'n_changes', nchg, 'dN', dN);
+    % end of step: update accumulated slip
     sl = closed & slip ~= 0;
-    fs = -mu(sl).*max(N(sl),0).*slip(sl);          % sliding force on a along t
-    Fc = Fc + accumarray([2*a(sl)-1; 2*a(sl)], [fs.*t(sl,1); fs.*t(sl,2)], [ndof 1]);
-    g = sl & b > 0;
-    fg = -mu(g).*max(N(g),0).*slip(g);
-    Fc = Fc - accumarray([2*b(g)-1; 2*b(g)], [fg.*t(g,1); fg.*t(g,2)], [ndof 1]);
-    U = spd_solve(Kc, Fc);
-    ua = [U(2*a-1), U(2*a)];
-    ub = zeros(np_,2); gb = b > 0; ub(gb,:) = [U(2*b(gb)-1), U(2*b(gb))];
-    gn = sum((ub - ua).*n, 2);                     % >0: open
-    gt = sum((ua - ub).*t, 2);
-    N_new = -kp*gn; N_new(~closed) = 0;
-    closed_new = bil | (closed & gn <= 0) | (~closed & gn < 0);
-    Tst = -kp*gt;
-    slip_new = slip;
-    q = closed_new & mu > 0 & slip == 0 & abs(Tst) > mu.*max(N_new,0);
-    slip_new(q) = sign(gt(q));
-    q = closed_new & slip ~= 0 & gt.*slip < 0;
-    slip_new(q) = 0;
-    slip_new(~closed_new) = 0;
-    dN = max(abs(N_new - N))/max([abs(N_new); 1]);
-    nchg = sum(closed_new ~= closed) + sum(slip_new ~= slip);
-    info.hist(end+1,:) = [it, sum(closed_new), sum(slip_new ~= 0), nchg, dN];
-    done = nchg <= max(2, 5e-3*np_) && dN < 1e-2;
-    closed = closed_new; slip = slip_new; N = N_new;
-    if done, break, end
+    gs(sl) = gt(sl) - slip(sl).*mu(sl).*max(N(sl),0)/kp;
+    gs(~closed) = gt(~closed);
+    gt_prev = gt;
 end
-info.iter = it; info.closed = closed; info.slip = slip; info.N = N;
+info.iter = sum([info.step.iter]); info.closed = closed; info.slip = slip; info.N = N;
 info.n_cavity_closed = sum(closed(info.group == 2)); info.n_cavity = sum(info.group == 2);
 info.n_cable_closed = sum(closed(info.group == 3)); info.n_cable = sum(info.group == 3);
-info.converged = done;
-if ~done
+info.converged = all([info.step.converged]);
+info.last_changes = nchg; info.n_pairs = np_;
+% linear-solve residual and global force balance (Lorentz and thermal
+% loads against the flank reactions; contact and tie forces are internal)
+info.residual = norm(Kc*U - Fc)/max(norm(Fc), eps);
+fl = find(bil);
+Rn = -kp*(ua(fl,1).*n(fl,1) + ua(fl,2).*n(fl,2));
+R = [sum(Rn.*n(fl,1) + Tlast(fl).*t(fl,1)); sum(Rn.*n(fl,2) + Tlast(fl).*t(fl,2))];
+Fapp = [sum(F(1:2:end-1)); sum(F(2:2:end-1))];
+info.force_balance = norm(Fapp + R)/max(norm(Fapp), 1);
+if ~info.converged
     warning('wp_mech_surrogate:contact', ...
-        'contact iterations did not settle in %d iterations (%d state changes, dN = %.1e)', maxit, nchg, dN);
+        'contact iterations did not settle (last step: %d state changes, dN = %.1e): result flagged invalid', nchg, dN);
 end
 end
 
@@ -945,11 +1043,12 @@ for r = 1:4
 end
 end
 
-function [Ke, fth] = elem_K(X, D, eth, Nf, dNf, gp, w)
+function [Ke, fth, mindj] = elem_K(X, D, eth, Nf, dNf, gp, w)
 n = size(X,1);
-Ke = zeros(2*n+1); fth = zeros(2*n+1,1);
+Ke = zeros(2*n+1); fth = zeros(2*n+1,1); mindj = Inf;
 for q = 1:size(gp,1)
     [B, detJ] = elem_B(X, dNf, gp(q,:));
+    mindj = min(mindj, detJ);
     Ke = Ke + (B'*D*B)*detJ*w(q);
     fth = fth + (B'*D*eth)*detJ*w(q);
 end
@@ -1007,8 +1106,11 @@ dN = [ -(4*L1-1), 4*L2-1, 0, 4*(L1-L2), 4*L3, -4*L3;
 end
 
 %% ======================================================================
-function out = surr_postprocess(mesh, sol, geo)
+function out = surr_postprocess(mesh, sol, geo, full)
+% full = true: also nodal averages per material, element Tresca for the
+% plots and the integral of sigma_z (axial equilibrium check)
 xy = mesh.xy; U = sol.U; ez = sol.eps_z;
+if full
 
 % Nodal-averaged stresses per material (like the FEM's material-restricted
 % nodal averaging), evaluated directly at the element nodes.
@@ -1040,6 +1142,8 @@ for m = 1:nmat
         out.([names{m} '_SINT_max']) = NaN;
         out.([names{m} '_SINT_max_xy']) = [NaN NaN];
     end
+end
+
 end
 
 % Linearized jacket-wall stresses (Pm, Pm+Pb, Tresca) per turn, on
@@ -1114,7 +1218,24 @@ for k = 1:geo.n_layers
 end
 out.case_scl = case_scl(mesh, sol, geo);
 
-% element Tresca (at the element centre) for plotting
+if full
+% element Tresca (at the element centre) for plotting, and the axial
+% resultant int(sigma_z dA) by Gauss quadrature (equilibrium check)
+g = sqrt(3/5); [GX, GY] = meshgrid([-g 0 g]); [WX, WY] = meshgrid([5 8 5]/9);
+gq = [GX(:), GY(:)]; wq = WX(:).*WY(:);
+gt = [1/6 1/6; 2/3 1/6; 1/6 2/3]; wt = [1 1 1]'/6;
+Fz = 0;
+for e = 1:size(mesh.q8,1)
+    nodes = mesh.q8(e,:); X = xy(nodes,:);
+    S = elem_stress_at(X, U, nodes, ez, sol.qD{e}, sol.qeth{e}, @q8_dN, gq);
+    for q = 1:9, [~, dJ] = elem_B(X, @q8_dN, gq(q,:)); Fz = Fz + S(q,3)*dJ*wq(q); end
+end
+for e = 1:size(mesh.t6,1)
+    nodes = mesh.t6(e,:); X = xy(nodes,:);
+    S = elem_stress_at(X, U, nodes, ez, sol.tD{e}, sol.teth{e}, @t6_dN, gt);
+    for q = 1:3, [~, dJ] = elem_B(X, @t6_dN, gt(q,:)); Fz = Fz + S(q,3)*dJ*wt(q); end
+end
+out.Fz_integral = Fz;
 out.elem_SINT.q8 = zeros(size(mesh.q8,1),1);
 for e = 1:size(mesh.q8,1)
     nodes = mesh.q8(e,:);
@@ -1124,6 +1245,7 @@ out.elem_SINT.t6 = zeros(size(mesh.t6,1),1);
 for e = 1:size(mesh.t6,1)
     nodes = mesh.t6(e,:);
     out.elem_SINT.t6(e) = tresca(elem_stress_at(xy(nodes,:), U, nodes, ez, sol.tD{e}, sol.teth{e}, @t6_dN, [1/3 1/3]));
+end
 end
 out.eps_z = ez;
 end
@@ -1211,24 +1333,77 @@ for s = 1:size(W,1)-1
 end
 end
 
+function c = surr_checks(out, sys, geo, opts)
+% Validity checks of the solution (review C01/C05): the figure of merit is
+% reported as valid only if all of them pass.
+c = struct();
+A = out.mesh.area_check;
+c.area_rel_err = abs(A(1) - A(2))/A(2);          c.area_ok = c.area_rel_err < 1e-4;
+c.min_detJ = sys.min_detJ;                         c.jacobian_ok = sys.min_detJ > 0;
+c.contact_converged = out.sol.contact.converged;
+if ~isempty(out.primary), c.contact_converged = c.contact_converged && out.primary.contact.converged; end
+c.contact_ok = c.contact_converged;
+c.solve_residual = out.sol.contact.residual;       c.residual_ok = c.solve_residual < 1e-6;
+c.force_balance = out.sol.contact.force_balance;   c.balance_ok = c.force_balance < 1e-4;
+c.axial_rel_err = abs(out.Fz_integral - sys.T_bf)/max(abs(sys.T_bf), 1);
+c.axial_ok = c.axial_rel_err < 1e-3;
+cov = [out.case_scl.valid_fraction];
+if ~isempty(out.primary), cov = [cov, out.primary.case_scl.valid_fraction]; end
+c.scl_min_coverage = min(cov);                     c.scl_ok = c.scl_min_coverage >= 0.98;
+names = {'area_ok','jacobian_ok','contact_ok','residual_ok','balance_ok','axial_ok','scl_ok'};
+okv = cellfun(@(n) c.(n), names);
+c.all_ok = all(okv);
+if c.all_ok
+    c.summary = 'all passed';
+else
+    c.summary = ['FAILED: ' strjoin(strrep(names(~okv), '_ok', ''), ', ')];
+end
+end
+
 function fom = surr_fom(out, p)
-% Primary-stress figure of merit (ITER / ASME III style): Pm <= Sm and
-% Pm+Pb <= 1.5 Sm on the jacket walls and on the case SCLs, with
-% Sm = S_amm_JT (jacket) and S_amm_VT (case).
-[fom.jacket_Pm, it] = max([out.turn.Pm]);
-[fom.jacket_PmPb, ib] = max([out.turn.PmPb]);
-fom.jacket_Pm_at = [out.turn(it).layer, out.turn(it).col];
-fom.jacket_PmPb_at = [out.turn(ib).layer, out.turn(ib).col];
+% Stress criteria (ITER / ASME III style), on linearized Tresca stresses of
+% every jacket wall/fillet section and of the case SCLs (review C04):
+%   primary P (Lorentz + axial, no cool-down):  Pm <= Sm,  Pm+Pb <= 1.5 Sm
+%   primary + secondary P+Q (all loads):        Pm+Pb <= 3 Sm
+% Linearization is not classification: the split P / P+Q is done by load
+% case (the cool-down is the secondary load); contact makes the split
+% approximate (the primary case is re-solved with its own contact state).
+% Sm = Sm_jacket / Sm_case (Excel; default S_amm_JT / S_amm_VT - to be
+% confirmed by the user as the design-code Sm of the materials).
+% The peak in the fillet (all loads) is reported for information only.
+Smj = get_or(p, 'Sm_jacket', get_or(p, 'S_amm_JT', 667e6));
+Smc = get_or(p, 'Sm_case', get_or(p, 'S_amm_VT', 667e6));
+fom.Sm_jacket = Smj; fom.Sm_case = Smc;
+P = out.primary; classified = ~isempty(P);
+if ~classified, P = out; end                      % unclassified: total used as primary (conservative)
+[fom.jacket_Pm, it] = max([P.turn.Pm]);
+[fom.jacket_PmPb, ib] = max([P.turn.PmPb]);
+fom.jacket_Pm_at = [P.turn(it).layer, P.turn(it).col];
+fom.jacket_PmPb_at = [P.turn(ib).layer, P.turn(ib).col];
+[fom.jacket_PQ, iq] = max([out.turn.PmPb]);
+fom.jacket_PQ_at = [out.turn(iq).layer, out.turn(iq).col];
 [fom.jacket_peak, ip] = max([out.turn.peak]);
 fom.jacket_peak_at = [out.turn(ip).layer, out.turn(ip).col];
-[fom.case_Pm, ic] = max([out.case_scl.Pm]);
-[fom.case_PmPb, id] = max([out.case_scl.PmPb]);
-fom.case_Pm_at = out.case_scl(ic).name; fom.case_PmPb_at = out.case_scl(id).name;
-Smj = get_or(p, 'S_amm_JT', 667e6); Smc = get_or(p, 'S_amm_VT', 667e6);
-fom.util = [fom.jacket_Pm/Smj, fom.jacket_PmPb/(1.5*Smj), fom.case_Pm/Smc, fom.case_PmPb/(1.5*Smc)];
-fom.util_names = {'jacket Pm/Sm', 'jacket (Pm+Pb)/1.5Sm', 'case Pm/Sm', 'case (Pm+Pb)/1.5Sm'};
+[fom.case_Pm, ic] = max([P.case_scl.Pm]);
+[fom.case_PmPb, id] = max([P.case_scl.PmPb]);
+[fom.case_PQ, ie] = max([out.case_scl.PmPb]);
+fom.case_Pm_at = P.case_scl(ic).name; fom.case_PmPb_at = P.case_scl(id).name;
+fom.case_PQ_at = out.case_scl(ie).name;
+fom.util = [fom.jacket_Pm/Smj, fom.jacket_PmPb/(1.5*Smj), fom.jacket_PQ/(3*Smj), ...
+            fom.case_Pm/Smc, fom.case_PmPb/(1.5*Smc), fom.case_PQ/(3*Smc)];
+fom.util_names = {'jacket Pm/Sm', 'jacket (Pm+Pb)/1.5Sm', 'jacket (P+Q)/3Sm', ...
+                  'case Pm/Sm', 'case (Pm+Pb)/1.5Sm', 'case (P+Q)/3Sm'};
+fom.classified = classified;
 fom.max_util = max(fom.util);
-fom.ok = fom.max_util <= 1;
+fom.valid = out.valid;
+fom.ok = fom.valid && fom.max_util <= 1;
+if ~fom.valid
+    fom.status = ['INVALID (' out.checks.summary ')'];
+elseif fom.ok
+    fom.status = 'criteria satisfied';
+else
+    fom.status = sprintf('criteria NOT satisfied (max utilization %.2f)', fom.max_util);
+end
 end
 
 function S = elem_stress_at(X, U, nodes, ez, D, eth, dNf, nat)

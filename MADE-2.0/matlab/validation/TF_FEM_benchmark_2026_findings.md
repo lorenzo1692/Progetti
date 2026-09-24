@@ -244,14 +244,35 @@ flat parts: with square corners the WP is 20-30% too stiff toroidally) and
 the cable/jacket frictional contact (bonded: peaks -5..-26%; frictionless:
 edge-turn peaks +27%).
 
-**Figure of merit.** The surrogate reports the primary-stress criteria in
-ITER / ASME III style, on the linearized stresses (Tresca) of every jacket
-wall and fillet section and of the case SCLs: Pm <= Sm and Pm+Pb <= 1.5 Sm
-(Sm = S_amm_JT / S_amm_VT), plus the fillet peak for information (local
-stress: fatigue / FEM check). Design 7: jacket Pm 549 MPa (0.82 Sm), Pm+Pb
-882 MPa (0.88 x 1.5 Sm), peak 1020 MPa; case Pm 630 MPa (0.94 Sm) -
-satisfied. The linearized quantities are the robust ones (they do not
-depend on the contact details); the peak carries a -11..+5% model
-uncertainty. Run time: ~2 min in Octave, expected well under a minute in
-MATLAB; used on the chosen design point (main_WP_TF_design step 5b), not
-inside the combinatorial scan.
+**Figure of merit (after the code review, docs/RISPOSTA_REVIEW.md).**
+Linearization alone does not classify stresses, so the surrogate now
+solves two load cases: primary P (Lorentz + axial force, no cool-down) and
+total P+Q (all loads, the cool-down being the secondary load). On the
+linearized Tresca stresses of every jacket wall and fillet section and of
+the case SCLs it checks Pm(P) <= Sm, (Pm+Pb)(P) <= 1.5 Sm and
+(Pm+Pb)(P+Q) <= 3 Sm, with Sm_jacket / Sm_case explicit in the Excel input
+(default 667 MPa, TO BE CONFIRMED against the design code). The fillet
+peak (P+Q) is reported for information (local stress: fatigue / FEM
+check). Every result carries validity checks (mesh area, Jacobian, contact
+convergence per load step, residual, global and axial equilibrium, SCL
+coverage); a failed check marks the figure of merit INVALID.
+
+Design 7: jacket Pm(P) 618 MPa (0.93 Sm), (Pm+Pb)(P) 1107 MPa
+(1.11 x 1.5 Sm, NOT satisfied: without the cool-down clamping the jacket
+walls carry the Lorentz load in bending), (Pm+Pb)(P+Q) 882 MPa
+(0.44 x 3 Sm), peak 1020 MPa; case Pm 623 MPa (0.93 Sm). With contacts the
+P / P+Q split is approximate (the primary case is solved with its own
+contact state), which is conservative. The earlier "criteria satisfied"
+verdict did not classify the cool-down and is superseded.
+
+Benchmark: jacket Pm(P) 595 MPa (0.89 Sm), (Pm+Pb)(P) 981 MPa
+(0.98 x 1.5 Sm), (Pm+Pb)(P+Q) 796 MPa (0.40 x 3 Sm); case Pm 660 MPa
+(0.99 Sm) - satisfied.
+
+The validation script now has explicit acceptance bands (eps_z +-2%;
+per-layer peak [0.85 1.10], Pm [0.90 1.10], Pm+Pb [0.85 1.10]; case SCLs
+[0.90 1.05] nose/vault, [0.95 1.05] side walls, [0.95 1.20] plasma-side
+plate), requires the validity checks to pass and ends with an error on any
+failure. Run time: ~4 min per design in Octave with both load cases,
+expected well under a minute in MATLAB; used on the chosen design point
+(main_WP_TF_design step 5b), not inside the combinatorial scan.

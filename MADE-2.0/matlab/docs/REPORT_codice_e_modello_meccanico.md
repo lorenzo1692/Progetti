@@ -1,6 +1,6 @@
 # MADE 2.0 – Dimensionamento del winding pack TF: guida al codice e modello meccanico surrogato
 
-*Report tecnico – settembre 2026. Riferito al branch `claude/code-improvement-3cmng0`.*
+*Report tecnico – settembre 2026. Riferito al branch `claude/code-improvement-3cmng0`. Aggiornato dopo la revisione del codice (punti C00–C08, vedi `docs/RISPOSTA_REVIEW.md`).*
 
 Questo documento spiega **a cosa serve ogni funzione** della cartella `MADE-2.0/matlab`, **come si collegano** tra loro, e descrive **nel dettaglio il modello meccanico surrogato** (FE 2D) con la sua validazione contro ANSYS.
 
@@ -90,7 +90,7 @@ flowchart TD
 | `size_case_vault` | Dimensiona lo spessore del nose `DTF` finché la tensione di Tresca del *vault* (anello del case) e del jacket più interno rispettano gli ammissibili (modello analitico a rigidezze accoppiate WP/case). | scan |
 | `compute_discrete_field_profile` | Campo magnetico **reale** su ogni turn: ogni cavo della bobina analizzata è un rettangolo a corrente uniforme (Biot–Savart analitico, include l'auto-campo), le altre `n_TF−1` bobine sono filamenti. Restituisce il picco su ogni cavo e il confronto con il modello smeared. Validato: 14.47 T contro 14.48 T del FEM. | plot di campo, diagnostica |
 | `wp_field_at_points` | Stesso modello di campo, ma valutato in punti arbitrari (serve al surrogato meccanico per le forze di Lorentz). | surrogato |
-| `wp_mech_surrogate` | **Modello meccanico FE 2D** della sezione (capitolo 7). | main passo 5b, esempio manuale, validazione |
+| `wp_mech_surrogate` | **Modello meccanico FE 2D** autonomo della sezione (capitolo 7), con controlli di validità e figura di merito classificata. | main passo 5b, esempio manuale, validazione |
 
 ### 3.4 `search/` – scansione
 
@@ -127,7 +127,8 @@ flowchart TD
 
 | File | A cosa serve |
 |---|---|
-| `validate_mech_surrogate_2026.m` | Esegue il surrogato sulle due geometrie FEM (benchmark e design 7) e confronta εz, picchi e sforzi linearizzati per layer, SCL del case con i valori ANSYS. |
+| `validate_mech_surrogate_2026.m` | Esegue il surrogato sulle due geometrie FEM (benchmark e design 7) e confronta εz, picchi e sforzi linearizzati per layer, SCL del case con i valori ANSYS, con bande di accettazione esplicite: termina con PASS o con un errore. |
+| `tools/` | Script Python con cui sono stati estratti i riferimenti dagli export ANSYS (`TFBM_*.txt`), con README. |
 | `validate_TF_FEM_design7_2026.m` | Confronto del **modello analitico** della scansione e del campo con il FEM del design 7. |
 | `validate_TF_FEM_benchmark_2026.m` | Idem per il primo benchmark (è lo script con cui è stato calibrato `SCF_transition_provisional`). |
 | `forward_eval_wp_stress.m` | Valuta le formule analitiche di jacket e case a geometria fissata (usata dagli script sopra). |
@@ -180,12 +181,12 @@ Per ogni spessore laterale del case `lateral_w` e ogni combinazione di turn per 
 
 ### 6.1 Campo magnetico discreto (`compute_discrete_field_profile`, `wp_field_at_points`)
 
-Ogni cavo della bobina 1 è un rettangolo $[x_1,x_2]\times[y_1,y_2]$ percorso da una densità di corrente uniforme $J=I/(wh)$ lungo z. Il campo in un punto è chiuso in forma analitica:
+Ogni cavo della bobina 1 porta una densità di corrente uniforme lungo z sulla sua **sezione reale arrotondata** (raggio $r_{SC}$), scomposta esattamente in rettangoli: croce centrale più, per ogni quarto di cerchio, strisce di area conservata. Per ogni rettangolo $[x_1,x_2]\times[y_1,y_2]$ il campo è in forma chiusa:
 $$B_y=\frac{\mu_0 J}{2\pi}\,[G(u_a,v_a)-G(u_a,v_b)-G(u_b,v_a)+G(u_b,v_b)],\qquad
 B_x=-\frac{\mu_0 J}{2\pi}\,[G(v_a,u_a)-G(v_b,u_a)-G(v_a,u_b)+G(v_b,u_b)]$$
-con $G(u,v)=\tfrac12 v\ln(u^2+v^2)+u\arctan(v/u)$, $u_{a,b}=x-x_{1,2}$, $v_{a,b}=y-y_{1,2}$. Il contributo del cavo stesso (auto-campo, circa 1 T per 60 kA) è quindi incluso. Le altre bobine, lontane, sono filamenti. Il picco di ogni cavo è cercato su una griglia 3×3 (angoli, lati, centro).
+con $G(u,v)=\tfrac12 v\ln(u^2+v^2)+u\arctan(v/u)$, $u_{a,b}=x-x_{1,2}$, $v_{a,b}=y-y_{1,2}$. Il contributo del cavo stesso (auto-campo, circa 1 T per 60 kA) è quindi incluso. Le altre bobine, lontane, sono filamenti. Il picco di ogni cavo è cercato su **48 punti del contorno** arrotondato (dove cade il massimo dell'auto-campo) più una griglia interna 3×3.
 
-Validazione: picco 13.48 T contro 13.49 T (benchmark), 14.47 T contro 14.48 T (design 7); forza di Lorentz per turn entro 0.03% dai carichi LDREAD di ANSYS.
+Validazione: picco 13.488 T contro 13.489 T (benchmark), 14.476 T contro 14.482 T (design 7); forza di Lorentz per turn entro 0.03% dai carichi LDREAD di ANSYS.
 
 ### 6.2 Conduttore e hot spot (`cicc`, `heat_balance_cicc_ode`, `plot_hotspot_transient`)
 
@@ -197,7 +198,9 @@ Validazione: picco 13.48 T contro 13.49 T (benchmark), 14.47 T contro 14.48 T (d
 
 ## 7. Il modello meccanico surrogato (FE 2D)
 
-File: `physics/wp_mech_surrogate.m` (≈1250 righe, funzioni interne), plot in `postprocess/plot_wp_mech_surrogate.m`.
+File: `physics/wp_mech_surrogate.m` (funzioni interne), plot in `postprocess/plot_wp_mech_surrogate.m`.
+
+È un **modello a elementi finiti autonomo** (mesh, assemblaggio, contatti e soluzione propri), non un modello ridotto né una superficie di risposta: "surrogato" indica solo che prende il posto della corsa ANSYS quando si verifica un punto di progetto.
 
 ### 7.1 Perché serve
 
@@ -225,6 +228,15 @@ $$\begin{bmatrix}\mathbf K_{uu}&\mathbf K_{uz}\\ \mathbf K_{zu}&K_{zz}\end{bmatr
 \begin{bmatrix}\mathbf u\\ \varepsilon_z\end{bmatrix}=
 \begin{bmatrix}\mathbf f_{Lorentz}+\mathbf f_{th}\\ T_{bf}+f_{th,z}\end{bmatrix}$$
 L'ultima equazione impone $\int_A\sigma_z\,dA = T_{bf}$ (forza verticale per gamba, stessa formula della scansione: $T_{bf}=\tfrac12 k_{bf} n_{TF}(NI)^2\mu_0/2\pi$).
+
+I tre vettori di carico (termico, Lorentz, assiale) sono assemblati **separatamente** e combinati in due **casi di carico**:
+
+| Caso | Carichi | Serve per |
+|---|---|---|
+| totale **P+Q** | raffreddamento + Lorentz + assiale | confronto con il FEM, P+Q ≤ 3 Sm, picco |
+| primario **P** | Lorentz + assiale (niente raffreddamento, niente deformazione termica nel recupero delle tensioni) | Pm ≤ Sm, Pm+Pb ≤ 1.5 Sm |
+
+e in una **sequenza di carico** a scelta (`surrogate_load_sequence`): 0 = tutti i carichi insieme in un passo, come le corse ANSYS usate per la validazione; 1 = prima il raffreddamento, poi l'energizzazione in `surrogate_em_steps` passi.
 
 **Materiali** (default = set del benchmark ANSYS, tutti nell'Excel, categoria *Mechanical surrogate*):
 
@@ -263,7 +275,7 @@ Dimensioni tipiche (design 7, 104 turn): ~106 000 nodi, ~20 000 Q8, ~17 000 T6.
 
 ### 7.5 Carichi
 
-1. **Lorentz**: $\mathbf f=\mathbf J\times\mathbf B$ in ogni punto di Gauss del cavo, con $J=I_{op}/A_{cavo}$ ($A_{cavo}=wh-(4-\pi)r_{SC}^2$) e $\mathbf B$ da `wp_field_at_points`: $f_x=-JB_y$, $f_y=JB_x$. Totale verificato: 47.88 MN/m contro 47.88 MN/m del FEM.
+1. **Lorentz**: $\mathbf f=\mathbf J\times\mathbf B$ in ogni punto di Gauss del cavo, con $J=I_{op}/A_{cavo}$ ($A_{cavo}=wh-(4-\pi)r_{SC}^2$) e $\mathbf B$ da `wp_field_at_points` con la sorgente arrotondata: $f_x=-JB_y$, $f_y=JB_x$. Totale verificato: 47.88 MN/m contro 47.88 MN/m del FEM.
 2. **Raffreddamento** $T_{ref}\to T_{op}$ (293 → 4.2 K), con le dilatazioni secanti di ogni materiale.
 3. **Forza assiale** $T_{bf}$ tramite il grado di libertà $\varepsilon_z$.
 
@@ -275,11 +287,13 @@ Dimensioni tipiche (design 7, 104 turn): ~106 000 nodi, ~20 000 Q8, ~17 000 T6.
 | WP (isolante di massa) / case | contatto **unilaterale con attrito di Coulomb**, `mu_case` = 0.2 | Come il FEM. Incollato: pareti laterali troppo poco caricate; senza attrito: turn di bordo sovraccaricati. |
 | Cavo / jacket | contatto unilaterale con attrito, `mu_cable` = 0.2 | Come il FEM. Decisivo per il picco nel raccordo: incollato −5…−26%, senza attrito fino a +27% sui turn di bordo. |
 
-I nodi delle interfacce sono **sdoppiati**; ogni coppia (a, b) ha normale $\mathbf n$ e tangente $\mathbf t$. Algoritmo (penalty + stick/slip, soluzione in un passo come il FEM):
+I nodi delle interfacce sono **sdoppiati**; ogni coppia (a, b) ha normale $\mathbf n$ e tangente $\mathbf t$. Algoritmo (penalty + attrito **incrementale**, per ogni passo della sequenza di carico):
 
 - gap normale $g_n=(\mathbf u_b-\mathbf u_a)\cdot\mathbf n$; coppia chiusa ⇒ molla $k_p=10^3\max(\mathrm{diag}\,\mathbf K)$, forza normale $N=-k_p g_n$; si apre se $g_n>0$ (trazione), si richiude se penetra;
-- tangenziale: *stick* ⇒ molla $k_p$ sullo scorrimento $g_t$; diventa *slip* se $|k_p g_t|>\mu N$ e porta allora la forza $\mu N$; torna *stick* se lo scorrimento si inverte;
-- ripete fino a quando meno dello 0.5% delle coppie cambia stato e le forze normali sono stabili entro l'1% (tipicamente 10–12 iterazioni).
+- tangenziale, elastico-perfettamente-plastico con **scorrimento accumulato** $g_s$: coppia aderente ⇒ $T=-k_p(g_t-g_s)$; scorre se $|T|>\mu N$ e porta allora $\mu N$; torna aderente se il moto si inverte nel passo; a fine passo $g_s$ viene aggiornato;
+- per ogni passo itera fino a quando al massimo `surrogate_contact_tol` (0.5%) delle coppie cambia ancora stato e le forze normali sono stabili entro l'1% (tipicamente 7–12 iterazioni). Se un passo non converge il risultato è marcato **non valido**.
+
+Sensibilità alla sequenza sul design 7 (raffreddamento poi energizzazione in 4 passi, contro tutto insieme): picco 1023 contro 1020 MPa, Pm+Pb (P+Q) 885 contro 882 MPa, Pm invariato. Per questa geometria la dipendenza dal percorso è trascurabile.
 
 ### 7.7 Soluzione numerica
 
@@ -303,9 +317,23 @@ Sezioni valutate per ogni turn: a ogni confine di elemento lungo le **quattro pa
 
 **Case**: 7 linee di classificazione (lato destro, il problema è simmetrico): asse del nose, metà nose, diagonale del vault (dall'angolo della cava all'angolo nose/fianco), parete laterale a 25/50/75% dell'altezza della cava, piastra lato plasma.
 
-**Figura di merito** (criteri primari, stile ITER / ASME III):
-$$P_m\le S_m,\qquad P_m+P_b\le 1.5\,S_m$$
-con $S_m$ = `S_amm_JT` per il jacket e `S_amm_VT` per il case. `out.fom` riporta le quattro utilizzazioni, il massimo e dove si trova; il **picco** è riportato a parte, come tensione locale (fatica / verifica FEM).
+**Figura di merito** (stile ITER / ASME III). La linearizzazione da sola non classifica le tensioni: la classificazione è fatta **per caso di carico** (il raffreddamento è il carico secondario):
+$$P_m(P)\le S_m,\qquad (P_m+P_b)(P)\le 1.5\,S_m,\qquad (P_m+P_b)(P+Q)\le 3\,S_m$$
+sul jacket e sul case. $S_m$ è un parametro esplicito (`Sm_jacket`, `Sm_case`; default = `S_amm_JT` / `S_amm_VT`) **da confermare** rispetto al codice di progetto e ai dati di materiale. Con i contatti la separazione P / P+Q è approssimata: il caso primario è risolto con il proprio stato di contatto (senza il serraggio del raffreddamento), il che è conservativo. `out.fom` riporta le sei utilizzazioni, il massimo, dove si trova e lo **stato** (soddisfatto / non soddisfatto / INVALIDO). Il **picco** è riportato a parte, come tensione locale (fatica / verifica FEM).
+
+**Controlli di validità** (`out.checks`, `out.valid`): se uno fallisce la figura di merito è INVALIDA.
+
+| Controllo | Soglia |
+|---|---|
+| area della mesh (isoparametrica) contro area del dominio | errore relativo < 1·10⁻⁴ |
+| Jacobiano in ogni punto di Gauss | > 0 (altrimenti errore) |
+| convergenza dei contatti in ogni passo e in entrambi i casi | sì |
+| residuo della soluzione lineare | < 1·10⁻⁶ |
+| equilibrio globale: carichi contro reazioni sui fianchi | < 1·10⁻⁴ |
+| equilibrio assiale: $\int\sigma_z\,dA$ contro $T_{bf}$ | < 1·10⁻³ |
+| copertura dei punti sulle SCL del case | ≥ 98% |
+
+Design 7: area 1.4·10⁻⁶, residuo 2·10⁻⁹, equilibrio 3.5·10⁻⁸, assiale 8·10⁻¹³, copertura 100% (il controllo d'area ha scovato due triangoli spuri sovrapposti ai filler, ora corretti).
 
 **Output principali** di `out = wp_mech_surrogate(row,p)`:
 
@@ -314,13 +342,15 @@ con $S_m$ = `S_amm_JT` per il jacket e `S_amm_VT` per il case. `out.fom` riporta
 | `out.turn(i)` | layer, colonna, `Pm`, `PmPb` (tutte le sezioni), `Pm_straight`/`PmPb_straight`, `peak`, `peak_xy`, dettaglio per parete |
 | `out.layer` | massimi per layer di `Pm`, `PmPb`, `peak` |
 | `out.case_scl` | per ogni linea: estremi, `Pm`, `PmPb` |
-| `out.fom` | figura di merito e utilizzazioni |
+| `out.primary` | per il caso primario P: `turn`, `layer`, `case_scl` |
+| `out.fom` | figura di merito, utilizzazioni, stato |
+| `out.checks`, `out.valid` | controlli di validità ed esito |
 | `out.nodal`, `out.elem_SINT` | tensioni nodali per materiale, Tresca per elemento (plot) |
 | `out.eps_z`, `out.sol.contact` | deformazione assiale, stato dei contatti e storia delle iterazioni |
 
 ### 7.9 Parametri (Excel, categoria *Mechanical surrogate*)
 
-`T_ref`, `T_op`, `alpha_steel`, `alpha_cable`, `alpha_ins_n`, `alpha_ins_t`, `E_ins_t`, `G_ins`, `nu_steel`, `nu_cable`, `nu_ins_tn`, `nu_ins_tz`, `E_filler`, `nu_filler`, `alpha_filler`, `wedge_insulation`, `mu_case`, `mu_cable`, `mu_flank`, `surrogate_n_cable`, `surrogate_n_arc`, `surrogate_n_thk`, `surrogate_h_fine`. Usa anche `E_jckt`, `E_case`, `E_ins`, `E_cbl_LTS/HTS`, `r_SC_min/max`, `turn_insulation_nominal`, `GoundIns`, `INS_grades`, `dr_plasma_side`, `n_TF`, `S_amm_JT/VT`. Se un file di input vecchio non ha i nuovi parametri, valgono i default del benchmark. Da codice si possono forzare con la struct `opts` (es. `struct('r_SC',0.004,'mu_cable',0.2)`).
+`T_ref`, `T_op`, `alpha_steel`, `alpha_cable`, `alpha_ins_n`, `alpha_ins_t`, `E_ins_t`, `G_ins`, `nu_steel`, `nu_cable`, `nu_ins_tn`, `nu_ins_tz`, `E_filler`, `nu_filler`, `alpha_filler`, `wedge_insulation`, `mu_case`, `mu_cable`, `mu_flank`, `surrogate_n_cable`, `surrogate_n_arc`, `surrogate_n_thk`, `surrogate_h_fine`, `surrogate_load_sequence`, `surrogate_em_steps`, `surrogate_classify`, `surrogate_contact_tol`, `Sm_jacket`, `Sm_case`. Usa anche `E_jckt`, `E_case`, `E_ins`, `E_cbl_LTS/HTS`, `r_SC_min/max`, `turn_insulation_nominal`, `GoundIns`, `INS_grades`, `dr_plasma_side`, `n_TF`, `S_amm_JT/VT`. Se un file di input vecchio non ha i nuovi parametri, valgono i default del benchmark. Da codice si possono forzare con la struct `opts` (es. `struct('r_SC',0.004,'mu_cable',0.2)`).
 
 ---
 
@@ -354,7 +384,16 @@ Nella gran parte dei turn il picco cade nello stesso raccordo del FEM (per esemp
 4. gli **angoli arrotondati** dei turn → rigidezza toroidale corretta del WP (con angoli vivi +20–30% di compressione toroidale e −8% sul nose);
 5. il **contatto con attrito cavo/jacket** → picco nel raccordo.
 
-**Figura di merito del design 7**: jacket Pm = 549 MPa (0.82·Sm), Pm+Pb = 882 MPa (0.88 di 1.5·Sm), picco 1020 MPa; case Pm = 630 MPa (0.94·Sm) → criteri primari soddisfatti.
+**Figura di merito del design 7** (con Sm = 667 MPa, da confermare):
+
+| | Jacket | Case |
+|---|---|---|
+| Pm primario (P) | 618 MPa = 0.93 Sm | 623 MPa = 0.93 Sm |
+| Pm+Pb primario (P) | **1107 MPa = 1.11 × 1.5 Sm** | 764 MPa = 0.76 × 1.5 Sm |
+| Pm+Pb con tutti i carichi (P+Q) | 882 MPa = 0.44 × 3 Sm | 768 MPa = 0.38 × 3 Sm |
+| picco nel raccordo (P+Q, informativo) | 1020 MPa | – |
+
+Senza raffreddamento il cavo non è serrato dal jacket e le pareti portano il carico di Lorentz in flessione: **il criterio primario di membrana + flessione del jacket non è soddisfatto** (layer 10, turn di bordo). Una valutazione senza classificazione (solo stato totale) lo avrebbe dato per soddisfatto.
 
 ---
 
@@ -363,11 +402,12 @@ Nella gran parte dei turn il picco cade nello stesso raccordo del FEM (per esemp
 **Surrogato meccanico**
 
 - È un modello **2D in deformazione piana generalizzata** come il FEM di riferimento: non vede effetti 3D (curve, raccordi tra gambe, supporti).
-- L'attrito è risolto **in un passo** (carichi applicati insieme, come il FEM): la risposta per attrito dipende in principio dalla storia di carico.
+- L'attrito dipende dalla storia di carico: è disponibile la sequenza raffreddamento → energizzazione; sul design 7 l'effetto è trascurabile, ma va verificato per geometrie nuove.
+- La classificazione P / P+Q per casi di carico è approssimata in presenza di contatti (vedi 7.8); Sm va confermato.
 - Il cavo è un materiale omogeneo isotropo; l'isolante ha proprietà costanti (secanti).
 - **Incertezze** dalla validazione: sforzi linearizzati ±5–7%; raccordi −2…−6%; picco −11…+5%; nose del case −3…−5% (**leggermente non conservativo**: considerare un margine sul nose, che spesso governa).
 - Validato solo su design **LTS** con 2–3 grade e layer allineati. I **vincoli tra layer non allineati** (per esempio grade con JT diverso) sono verificati numericamente – design 7 con JT 3.1 mm nel grade 1: 384 vincoli, risultati coerenti con il caso allineato – ma non ancora confrontati con un FEM; i design HTS non sono ancora stati confrontati con un FEM.
-- Troppo lento per essere eseguito su ogni candidato della scansione: serve per verificare la soluzione scelta (o un sottoinsieme di candidati).
+- Troppo lento per essere eseguito su ogni candidato della scansione: serve per verificare la soluzione scelta (o un sottoinsieme di candidati). L'integrazione nello scan è ancora da decidere (vedi `docs/RISPOSTA_REVIEW.md`, punto C06).
 
 **Scansione (modelli analitici)**
 

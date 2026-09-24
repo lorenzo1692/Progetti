@@ -8,22 +8,24 @@ function out = compute_discrete_field_profile(row, p)
 %   the same idealization as the generalized-plane-strain FEM model
 %   (infinite straight conductors along Z):
 %
-%   - Coil 1 (the one analysed): every turn is a uniform-current
-%     RECTANGLE with the cable's own cross-section (SC_w x SC_h, i.e. the
-%     cell minus jacket and turn insulation), using the closed-form
-%     Biot-Savart field of a rectangular current block. This includes the
+%   - Coil 1 (the one analysed): every cable carries a uniform current
+%     density over its real ROUNDED cross-section (SC_w x SC_h, i.e. the
+%     cell minus jacket and turn insulation, corner fillet r_SC), decomposed
+%     exactly into rectangles with the closed-form Biot-Savart field of a
+%     rectangular current block (see WP_FIELD_AT_POINTS). This includes the
 %     turn's own SELF-FIELD (~mu0*I/(2*pi*a), about 1 T for a 60 kA cable)
 %     and the field of its neighbours at their true size, which a line
 %     filament model misses.
 %   - The other p.n_TF-1 coils are far enough away to be line filaments.
 %
-%   The field is evaluated on a 3x3 grid on each cable (corners, edge
-%   midpoints, centre) and the per-turn PEAK is reported: that is the
-%   value that drives Ic degradation and that the FEM reports as the peak
-%   BSUM on the conductor. On the TF_2D FEM benchmark (FEM peak 13.489 T)
-%   this model gives 13.57 T (+0.6%); the previous centroid/filament model
-%   without self-field gave 12.92 T (-4.2%) and under-predicted the low
-%   field layers by up to ~50%.
+%   The field is evaluated on 48 points along each cable's rounded outline
+%   (where the self-field peak lies) plus a 3x3 interior grid, and the
+%   per-turn PEAK is reported: that is the value that drives Ic degradation
+%   and that the FEM reports as the peak BSUM on the conductor. Against
+%   ANSYS: 14.476 T vs 14.482 T (design 7, EM_2D007) and 13.488 T vs
+%   13.489 T (TF_2D benchmark); the old centroid/filament model without
+%   self-field gave 12.92 T (-4.2%) and under-predicted the low-field
+%   layers by up to ~50%.
 %
 %   Only meant for ONE chosen design point (postprocessing/verification),
 %   not inside the combinatorial scan.
@@ -82,35 +84,31 @@ if any(sc_w <= 0) || any(sc_h <= 0)
         'Cable size <= 0 (Cond_w/Cond_h too small for JT + turn insulation).');
 end
 
-% Field points: 3x3 grid on each cable. Global frame: X = radial, Y = toroidal
-% (coil 1 centred on the X axis, layers flat as in the FEM).
+% Cable corner fillet, as the FEM and size_cicc_cable: r_SC = JT clamped
+% to [r_SC_min, r_SC_max]
+rmin = 2e-3; rmax = 6e-3;
+if isfield(p, 'r_SC_min'), rmin = p.r_SC_min; end
+if isfield(p, 'r_SC_max'), rmax = p.r_SC_max; end
+r_l = min(max(JT, rmin), rmax);
+rc = min(r_l(layer_of_turn), 0.49*min(sc_w, sc_h));
+
+% Field points on every cable: its whole boundary (48 points on the rounded
+% outline, where the peak of the self-field lies) plus a 3x3 interior grid
+% (review C08: 9 points alone do not locate the peak)
+np_b = 48;
+[PXl, PYl] = deal(zeros(np_b + 9, n_tot));
 [a, b] = meshgrid([-0.5 0 0.5], [-0.5 0 0.5]);
-a = a(:); b = b(:);                          % 9x1 (a: toroidal, b: radial)
-PX = rt + b.*sc_h;  PY = xt + a.*sc_w;       % 9 x n_tot
-PX = PX(:); PY = PY(:);
-owner = repmat(1:n_tot, 9, 1); owner = owner(:);
-
-% Coil 1: analytic rectangular conductors (self-field included)
-BX = zeros(size(PX)); BY = zeros(size(PX));
-for j = 1:n_tot
-    [bx, by] = rect_field(PX, PY, rt(j), xt(j), sc_h(j), sc_w(j), I_turn, Mu_0);
-    BX = BX + bx; BY = BY + by;
+for t = 1:n_tot
+    [bx, by] = rr_outline(sc_w(t)*(1-1e-6), sc_h(t)*(1-1e-6), rc(t), np_b);
+    PXl(:,t) = [xt(t) + bx; xt(t) + a(:)*sc_w(t)];
+    PYl(:,t) = [rt(t) + by; rt(t) + b(:)*sc_h(t)];
 end
-
-% Coils 2..n_TF: line filaments at the rotated centroids
-for c = 2:p.n_TF
-    th = (c-1)*theta_TF;
-    Xs = rt*cos(th) - xt*sin(th);
-    Ys = rt*sin(th) + xt*cos(th);
-    dx = PX - Xs; dy = PY - Ys;               % implicit expansion
-    d2 = dx.^2 + dy.^2;
-    BX = BX + Mu_0*I_turn/(2*pi) * sum(-dy./d2, 2);
-    BY = BY + Mu_0*I_turn/(2*pi) * sum( dx./d2, 2);
-end
-Bmag = sqrt(BX.^2 + BY.^2);
-
-B_peak = accumarray(owner, Bmag, [n_tot 1], @max)';
-B_center = Bmag(5:9:end)';                   % a=0, b=0 is the 5th grid point
+owner = repmat(1:n_tot, np_b + 9, 1);
+[Bx, By] = wp_field_at_points(PXl(:), PYl(:), xt, rt, sc_w, sc_h, I_turn, p.n_TF, rc);
+Bmag = sqrt(Bx.^2 + By.^2);
+B_peak = accumarray(owner(:), Bmag, [n_tot 1], @max)';
+B_center = Bmag(sub2ind(size(PXl), (np_b + 5)*ones(1, n_tot), 1:n_tot))';
+B_center = B_center(:)';
 
 % Smeared/linear model at each layer, as in scan_wp_designs.m
 n_spire_ = zeros(1, n_layers);
@@ -121,6 +119,7 @@ end
 B_layers = row.B_TF .* (n_spire_/n_spire_(1));
 B_smooth = B_layers(layer_of_turn);
 
+out.r_SC = rc;
 out.x = xt;
 out.y = rt;
 out.layer = layer_of_turn;
@@ -130,20 +129,24 @@ out.B_discrete = B_peak;
 out.ripple = B_peak ./ B_smooth;
 end
 
-function [Bx, By] = rect_field(x, y, xc, yc, w, h, I, Mu_0)
-% Closed-form 2D field of a uniform current I (along Z) in the rectangle
-% centred at (xc,yc), width w along x, height h along y.
-J = I/(w*h);
-ua = x - (xc - w/2); ub = x - (xc + w/2);
-va = y - (yc - h/2); vb = y - (yc + h/2);
-k = Mu_0*J/(2*pi);
-By =  k*(G(ua,va) - G(ua,vb) - G(ub,va) + G(ub,vb));
-Bx = -k*(G(va,ua) - G(vb,ua) - G(va,ub) + G(vb,ub));
+function [x, y] = rr_outline(w, h, r, n)
+% n points evenly spaced along the outline of a w x h rectangle with corner radius r
+L = 2*(w - 2*r) + 2*(h - 2*r) + 2*pi*r;
+s = (0:n-1)'/n*L;
+x = zeros(n,1); y = zeros(n,1);
+seg = [w-2*r, pi*r/2, h-2*r, pi*r/2, w-2*r, pi*r/2, h-2*r, pi*r/2];
+c = [0 cumsum(seg)];
+cx = [w/2-r, -w/2+r, -w/2+r, w/2-r]; cy = [h/2-r, h/2-r, -h/2+r, -h/2+r];
+for i = 1:n
+    k = find(s(i) >= c(1:end-1) & s(i) < c(2:end), 1); u = s(i) - c(k);
+    switch k
+        case 1, x(i) = w/2-r - u; y(i) = h/2;                          % top, right to left
+        case 3, x(i) = -w/2; y(i) = h/2-r - u;                          % left, top to bottom
+        case 5, x(i) = -w/2+r + u; y(i) = -h/2;                         % bottom
+        case 7, x(i) = w/2; y(i) = -h/2+r + u;                          % right
+        otherwise                                                        % fillets
+            q = k/2; th = q*pi/2 + u/max(r, eps); iq = mod(q, 4) + 1;
+            x(i) = cx(iq) + r*cos(th); y(i) = cy(iq) + r*sin(th);
+    end
 end
-
-function g = G(u, v)
-% Primitive of the line-current kernel: 1/2*v*ln(u^2+v^2) + u*atan(v/u)
-t1 = 0.5*v.*log(u.^2 + v.^2); t1(v == 0) = 0;
-t2 = u.*atan(v./u);           t2(u == 0) = 0;
-g = t1 + t2;
 end
