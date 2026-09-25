@@ -1,0 +1,243 @@
+FINISH
+/CLEAR,ALL
+/PREP7
+/INPUT,'ParametriMatlab','txt'
+!------------------------------------------------------------!
+!!!  Element Definition
+ET,1,200,1
+ET,2,36
+ET,3,96
+ANG_DIV=360/N_TF
+!------------------------------------------------------------!
+!!! Local CSYS
+LOCAL,2000,0,0.0,0.0,0.0
+LOCAL,2001,0,,,,ANG_DIV/2 		! Cartesian local CS used for duplicating half-WP section
+LOCAL,2011,1,,,,ANG_DIV/2+90 	! Cylindrical local CS used for assigning boundary conditions
+LOCAL,2002,0,,,,-ANG_DIV/2		! Cartesian local CS to assign conditions to second WP
+CSYS,0
+*GET,MAX_CS,CDSY,0,NUM,MAX
+PI=acos(-1)
+D2R=PI/180
+MU0=PI*4e-7
+EPS=1e-4
+!------------------------------------------------------------!
+!!! NODI  
+/PREP7
+COL = 1
+RIG = N_NODES*2+1
+*DIM,radialC,array,RIG,COL
+*VREAD, radialC, 'radialMatlab_VNS', 'txt',
+(1F6.0)
+*DIM,verticalC,array,RIG,COL
+*VREAD, verticalC, 'verticalMatlab_VNS', 'txt',
+(1F6.0)
+
+ALLSEL,ALL,ALL
+*GET, ULT_ND ,NODE,0,NUM,MAX
+*GET,MAX_CS,CDSY,0,NUM,MAX
+CSYS,0 
+*DO,i,1,RIG
+	N,ULT_ND+i,0.0,radialC(i),verticalC(i)
+*ENDDO
+ 
+ALLSEL,ALL,ALL
+NUMMRG,NODE
+NUMCMP,NODE
+CM,SOURCEN,NODE
+
+*GET,NNNODE,NODE,,COUNT
+
+*GET, ULT_ND_3 ,NODE,0,NUM,MAX
+*DO,i,1,RIG
+	N,ULT_ND_3+i,0.5,radialC(i),verticalC(i)
+*ENDDO
+
+ALLSEL
+NUMMRG,NODE,1e-4
+NUMCMP,NODE
+ALLSEL
+
+!------------------------------------------------------------!
+I_TF = -I_TF
+WP_w = 1.0
+WP_h = 0.5
+TYPE,2
+*DO,i,1,NNNODE-1
+	R,i,2,I_TF,WP_h,WP_w,,,,,EPS
+	REAL,i	 
+	NI=ULT_ND+i
+	NJ=ULT_ND+i+1
+	NK=ULT_ND_3+i 
+	E,NI,NJ,NK
+*ENDDO	
+
+i=i+1
+R,i,2,I_TF,WP_h,WP_w,,,,,EPS
+REAL,i	 
+NI=NNNODE
+NJ=1 
+NK=ULT_ND_3+NNNODE-1
+E,NI,NJ,NK
+
+/SHRINK,0   
+/ESHAPE,1 
+/EFACET,1   
+/RATIO,1,1,1
+/CFORMAT,32,0 
+EPLOT  
+/REPLOT
+ALLSEL,ALL,ALL
+
+*GET,NO_NODES,NODE,,COUNT	
+ESEL,S,TYPE,,2
+NSLE,S,1	
+CSYS,2011
+EGEN,N_TF,NO_NODES+100,ALL,,,0,0,0,0,0,0,ANG_DIV,0	
+PARSAV,SCALAR,PARM
+  
+!------------------------------------------------------------!
+!!! NODI  
+ALLSEL
+NUMCMP,NODE
+*GET, ULT_ND_96 ,NODE,0,NUM,MAX
+NSEL,NONE
+CSYS,0 
+*DO,i,1,RIG
+	N,ULT_ND_96+i,0.0,radialC(i),verticalC(i)
+*ENDDO
+NUMMRG,NODE
+NUMCMP,NODE
+CM,CAB_96,NODE
+ALLSEL
+! ! ! !------------------------------------------------------------!
+! ! ! !!! NODI  
+! ! ! ALLSEL
+! ! ! *GET, ULT_ND_96_2 ,NODE,0,NUM,MAX
+! ! ! NSEL,S,NODE,,CAB_96
+! ! ! *GET,YYMAX,NODE,0,MXLOC,Y 
+! ! ! *GET,YYMIN,NODE,0,MNLOC,Y 
+! ! ! *GET,ZZMAX,NODE,0,MXLOC,Z 
+! ! ! *GET,ZZMIN,NODE,0,MNLOC,Z 
+! ! ! Rm = 8.6
+! ! ! Zm = 0
+! ! ! ALLSEL
+! ! ! NSEL,NONE
+! ! ! TYPE,3
+! ! ! *AFUN,RAD
+! ! ! *DO,i,0,2*pi,2*pi/1000
+	! ! ! N,,Rm*cos(i),Rm*sin(i),Zm
+! ! ! *ENDDO
+! ! ! CM,CAB_96_2,NODE
+! ! ! ALLSEL
+! ! ! !------------------------------------------------------------!
+! ! ! ALLSEL,ALL,ALL
+! ! ! RMIN=0
+! ! ! RMAX=16
+! ! ! ZMIN=-15
+! ! ! ZMAX=15
+! ! ! ANG=0
+! ! ! NR=100
+! ! ! NZ=100
+! ! ! *DIM,RR,ARRAY,NR*NZ
+! ! ! *DIM,ZZ,ARRAY,NR*NZ
+! ! ! TYPE,3
+! ! ! CSYS,2011
+! ! ! *GET, ULT_NODE ,NODE,0,NUM,MAX
+! ! ! NOFF=ULT_NODE+100 
+! ! ! NK=0
+! ! ! *DO,I,1,NZ
+  ! ! ! ZPOS=ZMIN+(I-1)*(ZMAX-ZMIN)/(NZ-1)
+  ! ! ! *DO,J,1,NR
+	! ! ! RPOS=RMIN+(J-1)*(RMAX-RMIN)/(NR-1)
+	! ! ! NK=NK+1
+	! ! ! N,NOFF+NK,RPOS,ANG,ZPOS
+	! ! ! RR(NK)=RPOS
+	! ! ! ZZ(NK)=ZPOS
+  ! ! ! *ENDDO
+! ! ! *ENDDO
+!------------------------------------------------------------!
+/SOLU
+ALLSEL,ALL,ALL
+BIOT,NEW
+FINISH
+!------------------------------------------------------------!
+!!! Cable
+/POST1
+ALLSEL
+CSYS,0
+RSYS,0
+
+ALLSEL,ALL,ALL
+NSEL,S,NODE,,CAB_96
+*GET,NN_NODE,NODE,0,COUNT
+*GET,nn_min,NODE,0,NUM,MIN
+*GET,nn_max,NODE,0,NUM,MAX	
+*DIM,B_,ARRAY,NN_NODE,7,1
+	
+p = nn_min-1			
+*DO,n,1,NN_NODE 
+	p = p+1
+	*GET,B_(n,1),NODE,p,LOC,X
+	*GET,B_(n,2),NODE,p,LOC,Y
+	*GET,B_(n,3),NODE,p,LOC,Z
+	*GET,BXCS,NODE,p,HS,X
+	*GET,BYCS,NODE,p,HS,Y
+	*GET,BZCS,NODE,p,HS,Z
+	B_(n,4)=MU0*BXCS
+	B_(n,5)=MU0*BYCS
+	B_(n,6)=MU0*BZCS	
+	B_(n,7)=sqrt(B_(n,4)**2+B_(n,5)**2+B_(n,6)**2)
+*ENDDO 		
+!------------------------------------------------------------!
+*MWRITE,B_,B_,csv 
+%G %G %G %G %G %G %G 
+!------------------------------------------------------------!
+! ! ! ALLSEL,ALL,ALL
+! ! ! NSEL,S,NODE,,CAB_96_2
+! ! ! *GET,NN_NODE,NODE,0,COUNT
+! ! ! *GET,nn_min,NODE,0,NUM,MIN
+! ! ! *GET,nn_max,NODE,0,NUM,MAX	
+! ! ! *DIM,B_T,ARRAY,NN_NODE,7,1
+! ! ! p = nn_min-1			
+! ! ! *DO,n,1,NN_NODE 
+	! ! ! p = p+1
+	! ! ! *GET,B_T(n,1),NODE,p,LOC,X
+	! ! ! *GET,B_T(n,2),NODE,p,LOC,Y
+	! ! ! *GET,B_T(n,3),NODE,p,LOC,Z
+	! ! ! *GET,BXCS,NODE,p,HS,X
+	! ! ! *GET,BYCS,NODE,p,HS,Y
+	! ! ! *GET,BZCS,NODE,p,HS,Z
+	! ! ! B_T(n,4)=MU0*BXCS
+	! ! ! B_T(n,5)=MU0*BYCS
+	! ! ! B_T(n,6)=MU0*BZCS	
+	! ! ! B_T(n,7)=sqrt(B_T(n,4)**2+B_T(n,5)**2+B_T(n,6)**2)
+! ! ! *ENDDO 		
+! ! ! !------------------------------------------------------------!
+! ! ! *MWRITE,B_T,B_T,csv 
+! ! ! %G %G %G %G %G %G %G 
+! ! ! !------------------------------------------------------------!
+! ! ! CSYS,0
+! ! ! *DIM,Bsave,ARRAY,Nr*Nz,7,1
+
+! ! ! *DO,I,1,Nr*Nz
+	! ! ! *GET,Bx,NODE,noff+I,HS,X
+	! ! ! *GET,By,NODE,noff+I,HS,Y
+	! ! ! *GET,Bz,NODE,noff+I,HS,Z
+	! ! ! *GET,xxx,NODE,noff+I,LOC,X
+	! ! ! *GET,yyy,NODE,noff+I,LOC,Y
+	! ! ! *GET,zzz,NODE,noff+I,LOC,Z
+	! ! ! Bx=MU0*Bx
+	! ! ! By=MU0*By
+	! ! ! Bz=MU0*Bz
+	! ! ! Bsave(I,1)=xxx
+	! ! ! Bsave(I,2)=yyy
+	! ! ! Bsave(I,3)=zzz
+	! ! ! Bsave(I,4)=Bx
+	! ! ! Bsave(I,5)=By
+	! ! ! Bsave(I,6)=Bz
+	! ! ! Bsave(I,7)=sqrt(Bx**2+By**2+Bz**2)
+! ! ! *ENDDO
+! ! ! !------------------------------------------------------------!
+! ! ! *MWRITE,Bsave,field,csv, 
+! ! ! %G %G %G %G %G %G %G
+! ! ! !------------------------------------------------------------! 
