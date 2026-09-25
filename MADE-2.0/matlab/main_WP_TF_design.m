@@ -79,10 +79,22 @@ fprintf('\n%d feasible design point(s) saved to %s (+ .mat companion)\n', height
 
 sel_idx = browse_solutions(DATA);
 plot_solution(DATA, sel_idx, tag);
-plot_wp_section(DATA(sel_idx,:), p, sprintf('%s - design #%d', tag, sel_idx));
-plot_wp_section_bfield(DATA(sel_idx,:), p, sprintf('%s - design #%d', tag, sel_idx));
-plot_wp_diagnostics(DATA(sel_idx,:), p, sprintf('%s - design #%d', tag, sel_idx));
-plot_hotspot_transient(DATA(sel_idx,:), p, sprintf('%s - design #%d - hot spot', tag, sel_idx));
+
+fig_section = figure; plot_wp_section(DATA(sel_idx,:), p, sprintf('%s - design #%d', tag, sel_idx));
+fig_bfield = figure; plot_wp_section_bfield(DATA(sel_idx,:), p, sprintf('%s - design #%d', tag, sel_idx));
+fig_diag = figure; plot_wp_diagnostics(DATA(sel_idx,:), p, sprintf('%s - design #%d', tag, sel_idx));
+fig_hotspot = figure; plot_hotspot_transient(DATA(sel_idx,:), p, sprintf('%s - design #%d - hot spot', tag, sel_idx));
+
+% Optional: save the generated plots
+save_plots_answer = strtrim(input('Save all plots as PNG? [y/N]: ', 's'));
+if strcmpi(save_plots_answer, 'y')
+    out_dir = pwd;
+    print(fig_section, '-dpng', '-r300', fullfile(out_dir, sprintf('%s_design_%d_section.png', tag, sel_idx)));
+    print(fig_bfield, '-dpng', '-r300', fullfile(out_dir, sprintf('%s_design_%d_bfield.png', tag, sel_idx)));
+    print(fig_diag, '-dpng', '-r300', fullfile(out_dir, sprintf('%s_design_%d_diagnostics.png', tag, sel_idx)));
+    print(fig_hotspot, '-dpng', '-r300', fullfile(out_dir, sprintf('%s_design_%d_hotspot.png', tag, sel_idx)));
+    fprintf('All plots saved to %s\n', out_dir);
+end
 
 %% 5b. Optional: 2D FE mechanical verification of the chosen design point
 % Solves the true equilibrium of the inner-leg section (rounded turns,
