@@ -29,6 +29,13 @@ clearvars; close all; clc
 this_dir = fileparts(mfilename('fullpath'));
 addpath(genpath(this_dir));
 
+% All outputs of this run (results table, plots, ANSYS export) are saved
+% here, next to the code, instead of MATLAB's current folder (which
+% depends on where you happened to be when you launched the script).
+out_dir = fullfile(this_dir, 'outputs');
+if ~isfolder(out_dir), mkdir(out_dir); end
+fprintf('Outputs of this run will be saved to: %s\n', out_dir);
+
 default_input = fullfile(this_dir, 'input', 'WP_TF_input_template.xlsx');
 
 %% 1. Select and review the input file
@@ -69,16 +76,16 @@ end
 
 %% 5. Save all results, then browse and pick one
 run_stamp = string(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
-results_file = sprintf('%s_results_%s.xlsx', tag, run_stamp);
+results_file = fullfile(out_dir, sprintf('%s_results_%s.xlsx', tag, run_stamp));
 writetable(DATA, results_file);
 % .mat companion (same base name): exact round-trip of DATA and p for
 % LOAD_DESIGN_POINT, since a plain xlsx re-read cannot reconstruct the
 % array-valued columns (n_turns, Cond_w, ...) on its own.
-save(sprintf('%s_results_%s.mat', tag, run_stamp), 'DATA', 'p');
+save(fullfile(out_dir, sprintf('%s_results_%s.mat', tag, run_stamp)), 'DATA', 'p');
 fprintf('\n%d feasible design point(s) saved to %s (+ .mat companion)\n', height(DATA), results_file);
 
 sel_idx = browse_solutions(DATA);
-plot_solution(DATA, sel_idx, tag);
+plot_solution(DATA, sel_idx, tag, out_dir);
 
 fig_section = figure; plot_wp_section(DATA(sel_idx,:), p, sprintf('%s - design #%d', tag, sel_idx));
 fig_bfield = figure; plot_wp_section_bfield(DATA(sel_idx,:), p, sprintf('%s - design #%d', tag, sel_idx));
@@ -88,7 +95,6 @@ fig_hotspot = figure; plot_hotspot_transient(DATA(sel_idx,:), p, sprintf('%s - d
 % Optional: save the generated plots
 save_plots_answer = strtrim(input('Save all plots as PNG? [y/N]: ', 's'));
 if strcmpi(save_plots_answer, 'y')
-    out_dir = pwd;
     print(fig_section, '-dpng', '-r300', fullfile(out_dir, sprintf('%s_design_%d_section.png', tag, sel_idx)));
     print(fig_bfield, '-dpng', '-r300', fullfile(out_dir, sprintf('%s_design_%d_bfield.png', tag, sel_idx)));
     print(fig_diag, '-dpng', '-r300', fullfile(out_dir, sprintf('%s_design_%d_diagnostics.png', tag, sel_idx)));
@@ -114,7 +120,7 @@ end
 %% 6. Optional: export the chosen design point as an ANSYS APDL input file
 export_answer = strtrim(input('Export this design point as an ANSYS input file for FEM verification? [y/N]: ', 's'));
 if strcmpi(export_answer, 'y')
-    export_ansys_input(DATA(sel_idx,:), p, pwd, sprintf('%s_%d', tag, sel_idx));
+    export_ansys_input(DATA(sel_idx,:), p, out_dir, sprintf('%s_%d', tag, sel_idx));
 end
 
 fprintf(['\nTo revisit this design point later without re-running the scan:\n' ...
