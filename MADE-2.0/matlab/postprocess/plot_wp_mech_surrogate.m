@@ -86,6 +86,14 @@ fprintf(['  area %.1e | cable area %.1e | min detJ %.2e | contact converged %d |
     c.cable_area_rel_err, c.min_detJ, c.contact_converged, c.solve_residual, c.solve_residual_primary, ...
     c.force_balance, c.force_balance_primary, c.contact_violation_force, c.contact_violation_force_primary, ...
     c.axial_rel_err, c.scl_min_coverage);
+if isfield(c, 'penetration_rel')
+    fprintf('  penalty contact: max penetration %.1e x min JT', c.penetration_rel);
+    if out.geo.is_round
+        fprintf(' | RIS bonded side: %d pairs, tension carried %.1e of the normal force', ...
+            out.sol.contact.n_cable_bonded, c.bond_tension_fraction);
+    end
+    fprintf('\n');
+end
 if ~out.valid
     fprintf(2, ['  NOT VALIDATED: the plots are kept for diagnosis only; do not use this figure of ' ...
         'merit to accept or rank the design point.\n']);

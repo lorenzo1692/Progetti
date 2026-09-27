@@ -40,6 +40,15 @@ ANSYS leggeva inoltre `p.shape_cable` corrente, non quello della soluzione.
     come offset; 2 elementi per raccordo esterno; punti interni per la
     triangolazione del cavo (T6);
   * contatti cavo/jacket sui nodi del cerchio (nodi duplicati, Coulomb);
+    il lato del cavo verso cui spinge la forza di Lorentz del turn
+    (± `surrogate_ris_bond_angle`, default 45° = un lato del quadrato) è
+    sempre chiuso (bilaterale in normale) e la sua coppia centrale è legata
+    anche in tangenziale: un cerchio in un foro circolare non ha rigidezza
+    a rotazione e, se tutte le coppie si aprono (raffreddamento prima
+    dell'energizzazione), nemmeno a traslazione. La trazione trasmessa dal
+    lato legato è riportata (`bond_tension_fraction`) e deve restare
+    piccola perché l'ipotesi "lato premuto" valga; `surrogate_ris_bond = 0`
+    torna al contatto unilaterale ovunque;
   * area del cavo per la densità di corrente = area del cerchio, verificata
     sulla mesh (`cable_area_ok`, errore relativo < 1e-3);
   * carichi EM e risultanti (`out.load_resultant`), sezioni di
@@ -65,17 +74,67 @@ scale molto diverse, incluso eps_z). Correzioni:
    da solo non prova l'equilibrio locale: per questo si controllano
    residuo, bilancio e stato di contatto separatamente.
 
+5. la convergenza dell'iterazione di contatto richiede anche la coerenza
+   di stato sotto `contact_violation_tol` (2e-2, la stessa soglia del
+   controllo): nel benchmark A il caso primario si fermava con coppie in
+   bilico che portavano il 5% della forza normale (residuo 1.5e-9, ma
+   stato non coerente); ora continua a iterare (entro `contact_maxit`) e
+   arriva a 2.7e-5. Validazione ANSYS A + design 7: PASSED, rapporti
+   invariati.
+
+### Penalty o Lagrangiano aumentato
+
+Penalty: N = -kp*gn, penetrazione gn = N/kp. Lagrangiano aumentato:
+N = λ - kp*gn con λ aggiornato (Uzawa) fino a penetrazione nulla entro
+tolleranza, vincolo esatto anche con kp basso (matrice meglio
+condizionata), ma più soluzioni per iterazione di stato e moltiplicatori
+anche tangenziali per l'attrito. Qui la penalty è sufficiente perché il
+difetto che l'AL curerebbe (condizionamento) è risolto dallo scaling di
+Jacobi (residuo ~1e-9 con kp = 1e3 k_ref) e l'errore della penalty è
+misurato: `penetration_rel` = penetrazione massima / JT minimo, riportata
+in console e nel report di verifica. L'AL conviene se la penetrazione
+supera ~1% di JT o se serve kp più basso; si può aggiungere come opzione
+aggiornando λ a ogni iterazione di stato.
+
 Se il FEM non è valido, i plot restano (diagnostica) ma con banner rosso
 "NOT VALIDATED" e messaggio che il FoM non va usato.
 
-## 4. Verifica riproducibile
+## 4. Campo di picco nella scansione
+
+Il campo con cui la scansione dimensiona i grade era Ampère × `corr_B_WP`
+(costante, 1.05 nel template) con profilo lineare. Contro il modello
+discreto validato su ANSYS (0.1%) sottostima il picco di ~1 T già per un
+WP largo (design 7: 13.48 contro 14.48 T) e di 1.7-2 T per D/W > 1.5; il
+rapporto picco/Ampère va da 1.12 a 1.20, dipende da D/W, da Iop
+(auto-campo) e dalla gradazione, e la geometria è nota solo dopo il
+dimensionamento: nessun fattore costante o funzione del solo rapporto
+d'aspetto lo corregge entro pochi decimi di tesla.
+
+`physics/wp_peak_field_fast.m` calcola il picco per layer con lo stesso
+modello (turn di bordo, vicino al bordo e centrali, 48 punti sul
+contorno; rettangolo equivalente lontano, scomposizione esatta entro 2.5
+celle), entro 0.09 T dal profilo completo, ~0.4 s in Octave.
+`scan_wp_designs` (p.field_model = 'discrete', default) lo chiama sui
+candidati che passano tutti i controlli e ridimensiona i grade al picco
+reale finché |picco - campo di dimensionamento| <= p.field_tol (0.05 T),
+al massimo p.field_max_iter (6) passate; nuove colonne B_peak,
+B_peak_layers, field_iter. p.field_model = 'smeared' riproduce il
+comportamento precedente.
+
+Esito sul design 7 (scansione mirata, stessa macchina): con il campo
+reale il grade 1 va dimensionato a 14.48 T e si estende ai layer 1-7; il
+cavo Nb3Sn diventa alto 48.5 mm in una cella larga 43 mm (rapporto 0.89 <
+0.99): il candidato non è più fattibile. Era accettato solo perché il
+campo era sottostimato.
+
+## 5. Verifica riproducibile
 
 ```matlab
 p = read_machine_input('input/WP_TF_input_template.xlsx');
 R = verify_ris_rect_fem(p, 'verify_out');   % report txt + PNG (sezione, GPS, zoom conduttore)
 ```
 
-## 5. Limiti aperti
+## 6. Limiti aperti
 
 * ramo APDL RIS dell'export ANSYS non verificato in ANSYS;
 * per RIS le sezioni di linearizzazione sono radiali: vicino agli angoli

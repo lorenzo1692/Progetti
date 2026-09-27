@@ -70,6 +70,13 @@ opts = set_default(opts, 'n_em_steps', get_or(p, 'surrogate_em_steps', 4));
 opts = set_default(opts, 'classify', get_or(p, 'surrogate_classify', 1));  % primary-only case too
 opts = set_default(opts, 'contact_tol', get_or(p, 'surrogate_contact_tol', 5e-3));
 opts = set_default(opts, 'interface_cable', 'contact');              % 'contact' | 'bonded'
+% RIS: the arc of the round cable facing its Lorentz force (+/- ris_bond_angle
+% [deg], default 45 = one side of the square jacket) stays in contact with the
+% jacket (normal bilateral) and its centre pair is also tied tangentially: a
+% circle in a circular hole has no stiffness against rotation and, where all
+% its pairs open (cool-down), against translation either
+opts = set_default(opts, 'ris_bond', get_or(p, 'surrogate_ris_bond', 1));
+opts = set_default(opts, 'ris_bond_angle', get_or(p, 'surrogate_ris_bond_angle', 45));
 opts = set_default(opts, 'mu_flank', get_or(p, 'mu_flank', 0));    % flank: the wedge insulation is
 % only normal-constrained on its outer face, so it slides with the case (as in the FEM)
 t_start = tic;
@@ -85,7 +92,7 @@ end
 if strcmpi(opts.interface_cable, 'contact')
     mesh = split_cable_interface(mesh, geo);
 else
-    mesh.kpair = zeros(0,2); mesh.knorm = zeros(0,2);
+    mesh.kpair = zeros(0,2); mesh.knorm = zeros(0,2); mesh.kturn = zeros(0,1);
 end
 t_mesh = toc(t_start);
 
@@ -96,6 +103,7 @@ if ~isfield(opts, 'T_bf') || isempty(opts.T_bf)
 end
 
 sys = surr_assemble(mesh, mat, geo, row.Iop, opts.T_bf);
+mesh = cable_bond_side(mesh, geo, sys, opts);
 % total case (all loads): what the FEM computes; primary case (Lorentz +
 % axial, no cool-down): used for the primary-stress classification (C04)
 sol = surr_solve_case(sys, mesh, load_steps(sys, 'total', opts), true, opts);
@@ -649,7 +657,7 @@ function mesh = split_cable_interface(mesh, geo)
 % frictional contact (as the FEM), solved with the other contacts.
 xy = mesh.xy;
 ce = find(mesh.t6_turn > 0);
-pairs = zeros(0,2); nrm = zeros(0,2);
+pairs = zeros(0,2); nrm = zeros(0,2); kturn = zeros(0,1);
 for t = unique(mesh.t6_turn(ce))'
     el = ce(mesh.t6_turn(ce) == t);
     nodes = unique(mesh.t6(el,:));
@@ -665,8 +673,31 @@ for t = unique(mesh.t6_turn(ce))'
     mesh.t6(el,:) = T;
     pairs = [pairs; on, newid]; %#ok<AGROW>
     nrm = [nrm; -non]; %#ok<AGROW>                   % from the jacket into the cable
+    kturn = [kturn; t*ones(numel(on),1)]; %#ok<AGROW>
 end
-mesh.xy = xy; mesh.kpair = pairs; mesh.knorm = nrm;
+mesh.xy = xy; mesh.kpair = pairs; mesh.knorm = nrm; mesh.kturn = kturn;
+end
+
+function mesh = cable_bond_side(mesh, geo, sys, opts)
+% RIS cable/jacket pairs kept in contact: for every turn, the pairs whose
+% outward cable normal is within +/- ris_bond_angle of the Lorentz force on
+% that cable (the side the cable is pressed on) are normal-bilateral, and
+% the one closest to the force direction is also stuck tangentially.
+np = size(mesh.kpair, 1);
+mesh.kbond = false(np,1); mesh.ktie = false(np,1);
+if ~geo.is_round || ~opts.ris_bond || np == 0, return, end
+ca = cosd(opts.ris_bond_angle);
+Fx = sys.F_lor(1:2:end-1); Fy = sys.F_lor(2:2:end-1);
+for t = unique(mesh.kturn)'
+    nodes = unique(mesh.t6(mesh.t6_turn == t,:));
+    F = [sum(Fx(nodes)), sum(Fy(nodes))];
+    if norm(F) == 0, continue, end
+    e = F/norm(F);
+    k = find(mesh.kturn == t);
+    c = -mesh.knorm(k,:)*e';                     % outward cable normal . force direction
+    mesh.kbond(k(c >= ca)) = true;
+    [~, i] = max(c); mesh.ktie(k(i)) = true;
+end
 end
 
 function [d, n] = rr_boundary(C, xa, xb, ya, yb, r)
@@ -1011,7 +1042,10 @@ fa = mesh.flank_nodes; fnv = mesh.flank_normal;
 ca = mesh.cpair(:,1); cb = mesh.cpair(:,2); cnv = mesh.cnorm;
 ka = mesh.kpair(:,1); kb = mesh.kpair(:,2); knv = mesh.knorm;
 a = [fa; ca; ka]; b = [zeros(size(fa)); cb; kb]; n = [fnv; cnv; knv];
-bil = [true(size(fa)); false(size(ca)); false(size(ka))];
+kbond = false(size(ka)); ktie = false(size(ka));
+if isfield(mesh, 'kbond') && numel(mesh.kbond) == numel(ka), kbond = mesh.kbond; ktie = mesh.ktie; end
+bil = [true(size(fa)); false(size(ca)); kbond];
+tie = [false(size(fa)); false(size(ca)); ktie];      % always stuck (no slip)
 mu = [opts.mu_flank*ones(size(fa)); opts.mu_case*ones(size(ca)); opts.mu_cable*ones(size(ka))];
 info.group = [ones(size(fa)); 2*ones(size(ca)); 3*ones(size(ka))];
 t = [-n(:,2), n(:,1)];
@@ -1028,7 +1062,7 @@ for st_i = 1:numel(steps)
     done = false;
     for it = 1:maxit
         [Kn_i, Kn_j, Kn_v] = pair_matrix(a(closed), b(closed), n(closed,:), kp);
-        stk = closed & slip == 0 & mu > 0;
+        stk = closed & slip == 0 & (mu > 0 | tie);
         [Kt_i, Kt_j, Kt_v] = pair_matrix(a(stk), b(stk), t(stk,:), kp);
         Kc = K + sparse([Kn_i; Kt_i], [Kn_j; Kt_j], [Kn_v; Kt_v], ndof, ndof);
         % tangential force on a along t: stick -kp*(g_t - g_s) (constant part
@@ -1050,7 +1084,7 @@ for st_i = 1:numel(steps)
         closed_new = bil | (closed & gn <= 0) | (~closed & gn < 0);
         Tst = -kp*(gt - gs);
         slip_new = slip;
-        q = closed_new & mu > 0 & slip == 0 & abs(Tst) > mu.*max(N_new,0);
+        q = closed_new & mu > 0 & ~tie & slip == 0 & abs(Tst) > mu.*max(N_new,0);
         slip_new(q) = sign(gt(q) - gs(q));
         q = closed_new & slip ~= 0 & (gt - gt_prev).*slip < 0;
         slip_new(q) = 0;
@@ -1096,7 +1130,17 @@ info.final_violation_force = v;
 info.final_violation_normal = vn;
 info.final_violation_friction = vf;
 info.final_violations = sum((closed_new ~= closed_used) | (slip_new ~= slip_used));
-fl = find(bil);
+% RIS bonded side: tension it carries (a pair that would open if it were
+% unilateral), over the total normal contact force - the "pressed side"
+% assumption holds when this is small
+bond = bil & info.group == 3;
+info.n_cable_bonded = sum(bond);
+% penalty error: interpenetration of the closed pairs (exact contact would
+% give 0), absolute [m]; surr_checks relates it to the minimum jacket
+% thickness
+info.max_penetration = max([0; -gn(closed_used)]);
+info.bond_tension_fraction = sum(max(-N(bond), 0))/max(sum(abs(N(closed))), eps);
+fl = find(info.group == 1);                      % flank (ground) reactions
 Rn = -kp*(ua(fl,1).*n(fl,1) + ua(fl,2).*n(fl,2));
 R = [sum(Rn.*n(fl,1) + Tlast(fl).*t(fl,1)); sum(Rn.*n(fl,2) + Tlast(fl).*t(fl,2))];
 Fapp = [sum(F(1:2:end-1)); sum(F(2:2:end-1))];
@@ -1504,11 +1548,15 @@ c.solve_residual = out.sol.contact.residual;
 c.solve_residual_first = out.sol.contact.residual_first_solve;
 c.force_balance = out.sol.contact.force_balance;
 c.contact_violation_force = out.sol.contact.final_violation_force;
+c.bond_tension_fraction = out.sol.contact.bond_tension_fraction;   % RIS bonded side, informative
+c.penetration_rel = out.sol.contact.max_penetration/min(geo.JT);    % penalty error / min JT, informative
 if ~isempty(out.primary)
     c.solve_residual_primary = out.primary.contact.residual;
     c.solve_residual_first_primary = out.primary.contact.residual_first_solve;
     c.force_balance_primary = out.primary.contact.force_balance;
     c.contact_violation_force_primary = out.primary.contact.final_violation_force;
+    c.bond_tension_fraction = max(c.bond_tension_fraction, out.primary.contact.bond_tension_fraction);
+    c.penetration_rel = max(c.penetration_rel, out.primary.contact.max_penetration/min(geo.JT));
 else
     c.solve_residual_primary = 0; c.force_balance_primary = 0; c.contact_violation_force_primary = 0;
 end

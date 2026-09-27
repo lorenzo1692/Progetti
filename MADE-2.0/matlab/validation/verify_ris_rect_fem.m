@@ -84,6 +84,7 @@ end
 
 function [row, opts] = fixture(name, p)
 opts = struct('verbose', true);
+if isfield(p, 'verify_load_sequence'), opts.load_sequence = p.verify_load_sequence; end
 switch name
     case 'Rect'
         % design point 7 (EM_2D007), as validation/validate_mech_surrogate_2026.m
@@ -125,10 +126,10 @@ function s = contact_line(ci)
 st = ci.step(end);
 s = sprintf(['steps %d, iterations %d, converged %d, last changes %d of %d pairs, dN %.2g, residual %.3g ' ...
     '(first solve %.3g, %d refinement steps), balance %.3g, contact violation force/total normal %.3g ' ...
-    '(normal %.3g, friction %.3g)'], ...
+    '(normal %.3g, friction %.3g), bonded cable pairs %d (tension fraction %.3g), max penetration %.2g mm'], ...
     numel(ci.step), ci.iter, ci.converged, st.n_changes, ci.n_pairs, st.dN, ci.residual, ...
     ci.residual_first_solve, ci.refinement_steps, ci.force_balance, ci.final_violation_force, ...
-    ci.final_violation_normal, ci.final_violation_friction);
+    ci.final_violation_normal, ci.final_violation_friction, ci.n_cable_bonded, ci.bond_tension_fraction, 1e3*ci.max_penetration);
 end
 
 function fprintf_both(fid, varargin)
