@@ -1,0 +1,1025 @@
+<title>MADE 2.0 winding pack TF</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+:root {
+  --bg: #f3f5f7;
+  --surface: #ffffff;
+  --ink: #121820;
+  --ink-2: #435061;
+  --muted: #677382;
+  --rule: #d5dce4;
+  --accent: #0f6d8c;
+  --accent-soft: #e1eff5;
+  --code-bg: #eaeef2;
+  --good: #1d7a3b;
+  --bad: #b3261e;
+  --steel: #8a939c;
+  --case: #c9d0d7;
+  --ins: #9fd3df;
+  --gins: #bde0c6;
+  --cable: #5c8fc8;
+  --filler: #e2cb74;
+  --force: #b3261e;
+  --scl: #0f6d8c;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --grid: #e3e8ed;
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --sans: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0e1215; --surface: #151a1f; --ink: #e5eaef; --ink-2: #b2bdc8; --muted: #8793a0;
+    --rule: #29323a; --accent: #5cb5d6; --accent-soft: #14303b; --code-bg: #1c2329;
+    --good: #5cc07d; --bad: #f07a72;
+    --steel: #7c858e; --case: #3a434b; --ins: #3e7f8e; --gins: #3e6a4a; --cable: #3f6ea6; --filler: #8f7c36;
+    --force: #f07a72; --scl: #5cb5d6; --series-1: #3987e5; --series-2: #d95926; --grid: #232b32;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0e1215; --surface: #151a1f; --ink: #e5eaef; --ink-2: #b2bdc8; --muted: #8793a0;
+  --rule: #29323a; --accent: #5cb5d6; --accent-soft: #14303b; --code-bg: #1c2329;
+  --good: #5cc07d; --bad: #f07a72;
+  --steel: #7c858e; --case: #3a434b; --ins: #3e7f8e; --gins: #3e6a4a; --cable: #3f6ea6; --filler: #8f7c36;
+  --force: #f07a72; --scl: #5cb5d6; --series-1: #3987e5; --series-2: #d95926; --grid: #232b32;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 400 17px/1.62 var(--serif); padding-inline: 16px; }
+a { color: var(--accent); text-underline-offset: 2px; }
+a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+code, .mono { font-family: var(--mono); font-size: 0.86em; }
+code { background: var(--code-bg); padding: 0.08em 0.35em; border-radius: 3px; overflow-wrap: anywhere; }
+.page { max-width: 1180px; margin: 0 auto; padding-block: 40px 80px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 40px; }
+@media (min-width: 1080px) { .page { grid-template-columns: 230px minmax(0, 1fr); } }
+header.top { grid-column: 1 / -1; border-bottom: 1px solid var(--rule); padding-bottom: 28px; display: grid; gap: 10px; }
+.eyebrow { font: 600 13px/1.2 var(--sans); letter-spacing: 0.09em; text-transform: uppercase; color: var(--accent); }
+h1 { font: 700 clamp(30px, 5vw, 46px)/1.08 var(--sans); margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+.lede { font-size: 19px; color: var(--ink-2); max-width: 64ch; margin: 4px 0 0; }
+.meta { font: 500 14px/1.4 var(--sans); color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 18px; }
+nav.toc { font: 500 15px/1.35 var(--sans); }
+nav.toc .toc-inner { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 20px); display: grid; gap: 4px; }
+nav.toc .toc-title { font-weight: 600; font-size: 12px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+nav.toc a { color: var(--ink-2); text-decoration: none; padding: 3px 0 3px 10px; border-left: 2px solid transparent; }
+nav.toc a:hover { color: var(--ink); border-left-color: var(--rule); }
+@media (max-width: 1079px) { nav.toc .toc-inner { position: static; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); } }
+main { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 56px; }
+section { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
+section > * { margin: 0; }
+h2 { font: 700 28px/1.2 var(--sans); text-wrap: balance; display: flex; gap: 12px; align-items: baseline; }
+h2 .num { font: 600 15px/1 var(--mono); color: var(--accent); }
+h3 { font: 600 20px/1.3 var(--sans); margin-top: 14px; text-wrap: balance; }
+p, li { max-width: 68ch; }
+ul, ol { padding-left: 1.3em; display: grid; gap: 6px; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 6px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font: 400 15px/1.45 var(--sans); }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--rule); }
+th { font-weight: 600; color: var(--ink-2); background: var(--accent-soft); font-size: 14px; }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+th.num { white-space: normal; }
+td code { font-size: 0.84em; }
+figure { margin: 0; display: grid; gap: 10px; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 16px; }
+figure svg { width: 100%; height: auto; max-width: 100%; display: block; }
+figcaption { font: 400 14.5px/1.5 var(--sans); color: var(--ink-2); max-width: 80ch; }
+.callout { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 12px 16px; border-radius: 0 6px 6px 0; }
+.callout.bad { border-left-color: var(--bad); }
+.callout p { max-width: 70ch; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font: 600 13px/1 var(--sans); padding: 5px 9px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.chip.good { color: var(--good); }
+.chip.bad { color: var(--bad); }
+.chip.open { color: var(--muted); }
+.kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.kv div { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 12px 14px; display: grid; gap: 4px; }
+.kv .k { font: 600 12px/1.2 var(--sans); letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.kv .v { font: 600 22px/1.2 var(--sans); font-variant-numeric: tabular-nums; }
+.kv .s { font: 400 14px/1.4 var(--sans); color: var(--ink-2); }
+.math-block { overflow-x: auto; padding: 4px 0; }
+pre.mermaid { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 16px; overflow-x: auto; margin: 0; }
+details { min-width: 0; overflow: hidden; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 14px; }
+summary { cursor: pointer; font: 600 15px/1.4 var(--sans); color: var(--ink-2); }
+details[open] summary { margin-bottom: 10px; }
+.legacy { font: 400 14.5px/1.7 var(--mono); color: var(--ink-2); }
+/* figure classes */
+.f-case { fill: var(--case); stroke: var(--steel); stroke-width: 1; }
+.f-gins { fill: var(--gins); }
+.f-turn { fill: var(--cable); stroke: var(--steel); stroke-width: 1.6; }
+.f-steel { fill: var(--steel); }
+.f-ins { fill: var(--ins); }
+.f-cable { fill: var(--cable); }
+.f-filler { fill: var(--filler); }
+.f-force { fill: var(--force); }
+.cellframe { fill: none; stroke: var(--muted); stroke-dasharray: 4 3; stroke-width: 1; }
+.s-flank { stroke: var(--ink-2); stroke-width: 2; }
+.s-scl { stroke: var(--scl); stroke-width: 2.4; stroke-linecap: round; }
+.s-force { stroke: var(--force); stroke-width: 2.5; }
+.s-contact { stroke: var(--bad); stroke-width: 3; stroke-dasharray: 5 3; }
+.roller { fill: var(--surface); stroke: var(--ink-2); stroke-width: 1.2; }
+.lead { stroke: var(--muted); stroke-width: 1; fill: none; }
+.lbl { fill: var(--ink); font: 500 12.5px var(--sans); }
+.lbl.mute { fill: var(--surface); font-weight: 600; }
+.badge { fill: var(--scl); }
+.badge-t { fill: var(--surface); font: 700 10px var(--sans); }
+.peak { fill: var(--surface); stroke: var(--bad); stroke-width: 3; }
+/* chart */
+.chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.chart { position: relative; }
+.chart h4 { margin: 0 0 4px; font: 600 15px/1.3 var(--sans); }
+.chart .sub { font: 400 13px/1.3 var(--sans); color: var(--muted); margin: 0 0 6px; }
+.chart svg text { font-family: var(--sans); }
+.ax-t { fill: var(--muted); font-size: 11px; }
+.ax-l { fill: var(--ink-2); font-size: 11.5px; }
+.gridline { stroke: var(--grid); stroke-width: 1; }
+.baseline { stroke: var(--rule); stroke-width: 1; }
+.ser1 { stroke: var(--series-1); fill: none; stroke-width: 2; }
+.ser2 { stroke: var(--series-2); fill: none; stroke-width: 2; stroke-dasharray: 5 3; }
+.dot1 { fill: var(--series-1); stroke: var(--surface); stroke-width: 2; }
+.dot2 { fill: var(--series-2); stroke: var(--surface); stroke-width: 2; }
+.dlabel { font-size: 11.5px; font-weight: 600; fill: var(--ink-2); }
+.xhair { stroke: var(--muted); stroke-width: 1; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 20px; font: 500 14px/1.2 var(--sans); color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.legend i { display: inline-block; width: 22px; height: 0; border-top: 2px solid; }
+.legend i.l1 { border-color: var(--series-1); }
+.legend i.l2 { border-color: var(--series-2); border-top-style: dashed; }
+.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 8px 10px; font: 400 13px/1.4 var(--sans); box-shadow: 0 4px 16px rgb(0 0 0 / 0.12); min-width: 150px; }
+.tip b { font-weight: 700; font-variant-numeric: tabular-nums; }
+.tip .row { display: flex; align-items: center; gap: 8px; }
+.tip .row i { width: 14px; height: 0; border-top: 2px solid; display: inline-block; }
+.tip .t { color: var(--muted); font-size: 12px; margin-bottom: 3px; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="page">
+<header class="top">
+  <div class="eyebrow">MADE 2.0 · dimensionamento del winding pack TF</div>
+  <h1>Guida al codice e modello meccanico FE</h1>
+  <p class="lede">A cosa serve ogni funzione del tool MATLAB, come si collegano, e come funzionano nel dettaglio — teoria compresa — il modello elettromagnetico del campo discreto, il conduttore CICC e il modello meccanico FE 2D che verifica la soluzione scelta contro ANSYS. Include la risposta alla revisione del codice (punti C00–C08).</p>
+  <div class="meta"><span>Settembre 2026 · aggiornato il 27/09</span><span>Branch <code>claude/code-improvement-3cmng0</code></span><span>Cartella <code>MADE-2.0/matlab</code></span></div>
+</header>
+
+<nav class="toc" aria-label="Indice">
+  <div class="toc-inner">
+    <div class="toc-title">Indice</div>
+    <a href="#sintesi">Sintesi</a>
+    <a href="#novita">Novità di questa versione</a>
+    <a href="#s1">1 · Cosa fa il codice</a>
+    <a href="#s2">2 · Come si usa</a>
+    <a href="#s3">3 · Mappa delle funzioni</a>
+    <a href="#s4">4 · Strutture dati</a>
+    <a href="#s5">5 · La scansione</a>
+    <a href="#s6">6 · Modello elettromagnetico</a>
+    <a href="#s7">7 · Il conduttore CICC</a>
+    <a href="#s8">8 · Modello meccanico FE</a>
+    <a href="#s9">9 · Validazione</a>
+    <a href="#s10">10 · Revisione C00–C08</a>
+    <a href="#s11">11 · Limiti e punti aperti</a>
+  </div>
+</nav>
+
+<main>
+
+<section id="sintesi">
+  <h2>Sintesi</h2>
+  <p>Il tool esplora migliaia di configurazioni del winding pack con modelli analitici veloci, poi verifica la soluzione scelta con modelli accurati: campo magnetico discreto, transitorio di hot spot e un <strong>modello a elementi finiti 2D</strong> della sezione della gamba interna, validato su due analisi ANSYS.</p>
+  <div class="kv">
+    <div><span class="k">Campo di picco</span><span class="v">−0.04%</span><span class="s">14.476 contro 14.482 T del FEM (design 7)</span></div>
+    <div><span class="k">Sforzi linearizzati jacket</span><span class="v">0.99–1.01</span><span class="s">rapporto medio FE/FEM, ±4–7%, su ~1400 sezioni per caso</span></div>
+    <div><span class="k">Picco nel raccordo</span><span class="v">−11…+5%</span><span class="s">per layer; massimo globale −6/−9%</span></div>
+    <div><span class="k">Nose e vault del case</span><span class="v">−5…−1%</span><span class="s">sforzo di membrana sulle linee di classificazione</span></div>
+  </div>
+  <div class="callout bad">
+    <p><span class="chip bad">✕ Design 7 non soddisfa il criterio primario</span></p>
+    <p>Con la classificazione introdotta dopo la revisione (carico primario = Lorentz + assiale, raffreddamento = secondario), il jacket del design 7 ha P<sub>m</sub>+P<sub>b</sub> primario = 1107 MPa, cioè 1.11 × 1.5 S<sub>m</sub> con S<sub>m</sub> = 667 MPa, da confermare. Con tutti i carichi è 882 MPa, ben sotto 3 S<sub>m</sub>. Senza il serraggio del raffreddamento le pareti del jacket portano il carico di Lorentz in flessione.</p>
+  </div>
+</section>
+
+<section id="novita">
+  <h2>Novità di questa versione</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Tema</th><th>Cosa è cambiato</th><th>Dove</th></tr></thead>
+    <tbody>
+      <tr><td>Conduttore RIS (round-in-square)</td><td>La forma del conduttore (<code>shape_cable</code>: 200 RIS, 201 Rect) è salvata con la soluzione e letta da tutte le fasi a valle: plot, campo, FEM, export ANSYS, modulo 3D. Prima un RIS veniva ricostruito come rettangolo. Nel FEM il cavo RIS è un cerchio in un jacket quadrato raccordato, con spessore variabile e il lato caricato sempre a contatto.</td><td>§7.5, §8.4–8.7</td></tr>
+      <tr><td>Campo di picco nella scansione</td><td>I grade sono dimensionati sul picco reale del modello discreto (validato su ANSYS), iterando tra dimensionamento e campo. Il fattore costante <code>corr_B_WP</code> sottostimava il picco di 1–2 T.</td><td>§5, §6.7–6.8</td></tr>
+      <tr><td>Residuo del FEM</td><td>Cholesky su matrice scalata (Jacobi) con raffinamento iterativo; penalità riferita alla rigidezza elastica. Residuo da ~10<sup>−6</sup> a ~10<sup>−9</sup>, senza cambiare le soglie.</td><td>§8.8</td></tr>
+      <tr><td>Coerenza dello stato di contatto</td><td>Nuovo controllo: le coppie che cambierebbero stato sulla soluzione restituita devono portare meno del 2% della forza normale. L'iterazione di contatto converge solo se è soddisfatto.</td><td>§8.7, §8.9</td></tr>
+      <tr><td>FEM non valido</td><td>I plot restano, ma con un banner rosso “NOT VALIDATED” e l'avviso di non usare la figura di merito.</td><td>§8.9</td></tr>
+      <tr><td>Verifica riproducibile RIS/Rect</td><td><code>verify_ris_rect_fem(p, cartella)</code>: selezione della forma, geometria, aree, materiali, Jacobiani, contatti, risultanti, residui e figure (sezione, GPS, zoom sul conduttore).</td><td>§2, §9</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s1">
+  <h2><span class="num">1</span>Cosa fa il codice</h2>
+  <p>Dato un file Excel con i parametri della macchina, il codice:</p>
+  <ol>
+    <li><strong>esplora</strong> tutte le combinazioni ammissibili di spessore laterale del case × numero di layer × turn per layer;</li>
+    <li>per ogni combinazione <strong>dimensiona</strong> il conduttore CICC di ogni grade (superconduttore, rame, hot spot), il jacket e il nose del case con modelli analitici;</li>
+    <li><strong>salva</strong> tutte le soluzioni fattibili, le mostra e fa scegliere quella da approfondire;</li>
+    <li>sulla soluzione scelta esegue le <strong>verifiche di dettaglio</strong>: sezione, campo reale, transitorio di hot spot, equilibrio meccanico FE ed eventuale export in ANSYS.</li>
+  </ol>
+  <p>Il principio è a due livelli: modelli analitici rapidi nella scansione, modelli accurati e validati solo sulla soluzione scelta.</p>
+  <pre class="mermaid">
+flowchart TD
+    X[input/WP_TF_input_template.xlsx] --> A[io/read_machine_input]
+    A -->|p| B[physics/compute_operating_params]
+    B -->|g| C[physics/wp_envelope]
+    C -->|env| D[search/generate_combinations]
+    D -->|combT| E[search/scan_wp_designs]
+    E -.->|per ogni grade| F[cicc + heat_balance_cicc_ode]
+    E -.->|per ogni layer| G[size_cicc_cable]
+    E -.->|per ogni candidato| H[size_case_vault]
+    E -->|DATA| I[salva .xlsx + .mat]
+    I --> J[browse_solutions]
+    J -->|sel_idx| K[plot_solution]
+    K --> L[plot_wp_section / plot_wp_section_bfield]
+    L --> M[plot_wp_diagnostics]
+    M --> N[plot_hotspot_transient]
+    N --> O[wp_mech_surrogate + plot_wp_mech_surrogate]
+    O --> P[export_ansys_input]
+  </pre>
+</section>
+
+<section id="s2">
+  <h2><span class="num">2</span>Come si usa</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Scenario</th><th>Cosa lanciare</th><th>Note</th></tr></thead>
+    <tbody>
+      <tr><td>Nuova macchina o nuova scansione</td><td><code>main_WP_TF_design</code></td><td>Chiede il file Excel e lo fa rivedere, scansiona con barra di avanzamento, salva <code>&lt;tag&gt;_results_&lt;data&gt;.xlsx</code> + <code>.mat</code>, fa scegliere la soluzione, produce i plot, chiede se eseguire il modello meccanico FE e l'export ANSYS.</td></tr>
+      <tr><td>Rivedere una soluzione salvata</td><td><code>[row,p] = load_design_point(file, idx)</code></td><td>Poi le funzioni di plot o <code>wp_mech_surrogate(row,p)</code>. Usa il <code>.mat</code> gemello se presente.</td></tr>
+      <tr><td>Configurazione manuale, senza scansione</td><td><code>postprocess/plot_wp_section_manual_example.m</code></td><td>Turn, layer e dimensioni scritti a mano; il conduttore di ogni grade è dimensionato con <code>cicc</code>; esegue tutti i plot e il modello FE.</td></tr>
+      <tr><td>Verifica RIS / Rect (geometria, mesh, contatti, residui)</td><td><code>R = verify_ris_rect_fem(p, 'verify_out')</code></td><td>Un caso Rect (design 7) e uno RIS dimensionato con <code>size_cicc_cable</code>; scrive <code>verify_ris_rect_report.txt</code> e le figure sezione, GPS e zoom sul conduttore. La forma è presa dalla riga, con <code>p.shape_cable</code> volutamente opposto per provarlo.</td></tr>
+      <tr><td>Scansione con il vecchio campo spalmato</td><td><code>p.field_model = 'smeared'</code> prima di <code>scan_wp_designs</code></td><td>Solo per confronto: riproduce il comportamento precedente.</td></tr>
+      <tr><td>Validazione contro FEM</td><td><code>validation/validate_mech_surrogate_2026.m</code></td><td>Confronto con le due analisi ANSYS e bande di accettazione esplicite: termina con PASS o con un errore.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Per progettare un'altra macchina non si modifica il codice: si copia <code>input/WP_TF_input_template.xlsx</code>, si cambiano i valori nella colonna <em>Value</em> e si punta il main a quel file. Tutti gli 80 parametri indipendenti sono lì, divisi per categoria.</p>
+</section>
+
+<section id="s3">
+  <h2><span class="num">3</span>Mappa delle funzioni</h2>
+  <h3>Punto di ingresso e input</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Funzione</th><th>A cosa serve</th></tr></thead>
+    <tbody>
+      <tr><td><code>main_WP_TF_design.m</code></td><td>Script principale: esegue l'intera catena. Non contiene parametri, tutto viene dall'Excel.</td></tr>
+      <tr><td><code>io/read_machine_input</code></td><td>Legge il foglio <em>Input</em> (colonne Name/Value) e crea la struct <code>p</code> con un campo per parametro. Verifica che i parametri obbligatori ci siano e siano numerici.</td></tr>
+    </tbody>
+  </table></div>
+  <h3><code>physics/</code> – modelli fisici</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Funzione</th><th>A cosa serve</th><th>Usata da</th><th>Teoria</th></tr></thead>
+    <tbody>
+      <tr><td><code>compute_operating_params</code></td><td>Grandezze comuni a tutti i candidati: raggi della gamba interna ed esterna, corrente totale <code>NI</code>, campo di picco spalmato, fattori del modello a guscio (<code>k_bf</code>, <code>r_bf</code>), tempo di scarica limitato dal vessel.</td><td>main, modello FE</td><td>§5, §6.7</td></tr>
+      <tr><td><code>wp_envelope</code></td><td>Inviluppo del WP: larghezza del case, intervallo dello spessore laterale, limiti su turn per layer e numero di layer della scansione.</td><td>main</td><td>§5</td></tr>
+      <tr><td><code>size_cicc_cable</code></td><td>Dimensiona la sezione CICC di un layer: aumenta lo spessore del jacket finché la tensione radiale analitica scende sotto l'ammissibile. Raccordo del cavo r<sub>SC</sub> = JT limitato a [r<sub>SC,min</sub>, r<sub>SC,max</sub>].</td><td>scan</td><td>§7.4</td></tr>
+      <tr><td><code>size_case_vault</code></td><td>Dimensiona lo spessore del nose finché vault e jacket più interno rispettano gli ammissibili (modello a rigidezze accoppiate WP/case).</td><td>scan</td><td>§7.5</td></tr>
+      <tr><td><code>compute_discrete_field_profile</code></td><td>Campo reale su ogni turn: cavi arrotondati a corrente uniforme (Biot–Savart analitico, auto-campo incluso), altre bobine come filamenti; picco cercato sul contorno del cavo.</td><td>plot di campo, diagnostica</td><td>§6.6</td></tr>
+      <tr><td><code>wp_turn_geometry</code></td><td>Unica fonte della geometria di un turn (cella, jacket, cavo, aree) per Rect e RIS. La forma viene dalla riga (<code>row.shape_cable</code>), da <code>p</code> solo se la riga non la porta; codici diversi da 200/201 e RIS con cella non quadrata danno errore.</td><td>plot, campo, FEM, export, 3D</td><td>§7.5</td></tr>
+      <tr><td><code>wp_peak_field_fast</code></td><td>Picco di campo per layer con lo stesso modello discreto, valutato solo dove il picco può stare (turn di bordo, vicino al bordo, centrale; 48 punti sul contorno). Scarto ≤ 0.09 T dal profilo completo, circa 10 volte più veloce.</td><td>scan</td><td>§6.8</td></tr>
+      <tr><td><code>wp_field_at_points</code></td><td>Stesso modello di campo in punti arbitrari (forze di Lorentz del modello FE).</td><td>modello FE</td><td>§6.2–6.5</td></tr>
+      <tr><td><code>wp_mech_surrogate</code></td><td>Modello a elementi finiti 2D autonomo della sezione, con controlli di validità e figura di merito classificata.</td><td>main passo 5b, esempio manuale, validazione</td><td>§8</td></tr>
+    </tbody>
+  </table></div>
+  <h3><code>search/</code> – scansione</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Funzione</th><th>A cosa serve</th></tr></thead>
+    <tbody>
+      <tr><td><code>generate_combinations</code></td><td>Per ogni numero di layer ammesso genera le combinazioni "stessi turn in ogni layer" compatibili con l'intervallo di corrente.</td></tr>
+      <tr><td><code>scan_wp_designs</code></td><td>Il cuore della scansione (§5). Restituisce la tabella <code>DATA</code>, una riga per soluzione fattibile, e stampa l'avanzamento. Funzioni interne: <code>pick_jump_grades</code>, <code>pick_E_cbl</code>, <code>size_grade_cable</code>, <code>format_hms</code>.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Conduttore (radice della cartella)</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Funzione</th><th>A cosa serve</th><th>Teoria</th></tr></thead>
+    <tbody>
+      <tr><td><code>cicc</code></td><td>Dimensiona un grade al campo B: sceglie il superconduttore (Nb<sub>3</sub>Sn; NbTi sotto 6 T; REBCO; ibrido HTS sopra 15 T), calcola <code>N_Sc = ceil(Iop/Ic)</code> e cerca per bisezione il rame <code>N_Cu</code> che porta l'hot spot al limite (250 K LTS, 150 K HTS, dall'Excel).</td><td>§7.1–7.2</td></tr>
+      <tr><td><code>cicc_params</code></td><td>Costanti del conduttore condivise da <code>cicc</code> e dal plot di hot spot.</td><td>§7</td></tr>
+      <tr><td><code>heat_balance_cicc_ode</code></td><td>ODE adiabatica di hot spot dopo un quench; restituisce THS e, se richiesta, la storia T(t).</td><td>§7.3</td></tr>
+      <tr><td><code>Ic_Nb3Sn</code>, <code>Ic_NbTi</code>, <code>Ic_sst33</code>, <code>jc_ybco</code></td><td>Leggi di corrente critica degli strand e dei tape usate da <code>cicc</code>.</td><td>§7.1</td></tr>
+    </tbody>
+  </table></div>
+  <h3><code>postprocess/</code> – risultati, plot, export</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Funzione</th><th>A cosa serve</th></tr></thead>
+    <tbody>
+      <tr><td><code>browse_solutions</code></td><td>Tabella di tutte le soluzioni e scatter cliccabile; restituisce l'indice scelto.</td></tr>
+      <tr><td><code>plot_solution</code></td><td>Evidenzia la soluzione sulla popolazione, stampa la riga, salva PNG ed Excel della riga.</td></tr>
+      <tr><td><code>plot_wp_section</code>, <code>plot_wp_section_bfield</code></td><td>Sezione WP + case; la seconda colora ogni cavo con il campo di picco reale.</td></tr>
+      <tr><td><code>plot_wp_diagnostics</code></td><td>Per layer: campo spalmato contro discreto, densità di corrente.</td></tr>
+      <tr><td><code>plot_hotspot_transient</code></td><td>Curva T(t) dell'hot spot per ogni grade con limiti e riquadro riassuntivo.</td></tr>
+      <tr><td><code>plot_wp_mech_surrogate</code></td><td>Mappa di Tresca della sezione, zoom sul WP, sforzi del jacket per layer contro S<sub>m</sub>; stampa controlli e figura di merito.</td></tr>
+      <tr><td><code>draw_turn_section</code></td><td>Disegna un turn con la sua forma reale (cavo rettangolare raccordato o circolare).</td></tr>
+      <tr><td><code>plot_conductor_zoom</code></td><td>Zoom della mesh FE su un turn: materiali, lati curvi, contorni analitici di cavo e jacket, nodi di contatto.</td></tr>
+      <tr><td><code>load_design_point</code></td><td>Ricarica una soluzione salvata dal <code>.mat</code> o dall'<code>.xlsx</code>.</td></tr>
+      <tr><td><code>export_ansys_input</code></td><td>Scrive il file parametri APDL che rigenera in ANSYS la geometria della soluzione.</td></tr>
+    </tbody>
+  </table></div>
+  <h3><code>validation/</code> – confronti con ANSYS</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>File</th><th>A cosa serve</th></tr></thead>
+    <tbody>
+      <tr><td><code>verify_ris_rect_fem.m</code></td><td>Verifica riproducibile RIS/Rect di geometria, mesh e FEM, con report e figure.</td></tr>
+      <tr><td><code>validate_mech_surrogate_2026.m</code></td><td>Modello FE contro le due analisi ANSYS, con bande di accettazione e esito PASS/FAIL.</td></tr>
+      <tr><td><code>validate_TF_FEM_design7_2026.m</code>, <code>validate_TF_FEM_benchmark_2026.m</code></td><td>Confronto dei modelli analitici della scansione e del campo con il FEM.</td></tr>
+      <tr><td><code>forward_eval_wp_stress.m</code></td><td>Formule analitiche di jacket e case a geometria fissata.</td></tr>
+      <tr><td><code>tools/</code></td><td>Script Python di estrazione dei riferimenti dagli export ANSYS, con README.</td></tr>
+      <tr><td><code>TF_FEM_benchmark_2026_findings.md</code></td><td>Diario dei confronti con i numeri.</td></tr>
+    </tbody>
+  </table></div>
+  <details>
+    <summary>File legacy, non usati dalla pipeline attuale</summary>
+    <p class="legacy">WP_TF_*_Design_*.m · WP_TF_Esplorazione.m · PLOT_TF_*.m · Plot_WP_TF.m · CICC_CEFTR.m · CICC_DEMO.m · Ths_TF_Nb3Sn.m · Jc_REBCO.m · Ic_NbTi_TF.m · scf.m · xbr.m · xbz.m · xlm.m · xlsheet.m · ColorQuiver.m</p>
+  </details>
+</section>
+
+<section id="s4">
+  <h2><span class="num">4</span>Strutture dati</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Nome</th><th>Creata da</th><th>Contenuto</th></tr></thead>
+    <tbody>
+      <tr><td><code>p</code></td><td><code>read_machine_input</code></td><td>Tutti i parametri dell'Excel.</td></tr>
+      <tr><td><code>g</code></td><td><code>compute_operating_params</code></td><td>Grandezze derivate: <code>RTFi</code>, <code>RTFo</code>, <code>NI</code>, <code>B_PHI_TF</code>, <code>k_bf</code>, <code>r_bf</code>, <code>Tau_discharge1</code>.</td></tr>
+      <tr><td><code>env</code></td><td><code>wp_envelope</code></td><td>Larghezza del case, intervallo dello spessore laterale, combinazioni di turn e layer.</td></tr>
+      <tr><td><code>combT</code></td><td><code>generate_combinations</code></td><td>Per ogni numero di layer, matrice delle combinazioni di turn.</td></tr>
+      <tr><td><code>DATA</code></td><td><code>scan_wp_designs</code></td><td>Una riga per soluzione fattibile. Colonne scalari (<code>S_T_VT</code>, <code>S_T_JT</code>, <code>Iop</code>, <code>Ri_</code>, <code>Rk_</code>, <code>Tau_discharge</code>, …) e colonne-array con una voce per layer (<code>n_turns</code>, <code>type_cable</code>, <code>Cond_w</code>, <code>Cond_h</code>, <code>JT</code>, <code>N_Sc</code>, <code>N_Cu</code>, <code>THS</code>, <code>B_grade</code>, …). Nuove: <code>shape_cable</code> (200 RIS / 201 Rect), <code>B_peak</code> (picco discreto sul conduttore), <code>B_peak_layers</code> (picco per layer), <code>field_iter</code> (passate dimensionamento/campo).</td></tr>
+      <tr><td><code>row</code></td><td><code>DATA(idx,:)</code> o struct a mano</td><td>Una soluzione: è l'input di tutte le funzioni di postprocess e del modello FE.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Convenzione geometrica, uguale al FEM: <strong>x toroidale, y radiale</strong>, asse macchina nell'origine, bobina analizzata sull'asse +y; il layer 1 è quello lato plasma.</p>
+</section>
+
+<section id="s5">
+  <h2><span class="num">5</span>La scansione, passo per passo</h2>
+  <p>Per ogni spessore laterale del case e ogni combinazione di turn per layer, <code>scan_wp_designs</code>:</p>
+  <ol>
+    <li><strong>Corrente</strong>: <code>Iop = ceil(NI / turn totali)</code>; scarta se fuori da [Iop<sub>min</sub>, Iop<sub>max</sub>].</li>
+    <li><strong>Campo per layer, prima stima</strong>: B<sub>k</sub> = B<sub>TF</sub> · (turn dal layer k verso l'interno) / (turn totali), legge di Ampère per gusci continui, con B<sub>TF</sub> = Ampère × <code>corr_B_WP</code>. È solo il punto di partenza del ciclo campo/dimensionamento (passo 10).</li>
+    <li><strong>Induttanza e tempo di scarica</strong>: modello a guscio; τ = max(τ<sub>vessel</sub>, L·Iop/V<sub>max</sub>, 4 s).</li>
+    <li><strong>Grades</strong>: <code>pick_jump_grades</code> sceglie dove inizia ogni grade; <code>cicc</code> dimensiona il conduttore al campo massimo sui layer del grade, salvato in <code>B_grade</code>.</li>
+    <li><strong>Sezione di ogni layer</strong>: <code>size_cicc_cable</code> cresce JT finché
+      <div class="math-block">\[ \sigma_{rm} = p_{rs}\,\frac{w-2t_{ins}}{2\,JT}\,\frac{K_{jckt}}{K_{e,rad}} + \sigma_{z,JT} \le \frac{S_{amm,JT}}{s_{membrane}}, \qquad p_{rs}=\frac{B_{TF}^2}{2\mu_0} \]</div>
+      Se un layer non entra nel case con il gap toroidale minimo si tolgono 2 turn, che vengono aggiunti come layer in fondo.</li>
+    <li><strong>Verifiche geometriche e di hot spot</strong>: larghezza minima del cavo, rapporto d'aspetto, JT minimo, THS entro il limite del tipo.</li>
+    <li><strong>Jacket su tutti i layer</strong>, con <code>SCF_transition_provisional</code> = 3.15 sui layer adiacenti a un cambio di grade (calibrazione su un solo FEM).</li>
+    <li><strong>Case</strong>: <code>size_case_vault</code> cresce il nose finché vault e jacket rispettano gli ammissibili.</li>
+    <li><strong>Accettazione meccanica</strong>: <code>S_T_VT &lt; S_amm_VT</code> e <code>S_T_JT &lt; S_amm_JT</code> (il confronto del vault con l'ammissibile del jacket era un bug, corretto dopo la revisione).</li>
+    <li><strong>Campo reale e ridimensionamento</strong> (<code>p.field_model = 'discrete'</code>, default): sul candidato dimensionato che ha passato tutti i controlli, <code>wp_peak_field_fast</code> calcola il picco reale di ogni layer. Se il picco di un grade differisce dal campo con cui è stato dimensionato di più di <code>field_tol</code> (0.05 T), o un layer lo supera, i passi 4–9 si ripetono con il campo reale di ogni grade, fino a <code>field_max_iter</code> passate (6). Un candidato che non converge è scartato e il numero dei candidati scartati viene stampato. Un candidato che fallisce un controllo in una passata è scartato subito: con un campo più alto i cavi crescono e i controlli peggiorano.</li>
+  </ol>
+  <pre class="mermaid">
+flowchart LR
+    A[campo per grade 1a passata: Ampère x corr_B_WP] --> B[cicc + size_cicc_cable + size_case_vault]
+    B --> C{controlli: geometria, THS, jacket, vault}
+    C -->|falliti| X[scartato]
+    C -->|ok| D[wp_peak_field_fast picco per layer]
+    D --> E{picco ≈ campo di dimensionamento entro 0.05 T?}
+    E -->|sì| F[accettato B_peak, field_iter]
+    E -->|no| A
+  </pre>
+  <div class="callout">
+    <p><strong>Cosa dice la validazione su questi modelli analitici.</strong> Il campo spalmato sottostimava il picco reale del 7% sul primo grade e fino al 44% sui grade interni: nel design 7 i conduttori dei grade interni avrebbero avuto I<sub>c</sub> effettiva di 0.53–0.64·Iop. Questo è ora corretto dal passo 10. La formula analitica del jacket resta invece approssimata: la verifica meccanica della soluzione scelta va fatta con il modello FE.</p>
+  </div>
+</section>
+
+<section id="s6">
+  <h2><span class="num">6</span>Modello elettromagnetico</h2>
+  <p>Il campo che alimenta la forza di Lorentz nel modello meccanico (§8.6) e che determina la corrente critica del conduttore (§7.2) non è quello "spalmato" usato nella scansione (§5), ma un calcolo magnetostatico 2D esatto, nell'idealizzazione con cui è costruito anche il FEM: conduttori rettilinei infiniti lungo z. Le funzioni sono <code>physics/wp_field_at_points.m</code> (il motore di campo) e <code>physics/compute_discrete_field_profile.m</code> (il suo uso per riportare il picco su ogni turn).</p>
+
+  <h3>6.1 Il problema: magnetostatica 2D con correnti rettilinee</h3>
+  <p>Ogni turn della bobina TF, sulla sezione della gamba interna, porta una corrente I diretta lungo l'asse z della macchina (perpendicolare al piano della sezione). Per un insieme di conduttori paralleli infiniti, la legge di Ampère in forma locale \( \nabla\times\mathbf B=\mu_0\mathbf J \) con J diretta solo lungo z ammette una soluzione 2D: B giace nel piano xy, è perpendicolare in ogni punto al vettore che lo separa dalla sorgente, e ogni sorgente contribuisce per sovrapposizione (il problema è lineare). Questa è esattamente l'idealizzazione di deformazione piana generalizzata usata anche nel modello meccanico: stessa geometria, stessa assunzione "infinitamente lungo lungo z".</p>
+  <p>Il campo totale in un punto è la somma di due contributi: quello dei turn della bobina 1 (quella analizzata, dove serve il dettaglio) e quello delle altre n<sub>TF</sub>−1 bobine, identiche ma ruotate di multipli di 2π/n<sub>TF</sub> attorno all'asse macchina.</p>
+
+  <h3>6.2 Il filo infinito: legge di Biot–Savart 2D</h3>
+  <p>Per un filo infinito che porta corrente I in (x<sub>0</sub>,y<sub>0</sub>), il campo nel punto (x,y) è tangente al cerchio di raggio d = |r − r<sub>0</sub>| centrato sul filo, di modulo μ<sub>0</sub>I/(2πd):</p>
+  <div class="math-block">\[ B_x=-\frac{\mu_0 I}{2\pi}\,\frac{y-y_0}{d^2},\qquad B_y=\frac{\mu_0 I}{2\pi}\,\frac{x-x_0}{d^2},\qquad d^2=(x-x_0)^2+(y-y_0)^2 \]</div>
+  <p>È la formula usata per le altre n<sub>TF</sub>−1 bobine: sono abbastanza lontane (raggio della bobina analizzata contro raggio macchina) che il filamento è un'approssimazione più che sufficiente — la sezione reale del cavo, vista da lì, è un dettaglio invisibile.</p>
+
+  <h3>6.3 Il rettangolo a corrente uniforme: perché serve una formula chiusa</h3>
+  <p>Per i turn della bobina 1 il filamento non basta: il punto di valutazione è spesso <em>dentro</em> o a ridosso del cavo stesso (per trovare il picco di auto-campo, che vale circa 1 T per un cavo da 60 kA — non trascurabile). Serve il campo di una distribuzione di corrente reale, non puntiforme. <code>wp_field_at_points.m</code> tratta ogni cavo come un blocco rettangolare [x<sub>1</sub>,x<sub>2</sub>]×[y<sub>1</sub>,y<sub>2</sub>] a densità di corrente J uniforme, e integra il filamento elementare J·dx'·dy' su tutta l'area:</p>
+  <div class="math-block">\[ B_y(x,y)=\frac{\mu_0 J}{2\pi}\int_{y_1}^{y_2}\!\!\int_{x_1}^{x_2}\frac{x-x'}{(x-x')^2+(y-y')^2}\,dx'\,dy' \]</div>
+  <p>e l'analoga per B<sub>x</sub>. L'integrale doppio ha primitiva chiusa: definendo</p>
+  <div class="math-block">\[ G(u,v)=\tfrac12\,v\,\ln(u^2+v^2)+u\arctan\frac{v}{u} \]</div>
+  <p>(antiderivata di arctan(v/u) rispetto a u, ottenuta per parti — è la stessa funzione che compare nel calcolo del campo di una spira busbar rettangolare), il campo del blocco è la somma con segno ai quattro angoli:</p>
+  <div class="math-block">\[ B_y=\frac{\mu_0 J}{2\pi}\big[G(u_a,v_a)-G(u_a,v_b)-G(u_b,v_a)+G(u_b,v_b)\big],\quad B_x=-\frac{\mu_0 J}{2\pi}\big[G(v_a,u_a)-G(v_b,u_a)-G(v_a,u_b)+G(v_b,u_b)\big] \]</div>
+  <div class="math-block">\[ u_{a,b}=x-x_{1,2},\qquad v_{a,b}=y-y_{1,2} \]</div>
+  <p>Nessuna integrazione numerica: la funzione locale <code>G(u,v)</code> in <code>wp_field_at_points.m</code> implementa esattamente questa primitiva (con i limiti u→0 e v→0 gestiti a parte, dove i due addendi si annullano singolarmente). Il costo è quello di un'espressione analitica, quindi trascurabile anche chiamata su migliaia di punti per ogni passo di carico del modello FE.</p>
+
+  <h3>6.4 La sezione reale del cavo: scomposizione in rettangoli</h3>
+  <p>Il cavo non è un rettangolo pieno: ha gli angoli arrotondati con raggio r (il raccordo r<sub>SC</sub>, lo stesso del jacket, §7.5). La sua area è <code>A = w·h − (4−π)·r²</code> (un rettangolo pieno meno i quattro angoli quadrati r×r, sostituiti da quarti di cerchio) e la densità di corrente uniforme è J = I<sub>op</sub>/A. <code>wp_field_at_points.m</code> lo scompone <strong>esattamente</strong> in rettangoli, così può riusare la formula chiusa di §6.3 senza approssimare la geometria:</p>
+  <ul>
+    <li>una <strong>croce centrale</strong>: un rettangolo pieno (w−2r)×h, più due rettangoli laterali r×(h−2r) — insieme coprono tutto il cavo tranne i quattro angoli;</li>
+    <li>per ognuno dei quattro <strong>quarti di cerchio</strong> tagliati via, una scaletta di n<sub>s</sub> = 8 strisce orizzontali ad <strong>area preservata</strong>: per la banda di altezza [y<sub>k</sub>,y<sub>k+1</sub>] la larghezza è</li>
+  </ul>
+  <div class="math-block">\[ w_k=\frac{F(y_{k+1})-F(y_k)}{y_{k+1}-y_k},\qquad F(y)=\int_0^y\!\sqrt{r^2-\eta^2}\,d\eta=\tfrac12\Big(y\sqrt{r^2-y^2}+r^2\arcsin\tfrac{y}{r}\Big) \]</div>
+  <p>F(y) è la primitiva del profilo del cerchio: F(y<sub>k+1</sub>)−F(y<sub>k</sub>) è esattamente l'area sotto l'arco di cerchio tra le due quote, quindi ogni striscia rettangolare porta esattamente la stessa corrente della fetta di quarto di cerchio che sostituisce. La corrente totale è quindi conservata a macchina di precisione (per costruzione, non per convergenza di un integratore), e lo scarto rispetto al vero contorno arrotondato resta piccolo perché il campo generato da una striscia sottile a distanza finita dipende poco dalla sua forma esatta. In tutto: 1 rettangolo centrale + 2 laterali + 4×8 = 32 strisce d'angolo = <strong>35 sotto-rettangoli per cavo</strong>.</p>
+  <div class="callout">
+    <p><strong>Controllo di correttezza.</strong> A grande distanza il campo di questa scomposizione deve tendere a quello di un filamento con la stessa corrente totale (il campo "vede" solo la corrente netta, non la sua distribuzione interna). Il rapporto misurato è 1.000001: la corrente è conservata.</p>
+  </div>
+
+  <h3>6.5 <code>wp_field_at_points.m</code>: assemblaggio del campo totale</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Input</th><th>Significato</th></tr></thead>
+    <tbody>
+      <tr><td><code>px, py</code></td><td>Punti di valutazione (qualunque forma), nel sistema della bobina 1.</td></tr>
+      <tr><td><code>xc, yc, w, h, r</code></td><td>Centro, dimensioni e raggio di raccordo di ogni cavo della bobina 1.</td></tr>
+      <tr><td><code>I, n_TF</code></td><td>Corrente per turn (uguale in ogni cavo e ogni bobina) e numero di bobine.</td></tr>
+    </tbody>
+  </table></div>
+  <p>La funzione costruisce prima la lista di tutti i sotto-rettangoli <code>R = [x y w h corrente]</code> di §6.4 per tutti i cavi della bobina 1, poi somma su ognuno il contributo di §6.3 (bobina 1, <strong>con auto-campo</strong>) e per le altre n<sub>TF</sub>−1 bobine somma il contributo filamento di §6.2, con i centri dei cavi ruotati di (c−1)·2π/n<sub>TF</sub>. Restituisce B<sub>x</sub>, B<sub>y</sub> nello stesso sistema. È la stessa funzione usata sia per il profilo di campo dei turn (§6.6) sia per la forza di Lorentz del modello FE (§8.6): un solo modello di campo per tutto il tool.</p>
+
+  <h3>6.6 <code>compute_discrete_field_profile.m</code>: il picco su ogni turn</h3>
+  <p>Data una soluzione (<code>row</code>), per ogni turn la funzione ricostruisce cavo, jacket e raccordo con la stessa ricorsione geometrica della scansione (§5), poi cerca il campo di picco — quello che degrada davvero la corrente critica del conduttore — su un insieme di punti che copre sia il contorno (dove cade il massimo dell'auto-campo, vicino agli angoli rivolti verso i vicini) sia l'interno:</p>
+  <ul>
+    <li><strong>48 punti sul contorno arrotondato</strong> del cavo, campionati a passo costante in ascissa curvilinea (funzione locale <code>rr_outline</code>: perimetro <code>L = 2(w−2r) + 2(h−2r) + 2πr</code>, poi i quattro lati dritti e i quattro raccordi in sequenza, con l'indice del centro del raccordo corretto — un bug di questo tipo era stato trovato e risolto durante lo sviluppo);</li>
+    <li>una <strong>griglia interna 3×3</strong> (angoli, centri lato, centro), per completezza — il massimo cade quasi sempre sul contorno, ma il controllo non costa nulla.</li>
+  </ul>
+  <p>Il picco per turn è il massimo su questi 57 punti. La funzione restituisce anche <code>B_smooth</code> (il modello a guscio della scansione, §6.7) per calcolare il <em>ripple</em> B<sub>discrete</sub>/B<sub>smooth</sub>, cioè quanto il modello veloce sottostima il campo vero.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Grandezza</th><th class="num">Design 7</th><th class="num">Benchmark</th></tr></thead>
+    <tbody>
+      <tr><td>Campo di picco, modello discreto</td><td class="num">14.476 T</td><td class="num">13.488 T</td></tr>
+      <tr><td>Campo di picco, FEM ANSYS</td><td class="num">14.482 T</td><td class="num">13.489 T</td></tr>
+      <tr><td>Forza di Lorentz per turn (dal campo discreto) contro i carichi ANSYS</td><td class="num" colspan="2">entro 0.03%</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>6.7 Perché il modello a guscio sottostima il picco</h3>
+  <p>Durante la scansione (§5), per non ripetere questo calcolo su ogni candidato, il campo per layer è quello di un guscio cilindrico continuo di corrente (legge di Ampère integrale su un percorso circolare che racchiude solo i turn "più interni" del layer k rispetto al punto considerato):</p>
+  <div class="math-block">\[ B_k = B_{TF}\cdot\frac{n_{spire}(k)}{n_{spire}(1)},\qquad n_{spire}(k)=\sum_{j\ge k} n_{turns}(j) \]</div>
+  <p>Questo modello ignora sia l'auto-campo del singolo cavo (circa 1 T, non piccolo rispetto ai 10–15 T tipici) sia la concentrazione di campo tra cavi adiacenti dello stesso layer: tratta ogni layer come se la sua corrente fosse spalmata su un guscio infinitamente sottile invece che concentrata in turn discreti. La validazione lo quantifica: il campo spalmato sottostima il picco reale del 7% sul primo grade (dove il modello è più vicino alla realtà, essendo il layer più esterno) fino al 44% sui grade interni, dove i conduttori vedono in pratica un margine di corrente critica molto minore di quanto assunto in fase di scansione (I<sub>c</sub> effettiva di 0.53–0.64·I<sub>op</sub> nel design 7). Per questo la scansione ora dimensiona i grade sul picco discreto (§6.8).</p>
+  <p>Il rapporto tra picco reale e campo di Ampère dipende dalla geometria del WP, in particolare dal rapporto tra profondità radiale D e larghezza toroidale W: più il WP è stretto, più la corrente è concentrata e più cresce il campo sui turn lato plasma. Studio su 104 turn a 64.6 kA con area di cella costante (macchina del template, Ampère = 12.84 T, B<sub>TF</sub> della scansione = 13.48 T con <code>corr_B_WP</code> = 1.05):</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th class="num">W [mm]</th><th class="num">turn × layer</th><th class="num">D/W</th><th class="num">Picco discreto [T]</th><th class="num">Picco / Ampère</th><th class="num">Errore di B<sub>TF</sub> [T]</th></tr></thead>
+    <tbody>
+      <tr><td class="num">400</td><td class="num">8 × 13</td><td class="num">0.73</td><td class="num">14.43</td><td class="num">1.124</td><td class="num">−0.95</td></tr>
+      <tr><td class="num">340</td><td class="num">8 × 13</td><td class="num">1.01</td><td class="num">14.85</td><td class="num">1.156</td><td class="num">−1.37</td></tr>
+      <tr><td class="num">280</td><td class="num">8 × 13</td><td class="num">1.48</td><td class="num">15.19</td><td class="num">1.183</td><td class="num">−1.71</td></tr>
+      <tr><td class="num">220</td><td class="num">8 × 13</td><td class="num">2.39</td><td class="num">15.40</td><td class="num">1.199</td><td class="num">−1.92</td></tr>
+      <tr><td class="num">180</td><td class="num">8 × 13</td><td class="num">3.56</td><td class="num">15.45</td><td class="num">1.203</td><td class="num">−1.97</td></tr>
+      <tr><td class="num">140</td><td class="num">4 × 26</td><td class="num">5.93</td><td class="num">15.36</td><td class="num">1.196</td><td class="num">−1.87</td></tr>
+      <tr><td class="num">110</td><td class="num">4 × 26</td><td class="num">9.57</td><td class="num">15.24</td><td class="num">1.187</td><td class="num">−1.76</td></tr>
+    </tbody>
+  </table></div>
+  <p>Un fattore costante non può seguire questa dipendenza, e nemmeno un fattore funzione del solo rapporto d'aspetto: il rapporto dipende anche da I<sub>op</sub> (auto-campo), dalla forma del cavo e dalla gradazione, e la geometria del WP è nota solo dopo il dimensionamento. Da qui la scelta di calcolare il picco sul candidato dimensionato e iterare.</p>
+
+  <h3>6.8 <code>wp_peak_field_fast.m</code>: il picco dentro la scansione</h3>
+  <p>Stesso modello fisico di §6.2–6.5 (auto-campo incluso, sezione reale del cavo, altre bobine come filamenti), organizzato per essere chiamato su ogni candidato accettato:</p>
+  <ul>
+    <li><strong>dove si valuta</strong>: per ogni layer solo il turn di bordo, quello accanto e il turn centrale (o i due centrali). La sezione è simmetrica rispetto all'asse della bobina, quindi basta un bordo; il picco di un layer sta al bordo (layer interni, campo di ritorno) o al centro (layer lato plasma). 48 punti sul contorno di ognuno di questi cavi;</li>
+    <li><strong>come si somma</strong>: ogni cavo agisce su tutti i punti come un rettangolo pieno di uguale area e proporzioni (esatto per un rettangolo vivo; per il cavo raccordato o tondo l'errore è un multipolo che decade rapidamente con la distanza). Per i punti a meno di 2.5 celle da un cavo, quel rettangolo è sostituito dalla scomposizione esatta di §6.4. Tutto vettorizzato, senza cicli sui punti;</li>
+    <li><strong>accuratezza</strong>: il picco globale coincide con il profilo completo; per layer lo scarto massimo è 0.09 T su 8 geometrie Rect e RIS, da D/W 1 a 6;</li>
+    <li><strong>costo</strong>: circa 0.4 s in Octave per 104 turn, contro 4.8 s del profilo completo. Viene chiamato solo sui candidati che passano tutti gli altri controlli.</li>
+  </ul>
+  <div class="callout bad">
+    <p><strong>Conseguenza sul design 7.</strong> Nella scansione mirata con la stessa macchina, il campo spalmato ritrova il design 7 (13 × 8 turn, W = 344 mm, 64.6 kA, grade a 13.48 / 9.33 / 6.22 T). Con il campo reale, il picco del layer 1 è 14.48 T (ANSYS: 14.482 T). Il profilo scende più lentamente di quello lineare, quindi il grade 1 si estende ai layer 1–7. Il cavo Nb<sub>3</sub>Sn del grade 1, dimensionato a 14.48 T, diventa alto 48.5 mm in una cella larga 43 mm: rapporto d'aspetto 0.89, sotto il minimo 0.99. Il candidato non è più fattibile: era accettato solo perché il campo era sottostimato di 1 T.</p>
+  </div>
+</section>
+
+<section id="s7">
+  <h2><span class="num">7</span>Il conduttore CICC</h2>
+  <p>Ogni layer del winding pack è un conduttore <strong>CICC</strong> (Cable-In-Conduit Conductor): un fascio di strand superconduttori e stabilizzanti di rame, ritorti insieme, con un canale di raffreddamento a elio, il tutto racchiuso in una guaina d'acciaio (il jacket) che porta anche il carico meccanico. Il tool lo tratta in modo omogeneizzato: non modella i singoli fili, ma dimensiona quanti strand servono e a quale temperatura arriverebbe il punto più caldo in un guasto. Le funzioni sono <code>cicc.m</code> (dimensionamento elettrico), <code>heat_balance_cicc_ode.m</code> (transitorio termico), le leggi <code>Ic_*</code>/<code>jc_ybco.m</code> (corrente critica) e <code>physics/size_cicc_cable.m</code> (sezione meccanica del jacket).</p>
+
+  <h3>7.1 Corrente critica del superconduttore</h3>
+  <p>Ogni tipo di superconduttore ha una superficie critica I<sub>c</sub>(B,T,ε,θ): sopra questa soglia il materiale perde la superconduttività (quench). Il tool usa tre leggi di scaling empiriche, ciascuna la legge standard usata nella progettazione di magneti per fusione per quel materiale:</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Materiale</th><th>Funzione</th><th>Dipendenze e forma</th></tr></thead>
+    <tbody>
+      <tr><td>Nb<sub>3</sub>Sn</td><td><code>Ic_Nb3Sn_DTT_TF_KAT</code></td><td>Scaling con deformazione (tipo Bordini/ITER): la deformazione applicata ε sposta il campo critico B<sub>c</sub>*(ε) e la temperatura critica T<sub>c</sub>*(ε) tramite una funzione di forma s(ε) simmetrica attorno a una deformazione ottimale, poi <code>Ic ∝ (C/B)·s(ε)·b<sup>p</sup>(1−b)<sup>q</sup>·h(T)</code> con b = B/B<sub>c</sub>*(ε) e h(T) = (1−t<sup>1.52</sup>)(1−t²), t = T/T<sub>c</sub>*(ε).</td></tr>
+      <tr><td>NbTi</td><td><code>Ic_NbTi</code></td><td>Fit empirico a due componenti additive (potenze di b/(1−t<sup>n</sup>) con esponenti diversi), più accurato del singolo termine di Bottura su tutto l'intervallo di campo usato in un TF: <code>Jc = C0·C1·f1(b,t) + C0·C2·f2(b,t)</code>.</td></tr>
+      <tr><td>REBCO / HTS</td><td><code>Ic_sst33</code> + <code>jc_ybco</code></td><td>Densità di corrente critica del nastro in funzione di B e T (<code>jc_ybco</code>, normalizzata al valore di riferimento a 77 K), moltiplicata per un fattore di anisotropia angolare F<sub>A</sub>(θ): il REBCO ha "pinning" intrinseco più efficace a campo parallelo al nastro (θ vicino a 90°) che perpendicolare, quindi I<sub>c</sub> dipende fortemente dall'orientazione locale del campo rispetto al nastro.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Nel tool la temperatura e la deformazione sono fissate ai valori di progetto (non sono variabili libere): la sola variabile che cambia da un layer all'altro è il campo di picco B assegnato al grade (§5, passo 4).</p>
+
+  <h3>7.2 <code>cicc.m</code>: selezione del tipo e numero di strand</h3>
+  <p>Tre modalità (<code>WP_SC_type</code>), lette dall'Excel:</p>
+  <ul>
+    <li><strong>100 (LTS puro)</strong>: NbTi sotto 6 T, Nb<sub>3</sub>Sn sopra;</li>
+    <li><strong>101 (HTS puro)</strong>: sempre REBCO;</li>
+    <li><strong>102 (ibrido)</strong>: HTS sopra 15 T, LTS (con la stessa soglia NbTi/Nb<sub>3</sub>Sn) sotto; se il numero di strand LTS richiesto supera il limite (1500), passa comunque a HTS anche sotto i 15 T.</li>
+  </ul>
+  <p>Il numero di strand/nastri superconduttori è il minimo che porta la corrente operativa senza superare I<sub>c</sub>:</p>
+  <div class="math-block">\[ N_{Sc}=\Big\lceil \frac{I_{op}}{I_c(B)} \Big\rceil \]</div>
+  <p>Il numero di strand di rame N<sub>Cu</sub> non ha invece una formula chiusa: è il valore più piccolo che tiene la temperatura di hot spot (§7.4) entro il limite del tipo di conduttore (250 K per LTS, 150 K per HTS, dall'Excel). La ricerca è una bisezione a griglia: 10 punti equispaziati, si individua l'intervallo che contiene il limite, si restringe e si ripete finché lo scarto da THS<sub>max</sub> è sotto 5 K.</p>
+
+  <h3>7.3 Il transitorio di hot spot: <code>heat_balance_cicc_ode.m</code></h3>
+  <p>Se il conduttore va in quench, tutta la corrente si trasferisce dal superconduttore (ora resistivo) al rame. Il modello è quello standard di progetto usato per dimensionare la stabilizzazione: <strong>adiabatico</strong> (nessuno scambio termico con l'elio: è l'ipotesi conservativa, perché il raffreddamento reale rallenterebbe la salita di temperatura) e <strong>a parametri concentrati nel tempo</strong> (si segue un solo punto, il più caldo, senza propagazione spaziale — valida se il quench si propaga rapidamente rispetto al tempo di scarica). Il bilancio è:</p>
+  <div class="math-block">\[ \frac{dT}{dt}=\frac{Q_{gen}}{Q_{abs}}=\frac{\rho_{cable}(T,B)\,J(t)^2}{C_v(T)} \]</div>
+  <p>cioè il riscaldamento Joule nel composito rame+superconduttore eguaglia la crescita di entalpia (C<sub>v</sub> = calore specifico volumetrico). Corrente e campo restano al valore operativo per il tempo di rivelazione/validazione del quench τ<sub>delay</sub> (1 s di default), poi decadono con la costante di tempo di scarica della bobina:</p>
+  <div class="math-block">\[ I(t)=I_{op,0}\,e^{-(t-\tau_{delay})/\tau_{dis}},\qquad B(t)=B_0\,e^{-(t-\tau_{delay})/\tau_{dis}} \qquad (t>\tau_{delay}) \]</div>
+  <p>L'equazione è integrata con <code>ode45</code> da T<sub>0</sub> (la temperatura critica del materiale) fino a un tempo che copre l'intera scarica; <code>THS = max(T(t))</code>.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Termine</th><th>Come è modellato</th></tr></thead>
+    <tbody>
+      <tr><td>Resistività del rame</td><td>Due canali in parallelo — rame "segregato" (il canale puro, RRR = 300) e rame "non segregato" co-ritorto con il superconduttore (RRR = 100) — ciascuno con legge di resistività standard più una correzione di magnetoresistenza (funzione log-polinomiale del campo).</td></tr>
+      <tr><td>Resistività di Nb<sub>3</sub>Sn / NbTi</td><td>Fit polinomiali in T (il ramo "acciaio" della stessa struttura è riusato come resistività equivalente della matrice per l'HTS).</td></tr>
+      <tr><td>Resistività del cavo</td><td>Il ramo rame (parallelo dei due canali) e il ramo superconduttore/matrice sono combinati <strong>in parallelo</strong> (sopra T<sub>c</sub> la corrente può scorrere in entrambi i percorsi resistivi), poi moltiplicati per l'area totale per dare la resistività equivalente del composito.</td></tr>
+      <tr><td>Calore specifico</td><td>Per Cu, Nb<sub>3</sub>Sn, NbTi e acciaio: combinazione armonica tra un termine a bassa temperatura (fononico + elettronico, β·T³+γ·T) e un plateau a 300 K, per avere una curva C<sub>p</sub>(T) liscia da 4 K a 300 K senza una tabella. Il valore usato nell'ODE è la media pesata sulle aree di superconduttore e rame.</td></tr>
+    </tbody>
+  </table></div>
+  <p><code>postprocess/plot_hotspot_transient.m</code> rilancia la stessa ODE con N<sub>Sc</sub>, N<sub>Cu</sub> e B già salvati per ogni grade, per disegnare la curva T(t) completa (non solo il picco) sulla soluzione scelta.</p>
+
+  <h3>7.4 <code>physics/size_cicc_cable.m</code>: la sezione del jacket</h3>
+  <p>Fissata la sezione di superconduttore+rame (da §7.2), il jacket d'acciaio JT viene fatto crescere (passo <code>JT_step</code>, a partire da <code>min_JT</code>) finché lo sforzo radiale di membrana della parete più interna scende sotto l'ammissibile. Il modello è un <strong>reticolo di rigidezze equivalenti</strong>: la pressione magnetica</p>
+  <div class="math-block">\[ p_{rs}=\frac{B_{TF}^2}{2\mu_0} \]</div>
+  <p>(la componente radiale del tensore degli sforzi di Maxwell) si ripartisce tra jacket e cavo in proporzione alla rispettiva rigidezza. La rigidezza radiale della cella è una rete di molle in serie/parallelo:</p>
+  <div class="math-block">\[ K_e=\underbrace{\frac{2\,JT}{Cond_h}E_{jckt}+\frac{2\,t_{ins}}{Cond_h}E_{ins}}_{\text{pareti sup./inf. in parallelo}}+\left(\frac{1}{E_{cbl}\,SC_w/SC_h}+\underbrace{\frac{2}{E_{jckt}\,Cond_w/JT}+\frac{2}{E_{ins}\,Cond_w/t_{ins}}}_{\text{pareti laterali in serie col nucleo}}\right)^{-1} \]</div>
+  <p>(funzione locale <code>cavo_stiffness</code>, con l'analoga per la rigidezza toroidale K<sub>e,tor</sub>, usata invece in <code>size_case_vault.m</code>). Lo sforzo radiale di membrana sulla parete più interna del jacket è allora:</p>
+  <div class="math-block">\[ \sigma_{rm}=p_{rs}\cdot r_{steel}\cdot\frac{K_{jckt}}{K_{e,rad}}+\sigma_{z,JT}\le\frac{S_{amm,JT}}{s_{membrane}},\qquad K_{jckt}=\frac{2\,JT}{Cond_h}E_{jckt},\quad r_{steel}=\frac{Cond_w-2t_{ins}}{2\,JT} \]</div>
+  <p>dove r<sub>steel</sub> è il rapporto raggio/spessore della parete, come nella formula classica dei recipienti in pressione a parete sottile σ = p·r/t: qui "r" è la larghezza della cella e "t" lo spessore di jacket, e il rapporto K<sub>jckt</sub>/K<sub>e,rad</sub> è il coefficiente di ripartizione che dice quale frazione della pressione nominale il jacket porta davvero, invece del cavo. Crescendo JT, sia t (denominatore di r<sub>steel</sub>) sia la rigidezza relativa del jacket aumentano, finché l'equilibrio è soddisfatto; il ciclo è comunque limitato a <code>max_iter</code> passi, con un errore esplicito se non converge (bug noto del vecchio script monolitico, qui reso robusto).</p>
+
+  <h3>7.4b Forma del conduttore: Rect e RIS</h3>
+  <p><code>size_cicc_cable</code> ha due rami, scelti da <code>shape_cable</code>:</p>
+  <ul>
+    <li><strong>201, Rect</strong>: larghezza del cavo SC<sub>w</sub> = Cond<sub>w</sub> − 2JT − 2t<sub>ins</sub>, altezza dall'area con raccordo r<sub>SC</sub> = clamp(JT); jacket di spessore costante JT (raggio esterno r<sub>SC</sub> + JT); la cella cresce in altezza con JT.</li>
+    <li><strong>200, RIS</strong>: cavo circolare d = √(4A<sub>cavo</sub>/π); cella quadrata Cond<sub>h</sub> = Cond<sub>w</sub>; JT = (Cond<sub>w</sub> − 2t<sub>ins</sub> − d)/2 è lo spessore minimo del jacket, a metà lato; raccordo esterno del jacket R<sub>J</sub> = clamp(JT).</li>
+  </ul>
+  <p>Fino alla versione precedente questa distinzione esisteva solo qui: la forma non era salvata con la soluzione e tutte le fasi a valle ricostruivano un rettangolo (per un RIS, un cavo quadrato d×d). Ora <code>shape_cable</code> è una colonna di <code>DATA</code> e <code>wp_turn_geometry</code> ricava da essa la geometria di ogni turn per plot, campo, FEM, export ANSYS e modulo 3D. Una soluzione RIS resta RIS anche se ricaricata con un file di input Rect; una riga senza la colonna (file vecchi) prende la forma dal <code>p</code> salvato nel <code>.mat</code> della corsa, o dall'input con un avviso.</p>
+  <figure>
+    <svg viewBox="0 0 640 320" role="img" aria-label="Confronto fra un turn Rect, con cavo rettangolare raccordato e jacket di spessore costante, e un turn RIS, con cavo circolare di diametro d in un jacket quadrato raccordato di spessore minimo JT a metà lato; nel RIS l'arco del cavo verso cui spinge la forza di Lorentz resta sempre a contatto.">
+<defs><marker id="arr3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-force"/></marker></defs>
+<rect class="f-filler" x="40" y="60" width="220" height="170"/>
+<rect class="f-ins" x="40" y="60" width="220" height="170" rx="30"/>
+<rect class="f-steel" x="48" y="68" width="204" height="154" rx="22"/>
+<rect class="f-cable" x="70" y="90" width="160" height="110" rx="12"/>
+<line class="s-force" x1="150" y1="118" x2="150" y2="170" marker-end="url(#arr3)"/>
+<text class="lbl mute" x="150" y="190" text-anchor="middle">cavo</text>
+<text class="lbl" x="150" y="44" text-anchor="middle">Rect (201)</text>
+<line class="lead" x1="252" y1="145" x2="290" y2="145"/><text class="lbl" x="150" y="258" text-anchor="middle">jacket di spessore costante JT,</text><text class="lbl" x="150" y="274" text-anchor="middle">raccordo cavo r_SC = clamp(JT)</text>
+<rect class="f-filler" x="380" y="40" width="220" height="220"/>
+<rect class="f-ins" x="380" y="40" width="220" height="220" rx="30"/>
+<rect class="f-steel" x="388" y="48" width="204" height="204" rx="22"/>
+<circle class="f-cable" cx="490" cy="150" r="78"/>
+<path class="s-contact" d="M434.8,205.2 A78,78 0 0 0 545.2,205.2" fill="none"/>
+<circle class="peak" cx="490" cy="228" r="4"/>
+<line class="s-force" x1="490" y1="118" x2="490" y2="176" marker-end="url(#arr3)"/>
+<text class="lbl mute" x="490" y="104" text-anchor="middle">cavo</text>
+<line class="lead" x1="412" y1="150" x2="568" y2="150" stroke-dasharray="3 3"/>
+<text class="lbl" x="490" y="144" text-anchor="middle" style="fill:var(--surface)">d = √(4A/π)</text>
+<line class="s-scl" x1="490" y1="48" x2="490" y2="72"/>
+<text class="lbl" x="498" y="66">JT min</text>
+<text class="lbl" x="490" y="24" text-anchor="middle">RIS (200)</text>
+<line class="lead" x1="400" y1="60" x2="360" y2="30"/><text class="lbl" x="356" y="26" text-anchor="end">R_J = clamp(JT)</text>
+<line class="lead" x1="545" y1="206" x2="612" y2="286"/><text class="lbl" x="612" y="302" text-anchor="end">lato caricato: sempre a contatto,</text><text class="lbl" x="612" y="317" text-anchor="end">coppia centrale legata anche tangenzialmente</text>
+</svg>
+    <figcaption>A sinistra il turn Rect, a destra il RIS. Nel RIS la cella è quadrata; il jacket è un quadrato raccordato con R<sub>J</sub> = clamp(JT, r<sub>SC,min</sub>, r<sub>SC,max</sub>); il cavo è un cerchio di diametro d = a − 2 JT = √(4A<sub>cavo</sub>/π). JT è lo spessore <em>minimo</em>, a metà lato; verso gli spigoli il jacket si ispessisce. Freccia: forza di Lorentz; arco rosso: il lato del cavo tenuto a contatto (§8.7).</figcaption>
+  </figure>
+
+  <h3>7.5 <code>physics/size_case_vault.m</code>: il nose del case</h3>
+  <p>Stesso principio, esteso a tutta la sezione: lo spessore del nose (<code>DTF</code>) cresce finché sia il vault del case sia il jacket del layer più interno rispettano i rispettivi ammissibili. Due reti di rigidezze separate:</p>
+  <ul>
+    <li><strong>radiale</strong>: la rigidezza del WP verso l'interno è la serie dei layer (ognuno il parallelo dei suoi turn), combinata con le pareti laterali del case e la piastra lato plasma, per dare il coefficiente di ripartizione WP/case che corregge lo sforzo del jacket più interno (<code>dcr_WP_rad</code>);</li>
+    <li><strong>toroidale</strong>: il case pieno d'acciaio, il cavo e il jacket del WP, e il vault stesso sono tre percorsi di rigidezza in parallelo che si dividono il carico circonferenziale di wedging; il vault porta la frazione <code>dcr_vault_tor = k<sub>steel</sub>/(k<sub>SC</sub>+k<sub>JT</sub>+k<sub>vault</sub>)</code>.</li>
+  </ul>
+  <p>Lo sforzo circonferenziale del vault usa la formula di un anello spesso in pressione (fattore 2/(1−β²), β = R<sub>k</sub>/R<sub>i</sub>, il rapporto tra raggio interno ed esterno del case):</p>
+  <div class="math-block">\[ S_{c,VT}=\frac{2}{1-\beta^2}\,p_{rs}\cdot dcr_{vault,tor},\qquad S_z=\frac{T_{bf}}{A_{JT}+A_{case}} \]</div>
+  <p>con T<sub>bf</sub> la stessa forza assiale del modello FE (§8.2). Il case è accettato quando sia <code>S_T_VT = S_z + S_c,VT</code> sia il jacket corretto <code>S_T_JT = S_z + S_rm,JT</code> rispettano i rispettivi ammissibili — dopo la revisione, il vault è confrontato con <code>S_amm_VT</code> e non più, per errore, con <code>S_amm_JT</code> (punto C07, §10).</p>
+  <div class="callout">
+    <p><strong>Sui limiti di questi modelli analitici.</strong> Sono reti di molle a un grado di libertà per direzione: catturano la ripartizione di carico media tra i componenti, non la distribuzione reale degli sforzi lungo la sezione (flessione locale, concentrazioni ai raccordi, contatti con attrito). Per questo la scansione li usa per dimensionare velocemente migliaia di candidati, ma la soluzione scelta va poi verificata con il modello FE (§8), che risolve l'equilibrio vero.</p>
+  </div>
+</section>
+
+<section id="s8">
+  <h2><span class="num">8</span>Modello meccanico FE</h2>
+  <p><code>physics/wp_mech_surrogate.m</code> è un <strong>modello a elementi finiti autonomo</strong>, con mesh, assemblaggio, contatti e soluzione propri. Non è un modello ridotto né una superficie di risposta: "surrogato" indica solo che prende il posto della corsa ANSYS quando si verifica un punto di progetto.</p>
+
+  <h3>8.1 Perché serve</h3>
+  <p>Nel FEM la tensione del jacket cresce con la profondità all'interno di ogni grade (674 → 1124 MPa nel design 7), per quattro effetti che una formula a rigidezze in serie non vede:</p>
+  <ul>
+    <li>compressione radiale che si accumula verso il nose, fino a −310 MPa nelle pareti laterali;</li>
+    <li>compressione toroidale da wedging, da −200 a −300 MPa nelle pareti superiori e inferiori;</li>
+    <li>flessione delle pareti attorno al raccordo del cavo, dove si trova il picco;</li>
+    <li>scorrimenti WP/case e cavo/jacket, cioè contatti con attrito.</li>
+  </ul>
+  <p>Il fattore unico <code>SCF_transition_provisional</code> = 3.15 coincideva con il FEM solo per caso, su un punto. Serve risolvere l'equilibrio vero della sezione.</p>
+
+  <h3>8.2 Formulazione</h3>
+  <p>Elasticità lineare 2D in <strong>deformazione piana generalizzata</strong>, come PLANE183 con KEYOPT(3)=5 in ANSYS, su un settore di bobina di angolo 2π/n<sub>TF</sub>. È l'estensione della classica deformazione piana (ε<sub>z</sub>=0, valida per un cilindro infinito bloccato assialmente) al caso in cui la sezione può allungarsi in blocco lungo z sotto una forza assiale nota: si aggiunge un <strong>grado di libertà globale</strong> ε<sub>z</sub>, unico per tutta la mesh (la fibra lungo z resta piana e non ruota, come nel FEM), oltre agli spostamenti nodali u<sub>e</sub> nel piano. La deformazione in ogni punto è allora</p>
+  <div class="math-block">\[ \boldsymbol\varepsilon=\mathbf B\,\mathbf u_e+\mathbf e_z\,\varepsilon_z,\qquad \boldsymbol\sigma=\mathbf D\,(\boldsymbol\varepsilon-\boldsymbol\varepsilon_{th}),\qquad \boldsymbol\varepsilon_{th}=\Delta T\,\boldsymbol\alpha,\qquad \mathbf e_z=[0\ 0\ 1\ 0]^{\!\top} \]</div>
+  <p>con ε = [ε<sub>x</sub>, ε<sub>y</sub>, ε<sub>z</sub>, γ<sub>xy</sub>]. Applicando il principio dei lavori virtuali sia agli spostamenti nodali sia a ε<sub>z</sub> si ottiene un sistema con una riga/colonna in più rispetto a un elemento piano ordinario, che accoppia ogni elemento al grado di libertà globale:</p>
+  <div class="math-block">\[ \begin{bmatrix}\mathbf K_{uu}&\mathbf K_{uz}\\ \mathbf K_{zu}&K_{zz}\end{bmatrix}\begin{bmatrix}\mathbf u\\ \varepsilon_z\end{bmatrix}=\begin{bmatrix}\mathbf f_{Lorentz}+\mathbf f_{th}\\ T_{bf}+f_{th,z}\end{bmatrix},\qquad \int_A\sigma_z\,dA=T_{bf}=\tfrac12\,k_{bf}\,n_{TF}\,(NI)^2\,\frac{\mu_0}{2\pi} \]</div>
+  <p>L'ultima equazione è l'equilibrio assiale: la forza risultante su tutta la sezione deve uguagliare la tensione di hoop T<sub>bf</sub> del modello a guscio (la stessa che compare in <code>compute_operating_params.m</code> e in <code>size_case_vault.m</code>, §7.5) — è il modo in cui il modello FE riceve dall'esterno il carico assiale senza dover modellare l'intera bobina in 3D.</p>
+
+  <h3>8.3 Elementi, funzioni di forma, integrazione</h3>
+  <p>Ogni elemento contribuisce a K e a f tramite la matrice B che lega gli spostamenti nodali alle deformazioni, costruita dalle derivate delle funzioni di forma isoparametriche N<sub>i</sub>(ξ,η):</p>
+  <div class="math-block">\[ \mathbf J=\frac{\partial \mathbf N}{\partial(\xi,\eta)}\,\mathbf X,\qquad \frac{\partial \mathbf N}{\partial(x,y)}=\mathbf J^{-1}\frac{\partial \mathbf N}{\partial(\xi,\eta)},\qquad \mathbf K_e=\int_{-1}^{1}\!\!\int_{-1}^{1}\mathbf B^{\!\top}\mathbf D\,\mathbf B\,\det\mathbf J\;d\xi\,d\eta \]</div>
+  <p>La riga di B relativa a ε<sub>z</sub> è semplicemente [0 0 … 0 | 1] (l'ultima colonna, quella di ε<sub>z</sub>): non dipende dalle coordinate, perché ε<sub>z</sub> è la stessa ovunque nell'elemento — è così che il grado di libertà globale entra nella formulazione isoparametrica standard con una sola riga in più.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Elemento</th><th>Nodi</th><th>Funzioni di forma</th><th>Quadratura di Gauss</th></tr></thead>
+    <tbody>
+      <tr><td>Q8 (jacket, isolante, filler, striscia tra layer)</td><td>8 (quadrilatero serendipity, lati anche curvi)</td><td><code>q8_N</code>/<code>q8_dN</code>: 4 funzioni d'angolo bi-quadratiche meno metà delle adiacenti di lato, 4 funzioni di lato paraboliche</td><td>3×3 punti (regola di Gauss–Legendre, pesi 5/9, 8/9, 5/9 per direzione) — esatta per il polinomio più il termine dovuto al determinante dello Jacobiano quando il lato è curvo</td></tr>
+      <tr><td>T6 (cavo, isolante di massa, case, isolante del wedge)</td><td>6 (triangolo quadratico, coordinate d'area L<sub>1</sub>,L<sub>2</sub>,L<sub>3</sub>)</td><td><code>t6_N</code>/<code>t6_dN</code>: 3 funzioni di vertice L<sub>i</sub>(2L<sub>i</sub>−1), 3 di lato 4L<sub>i</sub>L<sub>j</sub></td><td>3 punti interni a peso 1/6 (regola standard, esatta per polinomi di secondo grado)</td></tr>
+    </tbody>
+  </table></div>
+  <p>Le matrici <code>Ke</code> degli elementi Q8 sono <strong>memorizzate per forma</strong> (funzione locale <code>elem_K</code>, con una cache indicizzata dalla geometria relativa dei nodi, dal materiale e dall'orientazione): i turn di uno stesso layer sono geometricamente identici a meno di una traslazione, quindi ricompaiono decine o centinaia di volte nella mesh e la loro matrice va calcolata una volta sola. Ogni <code>elem_K</code> restituisce anche il determinante Jacobiano minimo incontrato: se non è ovunque positivo (un elemento troppo distorto, capovolto) l'assemblaggio si ferma con un errore esplicito invece di produrre una matrice di rigidezza senza senso fisico.</p>
+  <p>I tre vettori di carico sono assemblati separatamente e combinati in due casi e in una sequenza a scelta:</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Caso</th><th>Carichi</th><th>Serve per</th></tr></thead>
+    <tbody>
+      <tr><td>Totale <strong>P+Q</strong></td><td>raffreddamento + Lorentz + assiale</td><td>confronto con il FEM, P+Q ≤ 3 S<sub>m</sub>, picco</td></tr>
+      <tr><td>Primario <strong>P</strong></td><td>Lorentz + assiale, senza raffreddamento</td><td>P<sub>m</sub> ≤ S<sub>m</sub>, P<sub>m</sub>+P<sub>b</sub> ≤ 1.5 S<sub>m</sub></td></tr>
+    </tbody>
+  </table></div>
+  <p>Sequenza (<code>surrogate_load_sequence</code>): 0 = tutti i carichi in un passo, come le corse ANSYS usate per la validazione; 1 = prima il raffreddamento, poi l'energizzazione in <code>surrogate_em_steps</code> passi.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Materiale</th><th>Legge</th><th>Default (set del benchmark ANSYS)</th></tr></thead>
+    <tbody>
+      <tr><td>Acciaio di jacket e case</td><td>isotropo</td><td>E 205 GPa, ν 0.29, α 1.038·10⁻⁵ K⁻¹</td></tr>
+      <tr><td>Cavo LTS / HTS</td><td>isotropo omogeneizzato</td><td>E 10 / 120 GPa, ν 0.3, α 5.54·10⁻⁶ K⁻¹</td></tr>
+      <tr><td>Isolante (spira, layer, massa, wedge)</td><td>ortotropo, asse n nello spessore</td><td>E<sub>n</sub> 12, E<sub>t</sub> = E<sub>z</sub> 20, G 6 GPa; ν<sub>tn</sub> 0.33, ν<sub>tz</sub> 0.17; α<sub>n</sub> 2.42·10⁻⁵, α<sub>t</sub> 8.65·10⁻⁶ K⁻¹</td></tr>
+      <tr><td>Filler agli angoli</td><td>isotropo</td><td>E 7 GPa, ν 0.3, α 1.73·10⁻⁵ K⁻¹</td></tr>
+    </tbody>
+  </table></div>
+  <p>Per l'isolante la matrice locale \( \mathbf D_{loc}=\mathbf S^{-1} \) è ruotata nell'orientazione dell'elemento: \( \mathbf D=\mathbf T^{T}\mathbf D_{loc}\mathbf T \), \( \boldsymbol\varepsilon_{th}=\mathbf T^{-1}\boldsymbol\varepsilon_{th,loc} \).</p>
+
+  <h3>8.4 Geometria</h3>
+  <p>Tutto viene generato dalla sola riga di progetto, con le stesse regole del FEM: layer con la ricorsione della scansione; turn arrotondati; cava come inviluppo convesso dei layer allargato dell'isolante di massa; case con lato plasma piatto, fianchi radiali e fondo del nose ad arco centrato sull'asse macchina.</p>
+  <figure>
+    <svg viewBox="0 0 640 368" role="img" aria-label="Settore della gamba interna del design 7: case con fianchi radiali a piu' o meno 15 gradi e nose ad arco, cava con 13 layer da 8 turn, sette linee di classificazione degli sforzi nel case numerate da 1 a 7.">
+<defs><marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-force"/></marker></defs>
+<path class="f-case" d="M439.0,36.3 L359.6,332.8 L354.2,331.4 L348.8,330.0 L343.4,328.8 L338.0,327.6 L332.6,326.5 L327.1,325.4 L321.7,324.4 L316.2,323.5 L310.7,322.7 L305.2,322.0 L299.7,321.3 L294.2,320.6 L288.7,320.1 L283.2,319.6 L277.7,319.2 L272.2,318.9 L266.6,318.7 L261.1,318.5 L255.5,318.4 L250.0,318.3 L244.5,318.4 L238.9,318.5 L233.4,318.7 L227.8,318.9 L222.3,319.2 L216.8,319.6 L211.3,320.1 L205.8,320.6 L200.3,321.3 L194.8,322.0 L189.3,322.7 L183.8,323.5 L178.3,324.4 L172.9,325.4 L167.4,326.5 L162.0,327.6 L156.6,328.8 L151.2,330.0 L145.8,331.4 L140.4,332.8 L61.0,36.3 Z"/>
+<rect class="f-gins" x="150.9" y="47.5" width="198.3" height="210.7"/>
+<rect class="f-turn" x="154.4" y="51.0" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="178.5" y="51.0" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="202.5" y="51.0" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="226.6" y="51.0" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="250.7" y="51.0" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="274.8" y="51.0" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="298.9" y="51.0" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="322.9" y="51.0" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="154.4" y="70.4" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="178.5" y="70.4" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="202.5" y="70.4" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="226.6" y="70.4" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="250.7" y="70.4" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="274.8" y="70.4" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="298.9" y="70.4" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="322.9" y="70.4" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="154.4" y="89.8" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="178.5" y="89.8" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="202.5" y="89.8" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="226.6" y="89.8" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="250.7" y="89.8" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="274.8" y="89.8" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="298.9" y="89.8" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="322.9" y="89.8" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="154.4" y="109.3" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="178.5" y="109.3" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="202.5" y="109.3" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="226.6" y="109.3" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="250.7" y="109.3" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="274.8" y="109.3" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="298.9" y="109.3" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="322.9" y="109.3" width="22.7" height="17.7" rx="3"/><rect class="f-turn" x="154.4" y="128.7" width="22.7" height="13.2" rx="3"/><rect class="f-turn" x="178.5" y="128.7" width="22.7" height="13.2" rx="3"/><rect class="f-turn" x="202.5" y="128.7" width="22.7" height="13.2" rx="3"/><rect class="f-turn" x="226.6" y="128.7" width="22.7" height="13.2" rx="3"/><rect class="f-turn" x="250.7" y="128.7" width="22.7" height="13.2" rx="3"/><rect class="f-turn" x="274.8" y="128.7" width="22.7" height="13.2" rx="3"/><rect class="f-turn" x="298.9" y="128.7" width="22.7" height="13.2" rx="3"/><rect class="f-turn" x="322.9" y="128.7" width="22.7" height="13.2" rx="3"/><rect class="f-turn" x="154.4" y="143.6" width="22.7" height="13.2" rx="3"/><rect class="f-turn" x="178.5" y="143.6" width="22.7" height="13.2" rx="3"/><rect class="f-turn" x="202.5" y="143.6" width="22.7" height="13.2" rx="3"/><rect class="f-turn" x="226.6" y="143.6" width="22.7" height="13.2" rx="3"/><rect class="f-turn" x="250.7" y="143.6" width="22.7" height="13.2" rx="3"/><rect class="f-turn" x="274.8" y="143.6" width="22.7" height="13.2" rx="3"/><rect class="f-turn" x="298.9" y="143.6" width="22.7" height="13.2" rx="3"/><rect class="f-turn" x="322.9" y="143.6" width="22.7" height="13.2" rx="3"/><rect class="f-turn" x="154.4" y="158.5" width="22.7" height="13.2" rx="3"/><rect class="f-turn" x="178.5" y="158.5" width="22.7" height="13.2" rx="3"/><rect class="f-turn" x="202.5" y="158.5" width="22.7" height="13.2" rx="3"/><rect class="f-turn" x="226.6" y="158.5" width="22.7" height="13.2" rx="3"/><rect class="f-turn" x="250.7" y="158.5" width="22.7" height="13.2" rx="3"/><rect class="f-turn" x="274.8" y="158.5" width="22.7" height="13.2" rx="3"/><rect class="f-turn" x="298.9" y="158.5" width="22.7" height="13.2" rx="3"/><rect class="f-turn" x="322.9" y="158.5" width="22.7" height="13.2" rx="3"/><rect class="f-turn" x="154.4" y="173.4" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="178.5" y="173.4" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="202.5" y="173.4" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="226.6" y="173.4" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="250.7" y="173.4" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="274.8" y="173.4" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="298.9" y="173.4" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="322.9" y="173.4" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="154.4" y="187.2" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="178.5" y="187.2" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="202.5" y="187.2" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="226.6" y="187.2" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="250.7" y="187.2" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="274.8" y="187.2" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="298.9" y="187.2" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="322.9" y="187.2" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="154.4" y="201.1" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="178.5" y="201.1" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="202.5" y="201.1" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="226.6" y="201.1" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="250.7" y="201.1" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="274.8" y="201.1" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="298.9" y="201.1" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="322.9" y="201.1" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="154.4" y="214.9" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="178.5" y="214.9" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="202.5" y="214.9" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="226.6" y="214.9" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="250.7" y="214.9" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="274.8" y="214.9" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="298.9" y="214.9" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="322.9" y="214.9" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="154.4" y="228.8" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="178.5" y="228.8" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="202.5" y="228.8" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="226.6" y="228.8" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="250.7" y="228.8" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="274.8" y="228.8" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="298.9" y="228.8" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="322.9" y="228.8" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="154.4" y="242.6" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="178.5" y="242.6" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="202.5" y="242.6" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="226.6" y="242.6" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="250.7" y="242.6" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="274.8" y="242.6" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="298.9" y="242.6" width="22.7" height="12.2" rx="3"/><rect class="f-turn" x="322.9" y="242.6" width="22.7" height="12.2" rx="3"/>
+<line class="s-flank" x1="140.4" y1="332.8" x2="61.0" y2="36.3"/><line class="s-flank" x1="359.6" y1="332.8" x2="439.0" y2="36.3"/><circle class="roller" cx="370.3" cy="310.0" r="3.2"/><circle class="roller" cx="383.1" cy="262.4" r="3.2"/><circle class="roller" cx="395.8" cy="214.8" r="3.2"/><circle class="roller" cx="408.6" cy="167.2" r="3.2"/><circle class="roller" cx="421.3" cy="119.6" r="3.2"/><circle class="roller" cx="434.1" cy="72.0" r="3.2"/><circle class="roller" cx="129.7" cy="310.0" r="3.2"/><circle class="roller" cx="116.9" cy="262.4" r="3.2"/><circle class="roller" cx="104.2" cy="214.8" r="3.2"/><circle class="roller" cx="91.4" cy="167.2" r="3.2"/><circle class="roller" cx="78.7" cy="119.6" r="3.2"/><circle class="roller" cx="65.9" cy="72.0" r="3.2"/>
+<line class="s-scl" x1="250.0" y1="258.3" x2="250.0" y2="318.3"/><circle class="badge" cx="238.0" cy="330.3" r="7.5"/><text class="badge-t" x="238.0" y="333.9" text-anchor="middle">1</text><line class="s-scl" x1="299.6" y1="258.3" x2="299.6" y2="321.2"/><circle class="badge" cx="299.6" cy="335.2" r="7.5"/><text class="badge-t" x="299.6" y="338.8" text-anchor="middle">2</text><line class="s-scl" x1="349.1" y1="258.3" x2="358.7" y2="332.5"/><circle class="badge" cx="368.7" cy="342.5" r="7.5"/><text class="badge-t" x="368.7" y="346.1" text-anchor="middle">3</text><line class="s-scl" x1="349.1" y1="205.6" x2="392.8" y2="205.6"/><circle class="badge" cx="404.8" cy="205.6" r="7.5"/><text class="badge-t" x="404.8" y="209.2" text-anchor="middle">4</text><line class="s-scl" x1="349.1" y1="152.9" x2="406.9" y2="152.9"/><circle class="badge" cx="418.9" cy="152.9" r="7.5"/><text class="badge-t" x="418.9" y="156.5" text-anchor="middle">5</text><line class="s-scl" x1="349.1" y1="100.2" x2="421.0" y2="100.2"/><circle class="badge" cx="433.0" cy="100.2" r="7.5"/><text class="badge-t" x="433.0" y="103.8" text-anchor="middle">6</text><line class="s-scl" x1="272.4" y1="47.5" x2="272.4" y2="36.3"/><circle class="badge" cx="284.4" cy="28.3" r="7.5"/><text class="badge-t" x="284.4" y="31.9" text-anchor="middle">7</text>
+<line class="s-force" x1="250.0" y1="125.6" x2="250.0" y2="190.0" marker-end="url(#arr)"/>
+<text class="lbl" x="258.0" y="153.6">f = J×B</text>
+<text class="lbl" x="228.0" y="28.3" text-anchor="end">lato plasma, y = R_i</text>
+<text class="lbl" x="226.0" y="348.3" text-anchor="end">nose: arco R_k / cos(π/n_TF)</text>
+<text class="lbl" x="226.0" y="363.3" text-anchor="end">asse macchina ↓</text>
+<line class="lead" x1="420.8" y1="103.2" x2="452" y2="103.2"/>
+<text class="lbl" x="458" y="99.2">fianco a π/n_TF:</text>
+<text class="lbl" x="458" y="114.2">u·n = 0, scorre libero</text>
+<line class="lead" x1="349.1" y1="220.8" x2="452" y2="220.8"/>
+<text class="lbl" x="458" y="216.8">contatto WP/case</text>
+<text class="lbl" x="458" y="231.8">unilaterale, μ = 0.2</text>
+<line class="lead" x1="306.0" y1="302.0" x2="452" y2="302.0"/>
+<text class="lbl" x="458" y="298.0">case (acciaio)</text>
+<text class="lbl" x="458" y="313.0">SCL 1–7: Pm, Pm+Pb</text>
+</svg>
+    <figcaption>Settore del design 7 in scala: 13 layer da 8 turn nella cava (verde: isolante di massa), case in grigio, fianchi a ±π/n<sub>TF</sub> con spostamento normale nullo e scorrimento libero. Il nose è un arco di raggio R<sub>k</sub>/cos(π/n<sub>TF</sub>): al centro è spesso 107 mm, non 133. Linee di classificazione nel case: 1 asse del nose, 2 metà nose, 3 diagonale del vault, 4–6 parete laterale a 25/50/75%, 7 piastra lato plasma.</figcaption>
+  </figure>
+  <figure>
+    <svg viewBox="0 0 640 300" role="img" aria-label="Un turn come nel modello: cavo con raccordo r_SC, anello di jacket spesso JT, anello di isolante spesso t_ins, filler negli angoli; i turn adiacenti si toccano solo sui tratti piatti.">
+<defs><clipPath id="clipn"><rect x="120" y="0" width="70" height="300"/></clipPath>
+<marker id="arr2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-force"/></marker></defs>
+<g clip-path="url(#clipn)"><rect class="f-filler" x="-50" y="30" width="240" height="240" rx="0"/><rect class="f-ins" x="-50" y="30" width="240" height="240" rx="52"/><rect class="f-steel" x="-42" y="38" width="224" height="224" rx="44"/><rect class="f-cable" x="-20" y="60" width="180" height="180" rx="22"/></g>
+<rect class="cellframe" x="190" y="30" width="240" height="240"/>
+<rect class="f-filler" x="190" y="30" width="240" height="240" rx="0"/><rect class="f-ins" x="190" y="30" width="240" height="240" rx="52"/><rect class="f-steel" x="198" y="38" width="224" height="224" rx="44"/><rect class="f-cable" x="220" y="60" width="180" height="180" rx="22"/>
+<line class="s-contact" x1="190" y1="82" x2="190" y2="218"/>
+<text class="lbl" x="182" y="292" text-anchor="middle">contatto solo sul tratto piatto</text>
+<line class="s-scl" x1="400" y1="150.0" x2="422" y2="150.0"/>
+<circle class="peak" cx="226.4" cy="233.6" r="5"/>
+<line class="s-force" x1="310.0" y1="120.0" x2="310.0" y2="180.0" marker-end="url(#arr2)"/>
+<text class="lbl" x="318.0" y="134.0">f = J×B</text>
+<line class="lead" x1="411.0" y1="90" x2="468" y2="60"/><text class="lbl" x="474" y="64">jacket, spessore JT</text>
+<line class="lead" x1="426.0" y1="125" x2="468" y2="95"/><text class="lbl" x="474" y="99">isolante di spira, t_ins</text>
+<line class="lead" x1="400" y1="150.0" x2="468" y2="150.0"/><text class="lbl" x="474" y="148.0">sezione SCL attraverso</text><text class="lbl" x="474" y="163.0">la parete: Pm, Pm+Pb</text>
+<line class="lead" x1="418" y1="42" x2="468" y2="30"/><text class="lbl" x="474" y="34">filler (7 GPa)</text>
+<line class="lead" x1="393.4" y1="66.6" x2="468" y2="200"/><text class="lbl" x="474" y="196">raccordo del cavo r_SC,</text><text class="lbl" x="474" y="211">contatto cavo/jacket μ = 0.2</text>
+<line class="lead" x1="232.4" y1="235.6" x2="468" y2="250"/><text class="lbl" x="474" y="254">picco: nel raccordo,</text><text class="lbl" x="474" y="269">sulla faccia del cavo</text>
+<text class="lbl mute" x="310.0" y="234" text-anchor="middle">cavo</text>
+</svg>
+    <figcaption>Un turn come nel modello e nel FEM: cavo con raccordo r<sub>SC</sub>, anello di jacket spesso JT, anello di isolante t<sub>ins</sub>, filler negli angoli. I turn adiacenti si toccano solo sui tratti piatti: con angoli vivi il WP risultava più rigido del 20–30% in direzione toroidale.</figcaption>
+  </figure>
+  <p><strong>Turn RIS.</strong> Stessa struttura, con il cavo circolare (§7.4b): il contorno interno del jacket è il cerchio di diametro d, quello esterno il quadrato raccordato R<sub>J</sub>; l'isolante di spira segue il contorno esterno (raggio R<sub>J</sub> + t<sub>ins</sub>) e il filler riempie gli angoli. Le sezioni di linearizzazione del jacket sono radiali dal centro del cavo.</p>
+
+  <h3>8.5 Mesh</h3>
+  <p>La mesh è generata in due passate dalla funzione <code>surr_mesh</code>, con lo stesso principio: <strong>strutturata e curva</strong> dove la geometria è nota con precisione (attorno a ogni cavo), <strong>Delaunay libera</strong> dove riempie solo spazio residuo.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Regione</th><th>Elemento</th><th>Come</th></tr></thead>
+    <tbody>
+      <tr><td>Jacket (anello)</td><td>Q8 curvi isoparametrici</td><td>Stazioni lungo il contorno arrotondato del cavo; tratti dritti con elementi ≤ 6 mm, raccordi con 8 elementi su 90°, 2 elementi nello spessore.</td></tr>
+      <tr><td>Jacket RIS</td><td>Q8 curvi</td><td>Stazioni sul contorno esterno del jacket (lati dritti + 2 elementi per raccordo, numero pari per lato), ognuna proiettata radialmente sul cerchio del cavo; gli strati nello spessore interpolano linearmente tra cerchio e quadrato raccordato, quindi lo spessore varia da JT a metà lato al massimo negli spigoli.</td></tr>
+      <tr><td>Isolante di spira (anello)</td><td>Q8 curvi</td><td>Stesse stazioni, 1 elemento nello spessore.</td></tr>
+      <tr><td>Filler agli angoli</td><td>Q8 a ventaglio</td><td>Dall'arco esterno all'angolo quadrato della cella.</td></tr>
+      <tr><td>Isolante tra layer</td><td>Q8</td><td>Striscia sotto ogni cella.</td></tr>
+      <tr><td>Interno del cavo, isolante di massa, case, isolante del wedge</td><td>T6</td><td>Delaunay (vincolata in MATLAB) su contorni e punti interni graduati 3/6/12 mm; nodi intermedi dei T6 agganciati a quelli curvi dei Q8; conformità verificata.</td></tr>
+      <tr><td>Layer con nodi non allineati</td><td>vincoli</td><td>Legame per interpolazione quadratica sul lato opposto (penalty).</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>Passo 1 — anelli Q8 attorno a ogni cavo</strong> (funzione locale <code>ring_stations</code>). Il contorno arrotondato del cavo è discretizzato in "stazioni" con la loro normale uscente: n<sub>sx</sub>, n<sub>sy</sub> stazioni sui lati dritti (almeno <code>surrogate_n_cable</code>, o più se il lato supera 6 mm per elemento) più n<sub>arc</sub> stazioni per ognuno dei quattro raccordi a 90°. Tra due stazioni consecutive, offrendo la stazione lungo la normale di <code>d<sub>l</sub></code> (una progressione che va da 0 a JT in <code>n_thk</code> passi, poi da JT a JT+t<sub>ins</sub> per l'isolante), si costruisce un quadrilatero Q8 con i quattro nodi d'angolo e i quattro di lato a metà arco/segmento: è così che il jacket segue esattamente il raccordo del cavo invece di approssimarlo con lati dritti. Dove il "muro" della cella è vicino a un angolo (le ultime stazioni prima del raccordo), si aggiunge anche un <strong>ventaglio</strong> di filler tra l'arco esterno del jacket e l'angolo vivo della cella quadrata: un Q8 degenere con due nodi coincidenti all'apice (inset di 0.999 in coordinate naturali per evitare uno Jacobiano singolare esattamente nel nodo).</p>
+  <p>Gli anelli di celle adiacenti che condividono lo stesso lato hanno nodi coincidenti (fuse per posizione, tolleranza 10<sup>−9</sup> m) quando i layer sono allineati; quando non lo sono (turn di larghezza diversa tra layer adiacenti), la funzione locale <code>layer_ties</code> individua i nodi "in eccesso" e li lega al lato opposto con un vincolo di interpolazione quadratica imposto per penalty nella matrice di rigidezza (§8.8), non eliminando gradi di libertà: è più semplice da assemblare e sufficientemente rigido con la penalità usata ovunque nel modello.</p>
+  <p><strong>Passo 2 — riempimento con Delaunay vincolata.</strong> Tutto ciò che resta — l'interno di ogni cavo, l'isolante di massa attorno al WP, il case, l'isolante del wedge — è triangolato con <code>delaunayTriangulation</code> (MATLAB; in Octave, usato per i test, un fallback a <code>delaunay</code> semplice) <strong>vincolata</strong> sui lati di bordo esterni della zona Q8 già costruita, così i due reticoli restano conformi (nessun nodo "appeso" a metà di un lato altrui). I punti da triangolare sono i nodi di bordo dei Q8 più un campionamento della cavità (<code>sample_polyline</code>), del contorno esterno (<code>sample_outer</code>) e punti interni via via più radi (<code>interior_points</code>, passo tipico 3/6/12 mm a seconda della zona). Dopo la triangolazione, un controllo esplicito verifica che ogni lato di bordo dei Q8 compaia effettivamente come lato di un triangolo: se manca anche un solo lato, la funzione si ferma con un errore invece di produrre una mesh non conforme silenziosa. I nodi di mezzo lato dei T6 che cadono su un lato curvo di un Q8 sono agganciati esattamente al nodo di mezzo lato del Q8 (non ricalcolati come punto medio rettilineo), per non introdurre una discontinuità geometrica tra i due reticoli.</p>
+  <p>Il materiale di ogni triangolo è assegnato per posizione del suo baricentro: dentro la cava e non nel cuneo del wedge → isolante di massa; nel cuneo (distanza dai fianchi minore di <code>wedge_insulation</code>) → isolante del wedge, con l'orientazione locale presa uguale a quella del fianco più vicino; fuori dalla cava → case; dentro il contorno di un cavo → cavo LTS o HTS a seconda del grade.</p>
+  <p>Un controllo finale (<code>mesh.area_check</code>) integra numericamente lo Jacobiano isoparametrico di ogni Q8 e T6 e confronta la somma con l'area geometrica esatta del dominio (§8.9, tabella dei controlli): è il controllo che ha già trovato un bug reale di mesh (due triangoli spuri sovrapposti a un ventaglio di filler, §10 punto C05).</p>
+  <p>Dimensioni tipiche (design 7, 104 turn): circa 106 000 nodi, 20 000 Q8, 17 000 T6.</p>
+
+  <h3>8.6 Carichi</h3>
+  <ul>
+    <li><strong>Lorentz</strong>: \( \mathbf f=\mathbf J\times\mathbf B \) in ogni punto di Gauss del cavo, \( J=I_{op}/A_{cavo} \), \( A_{cavo}=wh-(4-\pi)r_{SC}^2 \) (Rect) o \( \pi d^2/4 \) (RIS), verificata sulla mesh (errore &lt; 10<sup>−3</sup>), B dal modello di campo con sorgente arrotondata. Totale 47.88 MN/m, uguale al FEM.</li>
+    <li><strong>Raffreddamento</strong> 293 → 4.2 K con le dilatazioni secanti di ogni materiale.</li>
+    <li><strong>Forza assiale</strong> T<sub>bf</sub> attraverso ε<sub>z</sub>.</li>
+  </ul>
+
+  <h3>8.7 Condizioni al contorno e contatti</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Interfaccia</th><th>Modello</th><th>Perché</th></tr></thead>
+    <tbody>
+      <tr><td>Fianchi</td><td>spostamento normale nullo, scorrimento libero (bilaterale)</td><td>Nel FEM l'isolante del wedge ha solo il vincolo normale e scorre con il case: il suo attrito non porta carico. Con attrito il wedging si dimezzava.</td></tr>
+      <tr><td>WP / case</td><td>unilaterale, Coulomb μ = 0.2</td><td>Come il FEM. Incollato: pareti laterali scariche; senza attrito: turn di bordo sovraccaricati.</td></tr>
+      <tr><td>Cavo / jacket</td><td>unilaterale, Coulomb μ = 0.2</td><td>Come il FEM. Decisivo per il picco: incollato −5…−26%, senza attrito fino a +27% sui turn di bordo.</td></tr>
+      <tr><td>Cavo / jacket, RIS</td><td>come sopra, ma l'arco rivolto verso la forza di Lorentz del turn (± <code>surrogate_ris_bond_angle</code>, default 45°, cioè un lato del quadrato) è sempre chiuso (bilaterale in normale) e la sua coppia centrale è legata anche in tangenziale</td><td>Un cerchio in un foro circolare non ha rigidezza a rotazione, e se tutte le coppie si aprono (raffreddamento prima dell'energizzazione) nemmeno a traslazione: la matrice diventa singolare o l'iterazione oscilla. Il lato caricato è comunque quello premuto; il codice riporta la trazione che vi viene trasmessa (<code>bond_tension_fraction</code>), che deve restare piccola perché l'ipotesi valga.</td></tr>
+    </tbody>
+  </table></div>
+  <p>I nodi delle tre interfacce sono <strong>sdoppiati</strong> (due nodi coincidenti, uno per lato) e accoppiati da una molla di penalità, non da un moltiplicatore di Lagrange: è la scelta che tiene il sistema a matrice fissa (nessun grado di libertà aggiuntivo, nessuna condizione di complementarità da risolvere in modo esatto), al prezzo di dover scegliere una rigidezza di penalità abbastanza grande da rendere l'interpenetrazione trascurabile: <code>k<sub>p</sub> = 10³·k<sub>ref</sub></code>, con k<sub>ref</sub> il massimo della diagonale di spostamento della rigidezza <em>elastica</em>, prima di aggiungere tie e contatti (la riga di ε<sub>z</sub>, in altre unità, è esclusa). Prima k<sub>p</sub> era preso dalla matrice già penalizzata dai tie, quindi fino a 10³ volte più grande ancora: peggiorava solo il condizionamento. L'interpenetrazione residua è riportata (<code>penetration_rel</code>, rispetto al JT minimo). Ogni coppia (a,b) ha una normale n e una tangente t = (−n<sub>y</sub>, n<sub>x</sub>); per i fianchi il nodo "b" è il vincolo a terra (spostamento nullo), per WP/case e cavo/jacket sono due nodi reali della mesh.</p>
+  <p>Il problema di contatto è non lineare (l'insieme dei nodi in contatto e lo stato aderente/scorrevole di ognuno non sono noti a priori) e viene risolto per <strong>punto fisso</strong>: si assume uno stato, si risolve il sistema lineare, si aggiorna lo stato, si ripete. Per ogni passo di carico, a ogni iterazione:</p>
+  <ol>
+    <li><strong>Normale.</strong> Le coppie ancora "chiuse" ricevono una molla di rigidezza k<sub>p</sub> lungo n, che genera una forza N = −k<sub>p</sub>·g<sub>n</sub> dove g<sub>n</sub> = (u<sub>b</sub>−u<sub>a</sub>)·n è il gap. Il sistema K<sub>c</sub>u = F (K più le molle di contatto e di attrito attive) è risolto una volta con <code>spd_solve</code> (§8.8).</li>
+    <li><strong>Tangenziale, con memoria.</strong> Ogni coppia porta uno scorrimento accumulato g<sub>s</sub> dai passi precedenti. Se è "aderente" (non sta scorrendo), la forza tangenziale è quella di una molla sullo scorrimento relativo dal punto di aderenza: T = −k<sub>p</sub>(g<sub>t</sub>−g<sub>s</sub>), g<sub>t</sub> = (u<sub>a</sub>−u<sub>b</sub>)·t. È un modello <strong>elastico-perfettamente-plastico</strong> con <em>return mapping</em>: se |T| supera μN la coppia passa a "scorrevole" e la forza è vincolata a μN col segno dello scorrimento; se il moto si inverte mentre è scorrevole, torna aderente. È lo stesso schema usato per la plasticità di von Mises, applicato qui allo scorrimento invece che alla deformazione.</li>
+    <li><strong>Aggiornamento dello stato.</strong> Una coppia si apre (esce dal contatto) se il nuovo gap normale diventa positivo (trazione); una coppia aperta si richiude se il gap ridiventa negativo (penetrazione). Il numero di coppie che cambiano stato (aperta↔chiusa, aderente↔scorrevole) tra un'iterazione e la successiva è il criterio di convergenza dell'iterazione a punto fisso.</li>
+    <li><strong>Convergenza del passo.</strong> Il passo è considerato convergente quando al massimo <code>contact_tol</code> (0.5% di default) delle coppie totali cambia ancora stato, le forze normali sono stabili entro l'1% rispetto all'iterazione precedente <em>e</em> le coppie che cambierebbero stato portano meno di <code>contact_violation_tol</code> (2%) della forza normale totale (stessa misura del controllo di §8.9) — tipicamente 7–12 iterazioni. Il terzo criterio è stato aggiunto perché nel benchmark il caso primario si fermava con coppie “in bilico” che portavano il 5% della forza normale: il residuo era buono, ma lo stato di contatto non era coerente con la soluzione. Se il limite di iterazioni (40) è raggiunto senza convergere, il passo è segnalato non convergente e l'intero risultato è marcato <strong>non valido</strong> (§8.9, §10 punto C01): non si accetta silenziosamente uno stato di contatto che non si è stabilizzato.</li>
+    <li><strong>Fine passo: aggiornamento della memoria.</strong> Per le coppie rimaste aderenti, g<sub>s</sub> non cambia; per quelle scorse, g<sub>s</sub> è aggiornato in modo che la forza tangenziale resti esattamente μN alla fine del passo (coerente col return mapping); questo scorrimento accumulato passa al passo di carico successivo — è ciò che rende l'attrito <strong>dipendente dalla storia di carico</strong> (sequenza raffreddamento→energizzazione contro carico simultaneo, §8.2 e §10 punto C02) invece che una funzione univoca dello stato finale.</li>
+  </ol>
+  <p>Al termine, la funzione riporta tre misure, per il caso totale e per il primario separatamente:</p>
+  <ul>
+    <li>il <strong>residuo</strong> della soluzione lineare, ‖K<sub>c</sub>u−F‖/‖F‖ sulla matrice non scalata, sotto 10<sup>−6</sup>: dice che u è in equilibrio con lo stato di contatto <em>usato</em> per costruire K<sub>c</sub>;</li>
+    <li>il <strong>bilancio di forza globale</strong>: carichi applicati contro reazioni sui fianchi (i contatti interni si bilanciano da soli), sotto 10<sup>−4</sup>. Da solo non prova l'equilibrio locale: forze interne sbagliate si compensano;</li>
+    <li>la <strong>coerenza dello stato di contatto</strong>: rivalutando le condizioni di contatto su u, la forza delle coppie che cambierebbero stato (trazione su una coppia chiusa, penetrazione di una aperta, aderenza oltre il cono d'attrito per coppie chiuse prima e dopo) rispetto alla forza normale totale, sotto il 2%.</li>
+  </ul>
+
+  <h3>8.7b Perché penalty e non Lagrangiano aumentato</h3>
+  <p>Con la <strong>penalty</strong> la forza normale è N = −k<sub>p</sub> g<sub>n</sub>: il vincolo di non compenetrazione è soddisfatto solo a meno di g<sub>n</sub> = N/k<sub>p</sub>. Il <strong>Lagrangiano aumentato</strong> aggiunge un moltiplicatore λ per coppia, N = λ − k<sub>p</sub> g<sub>n</sub>, aggiornato (Uzawa: λ ← λ − k<sub>p</sub> g<sub>n</sub>) finché la penetrazione scende sotto una tolleranza. Il vincolo diventa esatto anche con k<sub>p</sub> piccolo, quindi con una matrice meglio condizionata. È il default dei contatti ANSYS (CONTA172/174).</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Aspetto</th><th>Penalty (scelta attuale)</th><th>Lagrangiano aumentato</th></tr></thead>
+    <tbody>
+      <tr><td>Vincolo normale</td><td>approssimato: penetrazione N/k<sub>p</sub></td><td>esatto entro una tolleranza</td></tr>
+      <tr><td>Matrice</td><td>simmetrica definita positiva, dimensione fissa: Cholesky</td><td>stessa matrice (λ entra nel carico), ma serve un ciclo di aggiornamento di λ</td></tr>
+      <tr><td>Costo</td><td>una fattorizzazione per iterazione di stato</td><td>più soluzioni per iterazione di stato (o cicli annidati), tipicamente 2–4 volte le fattorizzazioni</td></tr>
+      <tr><td>Attrito</td><td>molla di aderenza k<sub>p</sub> + return mapping (§8.7 punto 2)</td><td>richiede moltiplicatori anche tangenziali e la loro proiezione sul cono</td></tr>
+      <tr><td>Condizionamento</td><td>peggiora con k<sub>p</sub>; qui gestito dallo scaling di Jacobi (§8.8)</td><td>migliore: k<sub>p</sub> può restare basso</td></tr>
+    </tbody>
+  </table></div>
+  <p>Qui la penalty basta per due ragioni misurate. Il difetto che il Lagrangiano aumentato curerebbe, cioè il condizionamento, è risolto dal Cholesky scalato (residuo ~10<sup>−9</sup> con k<sub>p</sub> = 10³·k<sub>ref</sub>). L'errore della penalty, la penetrazione, è di 3.5·10<sup>−7</sup> mm sul design 7 (Rect) e 6.4·10<sup>−7</sup> mm sul RIS, cioè circa 10<sup>−7</sup> del JT minimo, e gli sforzi coincidono con ANSYS entro le bande di §9. Il Lagrangiano aumentato diventa preferibile se la penetrazione riportata supera circa l'1% di JT, oppure se servisse abbassare k<sub>p</sub> (materiali molto più cedevoli, mesh più fini). Si può aggiungere come opzione senza cambiare la struttura del ciclo: λ si aggiorna a ogni iterazione di stato insieme a chiuso/aperto e aderente/scorrevole.</p>
+  <p>Sensibilità alla sequenza sul design 7: raffreddamento e poi energizzazione in 4 passi contro tutto insieme cambia il picco di 3 MPa (1023 contro 1020) e P<sub>m</sub>+P<sub>b</sub> totale di 3 MPa; P<sub>m</sub> invariato.</p>
+
+  <h3>8.8 Soluzione numerica</h3>
+  <ul>
+    <li>Matrici dei Q8 memorizzate per forma (§8.3): i turn uguali le condividono, invece di essere ricalcolate elemento per elemento.</li>
+    <li>Assemblaggio sparso per triplette (i,j,valore) accumulate in vettori pre-allocati e convertite una sola volta con <code>sparse(...)</code>, molto più veloce dell'inserimento incrementale in una matrice sparsa MATLAB.</li>
+    <li><strong>Scaling di Jacobi e raffinamento iterativo</strong> (<code>spd_solve</code>). La matrice è riscalata simmetricamente, K<sub>s</sub> = S K S con S = diag(1/√K<sub>ii</sub>), prima della fattorizzazione; poi al massimo 2 passi di raffinamento (r = F − K u, u ← u + S K<sub>s</sub><sup>−1</sup> S r), fermandosi se il residuo non migliora. Senza scaling le righe dei nodi di penalty (≈10³ volte più rigide), degli elementi di isolante e di ε<sub>z</sub> avevano scale diversissime e il residuo della prima soluzione restava a 10<sup>−6</sup>–10<sup>−5</sup> (FEM “invalido per residuo” su design reali, 4.1·10<sup>−6</sup> totale e 1.6·10<sup>−5</sup> primario). Con lo scaling scende a ~10<sup>−9</sup> già alla prima soluzione. Le soglie non sono state toccate.</li>
+    <li><strong>Cholesky sparso con permutazione di riempimento</strong> (<code>chol(K,'vector')</code>): K è simmetrica per costruzione (rigidezza elastica più penalty simmetriche), ma dopo l'assemblaggio con le penalty di contatto e di tie l'asimmetria numerica residua può far sì che il backslash di MATLAB/Octave non riconosca la matrice come simmetrica e ripieghi silenziosamente su una fattorizzazione LU generale, circa dieci volte più lenta su una mesh di questa taglia. Simmetrizzando esplicitamente (<code>K=(K+K')/2</code>) e forzando Cholesky si evita il problema; se anche così la fattorizzazione fallisse (matrice non definita positiva, sintomo di un errore di modellazione a monte) il codice ripiega sul backslash come rete di sicurezza.</li>
+    <li>Tempi in Octave: circa 3 minuti per design con i due casi di carico (7–12 iterazioni di contatto per passo, ogni iterazione una fattorizzazione Cholesky su un sistema di circa 210 000 gradi di libertà); in MATLAB attesi molto inferiori.</li>
+  </ul>
+
+  <h3>8.9 Post-processing, figura di merito, controlli</h3>
+  <p>Linearizzazione (SCL) attraverso lo spessore t di ogni sezione del jacket, con \( z=s-t/2 \):</p>
+  <div class="math-block">\[ \boldsymbol\sigma_m=\frac1t\int_0^t\boldsymbol\sigma\,ds,\qquad \boldsymbol\sigma_b=\frac{6}{t^2}\int_0^t\boldsymbol\sigma\,z\,ds,\qquad P_m=\mathrm{Tr}(\boldsymbol\sigma_m),\quad P_m+P_b=\max\big[\mathrm{Tr}(\boldsymbol\sigma_m\pm\boldsymbol\sigma_b)\big] \]</div>
+  <p>Tr è l'intensità di Tresca sui principali in piano e su σ<sub>z</sub>:</p>
+  <div class="math-block">\[ \sigma_{1,2}=\tfrac{\sigma_x+\sigma_y}2\pm\sqrt{\big(\tfrac{\sigma_x-\sigma_y}2\big)^2+\tau_{xy}^2} \]</div>
+  <p> Sezioni: ogni confine di elemento lungo le quattro pareti dritte e la metà di ogni raccordo. Picco: Tresca mediato ai nodi sulla faccia del jacket a contatto con il cavo. Case: le sette linee della figura in §8.4.</p>
+  <p>La linearizzazione non basta a classificare: la classificazione è fatta per caso di carico, con il raffreddamento come carico secondario.</p>
+  <div class="math-block">\[ P_m(P)\le S_m,\qquad (P_m+P_b)(P)\le 1.5\,S_m,\qquad (P_m+P_b)(P+Q)\le 3\,S_m \]</div>
+  <p>S<sub>m</sub> è esplicito nell'Excel (<code>Sm_jacket</code>, <code>Sm_case</code>; default = <code>S_amm_JT</code>, <code>S_amm_VT</code>) e <strong>va confermato</strong> rispetto al codice di progetto. Con i contatti la separazione P / P+Q è approssimata: il caso primario è risolto con il proprio stato di contatto, senza il serraggio del raffreddamento, e questo è conservativo.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Controllo di validità</th><th>Soglia</th><th class="num">Design 7</th></tr></thead>
+    <tbody>
+      <tr><td>Area della mesh (isoparametrica) contro area del dominio</td><td>&lt; 1·10⁻⁴</td><td class="num">1.4·10⁻⁶</td></tr>
+      <tr><td>Jacobiano in ogni punto di Gauss</td><td>&gt; 0</td><td class="num">sì</td></tr>
+      <tr><td>Convergenza dei contatti, ogni passo e ogni caso</td><td>sì</td><td class="num">sì</td></tr>
+      <tr><td>Residuo della soluzione lineare, caso totale e primario</td><td>&lt; 1·10⁻⁶</td><td class="num">1.7·10⁻⁹ / 7.4·10⁻⁹</td></tr>
+      <tr><td>Equilibrio globale: carichi contro reazioni sui fianchi, totale e primario</td><td>&lt; 1·10⁻⁴</td><td class="num">5.4·10⁻⁸ / 1.7·10⁻⁸</td></tr>
+      <tr><td>Coerenza dello stato di contatto (forza delle coppie incoerenti / forza normale), totale e primario</td><td>&lt; 2·10⁻²</td><td class="num">1.2·10⁻⁵ / 6.9·10⁻⁵</td></tr>
+      <tr><td>Area del cavo sulla mesh contro area di progetto (densità di corrente)</td><td>&lt; 1·10⁻³</td><td class="num">1.7·10⁻⁷</td></tr>
+      <tr><td>Equilibrio assiale: ∫σ<sub>z</sub>dA contro T<sub>bf</sub></td><td>&lt; 1·10⁻³</td><td class="num">8·10⁻¹³</td></tr>
+      <tr><td>Copertura dei punti sulle linee del case</td><td>≥ 98%</td><td class="num">100%</td></tr>
+    </tbody>
+  </table></div>
+  <p>Informativi, non bloccanti: penetrazione massima rispetto al JT minimo (<code>penetration_rel</code>) e, per il RIS, trazione trasmessa dal lato legato (<code>bond_tension_fraction</code>).</p>
+  <p>Se un controllo fallisce, la figura di merito è marcata <strong>INVALIDA</strong>. I plot restano, per la diagnosi, con un banner rosso “NOT VALIDATED”, e la console avvisa di non usare la figura di merito. Il controllo d'area ha già trovato un bug reale: due triangoli spuri sovrapposti ai filler, dove due turn si incontrano sul bordo del WP.</p>
+
+  <h3>8.10 Parametri e output</h3>
+  <p>Categoria <em>Mechanical surrogate</em> dell'Excel: temperature, dilatazioni, moduli e Poisson dell'isolante e del filler, spessore dell'isolante del wedge, attriti (<code>mu_case</code>, <code>mu_cable</code>, <code>mu_flank</code>), mesh (<code>surrogate_n_cable</code>, <code>surrogate_n_arc</code>, <code>surrogate_n_thk</code>, <code>surrogate_h_fine</code>), carico (<code>surrogate_load_sequence</code>, <code>surrogate_em_steps</code>, <code>surrogate_classify</code>), tolleranza di contatto e S<sub>m</sub>. I file di input vecchi funzionano con i default del benchmark.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Campo di <code>out</code></th><th>Contenuto</th></tr></thead>
+    <tbody>
+      <tr><td><code>turn</code>, <code>layer</code>, <code>case_scl</code></td><td>Risultati del caso totale: P<sub>m</sub>, P<sub>m</sub>+P<sub>b</sub> per turn e per layer, picco e sua posizione, linee del case.</td></tr>
+      <tr><td><code>primary</code></td><td>Stessi risultati per il caso primario P.</td></tr>
+      <tr><td><code>fom</code></td><td>Sei utilizzazioni, massimo, posizioni, stato (soddisfatto, non soddisfatto, INVALIDO).</td></tr>
+      <tr><td><code>checks</code>, <code>valid</code></td><td>Controlli di validità ed esito.</td></tr>
+      <tr><td><code>nodal</code>, <code>elem_SINT</code>, <code>eps_z</code>, <code>sol.contact</code></td><td>Tensioni nodali per materiale, Tresca per elemento, deformazione assiale, stato dei contatti.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s9">
+  <h2><span class="num">9</span>Validazione contro ANSYS</h2>
+  <p>Due analisi ANSYS 2D indipendenti: il <strong>benchmark</strong> (11 layer, 6×10 + 5×8 turn, JT 3.5 mm, r<sub>SC</sub> 4 mm, 62.3 kA) e il <strong>design 7</strong> (13 layer × 8 turn, 3 grade, JT 3.0 mm, 64.6 kA). Gli sforzi FEM sono stati linearizzati sulle stesse identiche sezioni del modello FE.</p>
+  <figure>
+    <div class="legend" aria-hidden="true"><span><i class="l1"></i>FEM ANSYS</span><span><i class="l2"></i>Modello FE</span></div>
+    <div class="chart-grid" id="charts"></div>
+    <figcaption>Tensione di Tresca di picco nel jacket per layer (massimo sui turn del layer, nel raccordo del cavo), stato con tutti i carichi. Passa il puntatore o usa Tab per leggere i valori.</figcaption>
+  </figure>
+  <details>
+    <summary>Tabella dei valori del grafico</summary>
+    <div class="table-wrap" id="chart-table"></div>
+  </details>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Grandezza (modello FE / FEM)</th><th class="num">Benchmark</th><th class="num">Design 7</th></tr></thead>
+    <tbody>
+      <tr><td>Deformazione assiale ε<sub>z</sub></td><td class="num">+0.4%</td><td class="num">0.0%</td></tr>
+      <tr><td>Jacket, pareti dritte: P<sub>m</sub> / P<sub>m</sub>+P<sub>b</sub></td><td class="num">1.00 ± 0.04 / 1.01 ± 0.04</td><td class="num">0.99 ± 0.06 / 0.99 ± 0.07</td></tr>
+      <tr><td>Jacket, metà raccordo: P<sub>m</sub> / P<sub>m</sub>+P<sub>b</sub></td><td class="num">0.98 / 0.98</td><td class="num">0.95 / 0.94</td></tr>
+      <tr><td>Picco nel raccordo, per layer</td><td class="num">−8 … +5%</td><td class="num">−11 … +5%</td></tr>
+      <tr><td>Picco globale</td><td class="num">924 / 980 MPa (−6%)</td><td class="num">1020 / 1124 MPa (−9%)</td></tr>
+      <tr><td>Case: nose / vault (P<sub>m</sub>)</td><td class="num">−3% / −2%</td><td class="num">−5% / −3%</td></tr>
+      <tr><td>Case: pareti laterali</td><td class="num">−2 … +2%</td><td class="num">+3%</td></tr>
+      <tr><td>Case: piastra lato plasma</td><td class="num">+14%</td><td class="num">+6%</td></tr>
+    </tbody>
+  </table></div>
+  <p>Nella gran parte dei turn il picco cade nello stesso raccordo del FEM, entro 1 mm. Cosa è risultato determinante, nell'ordine in cui è emerso:</p>
+  <ol>
+    <li>la geometria reale del case: nose ad arco e cava come inviluppo dei layer;</li>
+    <li>le condizioni sui fianchi, con scorrimento libero: wedging corretto;</li>
+    <li>l'attrito WP/case: ripartizione radiale corretta tra WP e case;</li>
+    <li>gli angoli arrotondati dei turn: rigidezza toroidale corretta del WP;</li>
+    <li>il contatto con attrito cavo/jacket: picco nel raccordo.</li>
+  </ol>
+  <p>Dopo le modifiche al solutore (scaling, penalità, convergenza con coerenza di stato) la validazione è ripetuta: <strong>PASSED</strong>, rapporti invariati (P<sub>m</sub> 0.96–0.99, P<sub>m</sub>+P<sub>b</sub> 0.96–0.98, picco 0.99–1.02 in media).</p>
+
+  <h3>Verifica RIS / Rect</h3>
+  <p><code>verify_ris_rect_fem</code> su un caso Rect (design 7) e uno RIS (10 layer × 7 turn, celle quadrate da 46 mm, cavi da 900/700/600 mm² dimensionati con <code>size_cicc_cable</code>, 96 kA). In entrambi <code>p.shape_cable</code> è volutamente l'opposto della riga: la forma usata è sempre quella della soluzione. Il caso RIS è un punto di prova costruito apposta, non l'uscita di una scansione.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Grandezza</th><th class="num">Rect (design 7)</th><th class="num">RIS</th></tr></thead>
+    <tbody>
+      <tr><td>Area del cavo: geometria / dimensionamento / mesh</td><td class="num">908.2 mm² (layer 1), mesh 1.7·10⁻⁷</td><td class="num">900.0 / 900.0 mm², mesh 1.5·10⁻⁵</td></tr>
+      <tr><td>JT minimo, raccordo esterno del jacket</td><td class="num">3.00 mm, 6.0 mm</td><td class="num">5.07–8.18 mm, 5.07–6.0 mm</td></tr>
+      <tr><td>Mesh: nodi / Q8 / T6</td><td class="num">105 918 / 20 176 / 17 057</td><td class="num">69 200 / 7 784 / 19 993</td></tr>
+      <tr><td>Residuo totale / primario</td><td class="num">1.7·10⁻⁹ / 7.4·10⁻⁹</td><td class="num">6.0·10⁻¹⁰ / 2.0·10⁻⁹</td></tr>
+      <tr><td>Coerenza dello stato di contatto totale / primario</td><td class="num">1.2·10⁻⁵ / 6.9·10⁻⁵</td><td class="num">7.6·10⁻³ / 1.2·10⁻⁶</td></tr>
+      <tr><td>Risultante di Lorentz F<sub>x</sub> / F<sub>y</sub> [N/m]</td><td class="num">−1.2 / −4.79·10⁷</td><td class="num">−536 / −4.91·10⁷</td></tr>
+      <tr><td>Jacket: P<sub>m</sub> / P<sub>m</sub>+P<sub>b</sub> / picco (tutti i carichi)</td><td class="num">549 / 882 / 1020 MPa</td><td class="num">447 / 571 / 630 MPa</td></tr>
+      <tr><td>Controlli</td><td class="num"><span class="chip good">✓ tutti</span></td><td class="num"><span class="chip good">✓ tutti</span></td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>Lato legato del RIS.</strong> Con attrito μ = 0.2 i risultati con e senza lato legato coincidono (P<sub>m</sub>+P<sub>b</sub> 571 MPa, picco 630 MPa; 45 iterazioni con il raffreddamento prima dell'energizzazione), e il lato legato non porta trazione. Il raffreddamento serra il cavo perché l'acciaio si contrae più del cavo, e l'attrito ne blocca la rotazione. Senza attrito (μ = 0) la differenza è netta: senza lato legato la matrice è singolare (rcond 1.7·10⁻¹⁷, rotazione libera del cerchio) e il calcolo si interrompe; con il lato legato converge con tutti i controlli superati (P<sub>m</sub>+P<sub>b</sub> 582 MPa, picco 653 MPa).</p>
+
+  <h3>Figura di merito del design 7</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Criterio (S<sub>m</sub> = 667 MPa, da confermare)</th><th class="num">Jacket</th><th class="num">Case</th></tr></thead>
+    <tbody>
+      <tr><td>P<sub>m</sub> primario ≤ S<sub>m</sub></td><td class="num">618 MPa · 0.93 <span class="chip good">✓</span></td><td class="num">623 MPa · 0.93 <span class="chip good">✓</span></td></tr>
+      <tr><td>P<sub>m</sub>+P<sub>b</sub> primario ≤ 1.5 S<sub>m</sub></td><td class="num">1107 MPa · 1.11 <span class="chip bad">✕</span></td><td class="num">764 MPa · 0.76 <span class="chip good">✓</span></td></tr>
+      <tr><td>P<sub>m</sub>+P<sub>b</sub> con tutti i carichi ≤ 3 S<sub>m</sub></td><td class="num">882 MPa · 0.44 <span class="chip good">✓</span></td><td class="num">768 MPa · 0.38 <span class="chip good">✓</span></td></tr>
+      <tr><td>Picco nel raccordo (informativo)</td><td class="num">1020 MPa</td><td class="num">–</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s10">
+  <h2><span class="num">10</span>Revisione del codice, punti C00–C08</h2>
+  <p>La revisione esterna ha segnalato nove punti. Per ognuno: esito e cosa è cambiato. Il dettaglio è in <code>docs/RISPOSTA_REVIEW.md</code>.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>ID</th><th>Esito</th><th>Cosa è cambiato</th></tr></thead>
+    <tbody>
+      <tr><td>C00</td><td><span class="chip good">chiarito</span></td><td>Il modello è un FEM 2D autonomo, non un modello ridotto: intestazione e documentazione corrette.</td></tr>
+      <tr><td>C01</td><td><span class="chip good">corretto</span></td><td>Controlli di validità obbligatori (<code>out.checks</code>, <code>out.valid</code>); senza convergenza o con un controllo fallito la figura di merito è INVALIDA e il main lo segnala.</td></tr>
+      <tr><td>C02</td><td><span class="chip good">implementato</span></td><td>Attrito incrementale con scorrimento accumulato e sequenza di carico selezionabile; sul design 7 l'effetto della sequenza è di pochi MPa.</td></tr>
+      <tr><td>C03</td><td><span class="chip good">corretto</span></td><td>Script di estrazione dei riferimenti nel repository (<code>validation/tools</code>), bande di accettazione esplicite, esito PASS/FAIL; T<sub>bf</sub> prescritta dal FEM stampata accanto a quella calcolata dal tool.</td></tr>
+      <tr><td>C04</td><td><span class="chip good">implementato</span></td><td>Due casi di carico (P e P+Q) e criteri P<sub>m</sub> ≤ S<sub>m</sub>, P<sub>m</sub>+P<sub>b</sub> ≤ 1.5 S<sub>m</sub>, P+Q ≤ 3 S<sub>m</sub>; S<sub>m</sub> esplicito. Conseguenza: il design 7 non soddisfa il criterio primario di membrana + flessione.</td></tr>
+      <tr><td>C05</td><td><span class="chip good">corretto</span></td><td>Area con tolleranza, Jacobiano, residuo, equilibrio globale e assiale, copertura delle linee del case. Trovato e corretto un bug di mesh.</td></tr>
+      <tr><td>C06</td><td><span class="chip open">in parte</span></td><td>Campo: risolto, i grade sono dimensionati sul picco discreto con iterazione (§5 passo 10, §6.8). Resta lo SCF 3.15 nella formula del jacket, e la verifica FE è ancora un passo facoltativo dopo la scelta (§11).</td></tr>
+      <tr><td>C07</td><td><span class="chip good">corretto</span></td><td>Il vault è confrontato con <code>S_amm_VT</code> e non più con <code>S_amm_JT</code>. Con i default attuali i due valori coincidono.</td></tr>
+      <tr><td>C08</td><td><span class="chip good">corretto</span></td><td>Sorgente arrotondata come nel FEM e picco cercato su tutto il contorno del cavo: 14.476 contro 14.482 T.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s11">
+  <h2><span class="num">11</span>Limiti e punti aperti</h2>
+  <h3>Modello meccanico FE</h3>
+  <ul>
+    <li>2D in deformazione piana generalizzata come il FEM di riferimento: non vede effetti 3D (curve, raccordi tra gambe, supporti).</li>
+    <li>L'attrito dipende dalla storia di carico: la sequenza raffreddamento → energizzazione è disponibile; sul design 7 l'effetto è trascurabile, per geometrie nuove va verificato.</li>
+    <li>La separazione P / P+Q è approssimata in presenza di contatti; S<sub>m</sub> va confermato.</li>
+    <li>Incertezze dalla validazione: sforzi linearizzati ±5–7%, raccordi −2…−6%, picco −11…+5%, nose del case −3…−5% (leggermente non conservativo).</li>
+    <li>Validato su design LTS con 2–3 grade e layer allineati. I vincoli tra layer non allineati sono verificati numericamente ma non contro un FEM; nessun design HTS confrontato.</li>
+    <li>Troppo lento per ogni candidato della scansione: serve a verificare la soluzione scelta o un sottoinsieme.</li>
+    <li>RIS: validato solo numericamente (area, Jacobiani, equilibrio, contatti), non contro un FEM ANSYS. Le sezioni di linearizzazione sono radiali: vicino agli spigoli non sono normali alla faccia esterna. Il ramo RIS dell'export APDL non è stato provato in ANSYS. Il lato legato assume che il cavo sia premuto sul lato verso cui spinge la forza di Lorentz: la trazione trasmessa è riportata e finora è nulla.</li>
+    <li>Contatti a penalty: penetrazione riportata e trascurabile sui casi provati (§8.7b); se superasse ~1% di JT servirebbe il Lagrangiano aumentato.</li>
+  </ul>
+  <h3>Campo e modulo 3D</h3>
+  <ul>
+    <li>Il picco nella scansione è 2D (gamba interna, conduttori infiniti): non include l'aumento di campo 3D nelle zone curve. Il modulo 3D lo stima, ma è un modulo di ricerca non ancora validato.</li>
+    <li>Nel modulo 3D il cavo RIS è rappresentato con 2×2 filamenti di Gauss del quadrato equivalente (stesso momento del secondo ordine del cerchio), non con un modello di auto-campo del cavo tondo.</li>
+    <li>La formula di Ampère in <code>compute_operating_params</code> divide per 2πR<sub>TFi</sub> − dr<sub>plasma</sub> invece di 2π(R<sub>TFi</sub> − dr<sub>plasma</sub>): +1.4% su B<sub>TF</sub>. Ora influisce solo sulla prima stima e sulla pressione p<sub>rs</sub> della formula del jacket. Non è stata toccata per non spostare gli sforzi già calibrati: da decidere.</li>
+    <li><code>cicc</code> cerca il rame con una tolleranza di 5 K sull'hot spot e può restituire 251 K con un limite di 250 K; la scansione scarta il candidato. Il comportamento c'era già prima.</li>
+  </ul>
+  <h3>Scansione: decisioni aperte (C06)</h3>
+  <ol>
+    <li><s>Dimensionare ogni grade sul picco di campo discreto, con un'iterazione tra dimensionamento e campo.</s> Fatto (§5 passo 10).</li>
+    <li>Usare il modello FE come filtro obbligatorio sulle soluzioni fattibili prima di dichiararle accettate.</li>
+    <li>Tarare una stima analitica veloce sul modello FE e usarla nella scansione al posto dello SCF provvisorio.</li>
+  </ol>
+</section>
+
+</main>
+</div>
+
+<script>
+(function () {
+  var data = [{"name": "Benchmark 2026", "short": "Benchmark", "sub": "11 layer, 62.3 kA", "fem": [613, 690, 742, 783, 839, 980, 695, 749, 798, 846, 876], "fe": [637, 717, 764, 790, 829, 904, 700, 751, 829, 889, 924]}, {"name": "Design 7 (EM_2D007)", "short": "Design 7", "sub": "13 layer, 3 grade, 64.6 kA", "fem": [674, 864, 932, 977, 879, 929, 958, 939, 965, 984, 1004, 1025, 1124], "fe": [646, 814, 869, 900, 926, 951, 974, 978, 996, 1012, 1020, 1016, 1003]}];
+  var host = document.getElementById('charts');
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, parent) {
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  var yMin = 500, yMax = 1200;
+  data.forEach(function (c) {
+    var wrap = document.createElement('div'); wrap.className = 'chart';
+    var h = document.createElement('h4'); h.textContent = c.name; wrap.appendChild(h);
+    var sub = document.createElement('p'); sub.className = 'sub'; sub.textContent = c.sub; wrap.appendChild(sub);
+    var W = 460, H = 280, m = {l: 44, r: 70, t: 26, b: 34};
+    var svg = el('svg', {viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': c.name + ': picco del jacket per layer, FEM contro modello FE'});
+    wrap.appendChild(svg);
+    var n = c.fem.length;
+    var X = function (i) { return m.l + (W - m.l - m.r) * (n === 1 ? 0.5 : i / (n - 1)); };
+    var Y = function (v) { return m.t + (H - m.t - m.b) * (1 - (v - yMin) / (yMax - yMin)); };
+    for (var v = yMin; v <= yMax; v += 100) {
+      el('line', {x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), class: v === yMin ? 'baseline' : 'gridline'}, svg);
+      var t = el('text', {x: m.l - 6, y: Y(v) + 4, 'text-anchor': 'end', class: 'ax-t'}, svg); t.textContent = v;
+    }
+    for (var i = 0; i < n; i++) {
+      var tx = el('text', {x: X(i), y: H - m.b + 16, 'text-anchor': 'middle', class: 'ax-t'}, svg); tx.textContent = i + 1;
+    }
+    var xl = el('text', {x: (m.l + W - m.r) / 2, y: H - 4, 'text-anchor': 'middle', class: 'ax-l'}, svg); xl.textContent = 'layer (1 = lato plasma)';
+    var yl = el('text', {x: m.l - 6, y: m.t - 12, 'text-anchor': 'end', class: 'ax-l'}, svg); yl.textContent = 'MPa';
+    function path(vals) { return vals.map(function (v, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(v).toFixed(1); }).join(' '); }
+    el('path', {d: path(c.fem), class: 'ser1'}, svg);
+    el('path', {d: path(c.fe), class: 'ser2'}, svg);
+    c.fem.forEach(function (v, i) { el('circle', {cx: X(i), cy: Y(v), r: 4, class: 'dot1'}, svg); });
+    c.fe.forEach(function (v, i) { el('circle', {cx: X(i), cy: Y(v), r: 4, class: 'dot2'}, svg); });
+    // direct labels at the last layer, pushed apart if they collide
+    var yf = Y(c.fem[n - 1]), ys = Y(c.fe[n - 1]);
+    if (Math.abs(yf - ys) < 14) { var mid = (yf + ys) / 2, up = yf < ys; yf = mid + (up ? -7 : 7); ys = mid + (up ? 7 : -7); }
+    var lf = el('text', {x: X(n - 1) + 8, y: yf + 4, class: 'dlabel'}, svg); lf.textContent = 'FEM ' + c.fem[n - 1];
+    var ls = el('text', {x: X(n - 1) + 8, y: ys + 4, class: 'dlabel'}, svg); ls.textContent = 'FE ' + c.fe[n - 1];
+    // hover layer
+    var xh = el('line', {x1: 0, x2: 0, y1: m.t, y2: H - m.b, class: 'xhair', visibility: 'hidden'}, svg);
+    var tip = document.createElement('div'); tip.className = 'tip'; tip.hidden = true; wrap.appendChild(tip);
+    var hit = el('rect', {x: m.l - 10, y: m.t, width: W - m.l - m.r + 20, height: H - m.t - m.b, fill: 'transparent', tabindex: 0}, svg);
+    var cur = -1;
+    function show(i) {
+      cur = i;
+      xh.setAttribute('x1', X(i)); xh.setAttribute('x2', X(i)); xh.setAttribute('visibility', 'visible');
+      tip.textContent = '';
+      var t = document.createElement('div'); t.className = 't'; t.textContent = 'Layer ' + (i + 1); tip.appendChild(t);
+      [['FEM', c.fem[i], 'var(--series-1)', 'solid'], ['Modello FE', c.fe[i], 'var(--series-2)', 'dashed']].forEach(function (r) {
+        var row = document.createElement('div'); row.className = 'row';
+        var k = document.createElement('i'); k.style.borderTopColor = r[2]; k.style.borderTopStyle = r[3]; row.appendChild(k);
+        var b = document.createElement('b'); b.textContent = r[1] + ' MPa'; row.appendChild(b);
+        var s = document.createElement('span'); s.textContent = ' ' + r[0]; s.style.color = 'var(--muted)'; row.appendChild(s);
+        tip.appendChild(row);
+      });
+      var q = document.createElement('div'); q.style.color = 'var(--muted)'; q.textContent = 'FE/FEM ' + (c.fe[i] / c.fem[i]).toFixed(2); tip.appendChild(q);
+      tip.hidden = false;
+      var bb = svg.getBoundingClientRect(), wb = wrap.getBoundingClientRect();
+      var px = (X(i) / W) * bb.width + (bb.left - wb.left);
+      var left = px + 12; if (left + 170 > wb.width) left = px - 182;
+      tip.style.left = Math.max(0, left) + 'px'; tip.style.top = ((m.t / H) * bb.height + (bb.top - wb.top) + 8) + 'px';
+    }
+    function hide() { xh.setAttribute('visibility', 'hidden'); tip.hidden = true; cur = -1; }
+    hit.addEventListener('pointermove', function (ev) {
+      var bb = svg.getBoundingClientRect();
+      var x = (ev.clientX - bb.left) / bb.width * W;
+      var i = Math.round((x - m.l) / (W - m.l - m.r) * (n - 1));
+      show(Math.max(0, Math.min(n - 1, i)));
+    });
+    hit.addEventListener('pointerleave', hide);
+    hit.addEventListener('focus', function () { show(0); });
+    hit.addEventListener('blur', hide);
+    hit.addEventListener('keydown', function (ev) {
+      if (ev.key === 'ArrowRight') { show(Math.min(n - 1, cur + 1)); ev.preventDefault(); }
+      if (ev.key === 'ArrowLeft') { show(Math.max(0, cur - 1)); ev.preventDefault(); }
+    });
+    host.appendChild(wrap);
+  });
+  // table view
+  var tw = document.getElementById('chart-table');
+  var tb = document.createElement('table');
+  var head = tb.createTHead().insertRow();
+  ['Caso', 'Layer', 'FEM [MPa]', 'Modello FE [MPa]', 'FE/FEM'].forEach(function (h, j) { var th = document.createElement('th'); th.textContent = h; if (j > 1) th.className = 'num'; head.appendChild(th); });
+  var body = tb.createTBody();
+  data.forEach(function (c) {
+    c.fem.forEach(function (v, i) {
+      var r = body.insertRow();
+      [c.short, String(i + 1), String(v), String(c.fe[i]), (c.fe[i] / v).toFixed(2)].forEach(function (x, j) {
+        var td = r.insertCell(); td.textContent = x; if (j > 1) td.className = 'num';
+      });
+    });
+  });
+  tw.appendChild(tb);
+})();
+</script>
+<script>
+window.MathJax = { tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] }, svg: { fontCache: 'global' }, options: { enableMenu: false } };
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg-full.js"></script>
+
