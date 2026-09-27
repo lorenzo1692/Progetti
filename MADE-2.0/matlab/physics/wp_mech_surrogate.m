@@ -1021,6 +1021,7 @@ closed = true(np_,1); slip = zeros(np_,1); N = zeros(np_,1);
 gs = zeros(np_,1); gt_prev = zeros(np_,1);
 maxit = get_or(opts, 'contact_maxit', 40);
 tolc = get_or(opts, 'contact_tol', 5e-3);
+violtol = get_or(opts, 'contact_violation_tol', 2e-2);   % as surr_checks' contact_state_ok
 info.hist = []; info.step = struct('iter', {}, 'converged', {}, 'n_changes', {}, 'dN', {});
 for st_i = 1:numel(steps)
     F = steps{st_i};
@@ -1056,8 +1057,12 @@ for st_i = 1:numel(steps)
         slip_new(~closed_new) = 0;
         dN = max(abs(N_new - N))/max([abs(N_new); 1]);
         nchg = sum(closed_new ~= closed) + sum(slip_new ~= slip);
+        viol = state_violation(kp, gn, Tst, mu, N_new, closed, closed_new, slip, slip_new);
         info.hist(end+1,:) = [st_i, it, sum(closed_new), sum(slip_new ~= 0), nchg, dN];
-        done = nchg <= max(2, tolc*np_) && dN < 1e-2;
+        % converged: few state changes, stable normal forces AND the pairs
+        % still changing carry a small fraction of the contact force (state
+        % consistency of the returned U, the same measure as the check)
+        done = nchg <= max(2, tolc*np_) && dN < 1e-2 && viol <= violtol;
         closed_used = closed; slip_used = slip;     % state the current U is in equilibrium with
         closed = closed_new; slip = slip_new; N = N_new;
         if done, break, end
@@ -1086,16 +1091,10 @@ info.refinement_steps = sinfo.refinement_steps;
 % the total normal contact force: a small global unbalance alone does not
 % prove the local contact conditions hold.
 info.final_state_changes = nchg;
-f_n = kp*abs(gn).*(closed_new ~= closed_used);  % tension carried by a closed pair / penetration of an open one
-% stuck beyond the friction cone: only pairs closed before and after (a
-% pair that is just closing has no normal force yet in U, its tangential
-% state is set in the next solve, not a violation of this one)
-both = closed_used & closed_new & slip_used == 0 & slip_new ~= 0;
-f_t = max(abs(Tst) - mu.*max(N_new,0), 0).*both;
-Nref = max(sum(abs(N_new(closed_used))), eps);
-info.final_violation_force = (sum(f_n) + sum(f_t))/Nref;
-info.final_violation_normal = sum(f_n)/Nref;
-info.final_violation_friction = sum(f_t)/Nref;
+[v, vn, vf] = state_violation(kp, gn, Tst, mu, N_new, closed_used, closed_new, slip_used, slip_new);
+info.final_violation_force = v;
+info.final_violation_normal = vn;
+info.final_violation_friction = vf;
 info.final_violations = sum((closed_new ~= closed_used) | (slip_new ~= slip_used));
 fl = find(bil);
 Rn = -kp*(ua(fl,1).*n(fl,1) + ua(fl,2).*n(fl,2));
@@ -1162,6 +1161,20 @@ while it < 2 && res > 1e-13
     U = Un; res = rn;
 end
 sinfo = struct('residual_first', res0, 'residual', res, 'refinement_steps', it, 'chol_ok', flag == 0);
+end
+
+function [v, vn, vf] = state_violation(kp, gn, Tst, mu, N_new, closed, closed_new, slip, slip_new)
+% Force of the pairs whose contact state is not consistent with U, over the
+% total normal contact force: normal part = tension carried by a closed
+% pair or penetration of an open one; friction part = stuck beyond the
+% friction cone, only for pairs closed before and after (a pair that is
+% just closing has no normal force in U yet, its tangential state is set
+% by the next solve, it is not a violation of this one).
+f_n = kp*abs(gn).*(closed_new ~= closed);
+both = closed & closed_new & slip == 0 & slip_new ~= 0;
+f_t = max(abs(Tst) - mu.*max(N_new,0), 0).*both;
+Nref = max(sum(abs(N_new(closed))), eps);
+vn = sum(f_n)/Nref; vf = sum(f_t)/Nref; v = vn + vf;
 end
 
 function x = chol_solve(R, q, b)
@@ -1505,7 +1518,7 @@ c.residual_ok = max(c.solve_residual, c.solve_residual_primary) < 1e-6;
 % open ones, stuck pairs beyond the friction cone) over the total normal
 % contact force; consistent with the 1% normal-force stability of the
 % contact iterations
-c.contact_state_ok = max(c.contact_violation_force, c.contact_violation_force_primary) < 2e-2;
+c.contact_state_ok = max(c.contact_violation_force, c.contact_violation_force_primary) < get_or(opts, 'contact_violation_tol', 2e-2);
 c.balance_ok = max(c.force_balance, c.force_balance_primary) < 1e-4;
 c.axial_rel_err = abs(out.Fz_integral - sys.T_bf)/max(abs(sys.T_bf), 1);
 c.axial_ok = c.axial_rel_err < 1e-3;

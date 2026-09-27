@@ -32,6 +32,16 @@ if ~isfield(p, 'shape_cable') || ~isscalar(p.shape_cable) || ~any(p.shape_cable 
     error('scan_wp_designs:shape_cable', 'p.shape_cable must be 200 (RIS) or 201 (Rect).');
 end
 
+% field model used to size the grades (see the sizing / field loop below)
+field_model = 'discrete'; if isfield(p, 'field_model') && ~isempty(p.field_model), field_model = p.field_model; end
+if ~any(strcmpi(field_model, {'discrete', 'smeared'}))
+    error('scan_wp_designs:field_model', 'p.field_model must be ''discrete'' or ''smeared''.');
+end
+use_discrete_field = strcmpi(field_model, 'discrete');
+field_tol = 0.05;     if isfield(p, 'field_tol') && ~isempty(p.field_tol), field_tol = p.field_tol; end           % [T]
+field_max_iter = 6;   if isfield(p, 'field_max_iter') && ~isempty(p.field_max_iter), field_max_iter = p.field_max_iter; end
+n_field_rejected = 0;
+
 counter = 0;
 % DATA is intentionally left undefined here: like the original script, it
 % is created on the first successful candidate via the indexed assignment
@@ -92,136 +102,98 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                 continue
             end
 
-            % Preallocations (maxdim-sized arrays are large enough for any
-            % candidate; n_layers-sized arrays auto-grow, exactly as in
-            % the original script, if extra grades get appended below)
-            type_cable = repmat({'---'}, 1, maxdim);
-            Cond_h = zeros(1, maxdim);   Cond_w = zeros(1, maxdim);
-            S_Cable = zeros(1, maxdim);  JT = zeros(1, maxdim);
-            r_cable = zeros(1, maxdim);  tins = zeros(1, maxdim);
-            N_Sc = zeros(1, maxdim);     N_Cu = zeros(1, maxdim);
-            THS = zeros(1, maxdim);      S_Cu_HTS = zeros(1, maxdim);
-            S_REBCO = zeros(1, maxdim);  Ke_cavo_rad = zeros(1, maxdim);
-            B_grade = zeros(1, maxdim);  % field each grade's cable was sized at
-            Ke_cavo_tor = zeros(1, maxdim);
+            % Sizing / field loop: size the candidate with the field of
+            % each grade, then (p.field_model = 'discrete', default) compute
+            % the real per-layer peak on the sized WP with the discrete
+            % 2D model (WP_PEAK_FIELD_FAST, validated vs ANSYS) and re-size
+            % with it until the field each grade was sized for matches its
+            % peak within p.field_tol. The smeared model (Ampere field of
+            % n_TF current sheets x p.corr_B_WP, linear across the WP) is
+            % only the first guess: its error on the peak grows with the
+            % toroidal narrowness of the WP (+1 to +2 T on the plasma side,
+            % more on the low-field grades), so no constant corr_B_WP can
+            % fix it. Candidates failing any check are rejected on the pass
+            % where they fail (a higher field only makes cables bigger).
+            n_layers_start = n_layers; n_turns_start = n_turns;
+            n_spire_start = n_spire_; Iop_start = Iop;
+            B_field_layer = []; reject = false; field_ok = false;
+            for field_it = 1:field_max_iter
+                n_layers = n_layers_start; n_turns = n_turns_start;
+                n_spire_ = n_spire_start; Iop = Iop_start; WP_w0 = [];
+                % Preallocations (maxdim-sized arrays are large enough for any
+                % candidate; n_layers-sized arrays auto-grow, exactly as in
+                % the original script, if extra grades get appended below)
+                type_cable = repmat({'---'}, 1, maxdim);
+                Cond_h = zeros(1, maxdim);   Cond_w = zeros(1, maxdim);
+                S_Cable = zeros(1, maxdim);  JT = zeros(1, maxdim);
+                r_cable = zeros(1, maxdim);  tins = zeros(1, maxdim);
+                N_Sc = zeros(1, maxdim);     N_Cu = zeros(1, maxdim);
+                THS = zeros(1, maxdim);      S_Cu_HTS = zeros(1, maxdim);
+                S_REBCO = zeros(1, maxdim);  Ke_cavo_rad = zeros(1, maxdim);
+                B_grade = zeros(1, maxdim);  % field each grade's cable was sized at
+                Ke_cavo_tor = zeros(1, maxdim);
 
-            N_tot = zeros(1, n_layers);
-            SC_w = zeros(1, n_layers);   SC_h = zeros(1, n_layers);
-            R_J = zeros(1, n_layers);
-            S_CICC = zeros(1, n_layers); S_JT = zeros(1, n_layers);
-            Ri = zeros(1, n_layers);     Re = zeros(1, n_layers);
+                N_tot = zeros(1, n_layers);
+                SC_w = zeros(1, n_layers);   SC_h = zeros(1, n_layers);
+                R_J = zeros(1, n_layers);
+                S_CICC = zeros(1, n_layers); S_JT = zeros(1, n_layers);
+                Ri = zeros(1, n_layers);     Re = zeros(1, n_layers);
 
-            % Definition of the magnetic field peak in each grade (linear
-            % behavior from B(Re)=Bmax to B(Ri)=0)
-            Re(1) = g.R_TF_Innerleg - p.dr_plasma_side - p.GoundIns; % WP inner-leg outer radius (non-insulated)
-            B_TF = g.B_PHI_TF;
-            B_layers = B_TF .* (n_spire_ ./ n_spire_(1));
+                % Definition of the magnetic field peak in each grade (linear
+                % behavior from B(Re)=Bmax to B(Ri)=0)
+                Re(1) = g.R_TF_Innerleg - p.dr_plasma_side - p.GoundIns; % WP inner-leg outer radius (non-insulated)
+                B_TF = g.B_PHI_TF;
+                B_layers = B_TF .* (n_spire_ ./ n_spire_(1));
 
-            % TF inductance, shell model
-            Ntot_turns = p.n_TF*n_spire_(1);
-            L = Mu_0*(Ntot_turns*g.k_bf)^2*g.r_bf/2 * ...
-                (besseli(0, g.k_bf) + 2*besseli(1, g.k_bf) + besseli(2, g.k_bf)) / p.n_TF;
+                % TF inductance, shell model
+                Ntot_turns = p.n_TF*n_spire_(1);
+                L = Mu_0*(Ntot_turns*g.k_bf)^2*g.r_bf/2 * ...
+                    (besseli(0, g.k_bf) + 2*besseli(1, g.k_bf) + besseli(2, g.k_bf)) / p.n_TF;
 
-            Tau_discharge2 = L*Iop/p.V_MAX; % [s] - discharge in groups of n coils
-            Tau_discharge = max([g.Tau_discharge1, Tau_discharge2, 4]);
+                Tau_discharge2 = L*Iop/p.V_MAX; % [s] - discharge in groups of n coils
+                Tau_discharge = max([g.Tau_discharge1, Tau_discharge2, 4]);
 
-            jump_grade = pick_jump_grades(p.n_grades, B_layers, p.grade_B_target_2, p.grade_B_target_3);
-
-            for var = jump_grade
-                B = B_layers(var);
-                [type_cable(var), N_Cu(var), N_Sc(var), N_tot(var), S_Cable(var), ...
-                    S_REBCO(var), S_Cu_HTS(var), THS(var)] = cicc(B, Iop, Tau_discharge, p.WP_SC_type, ...
-                    p.THS_max_LTS, p.THS_max_HTS);
-                B_grade(var:n_layers) = B;
-
-                type_cable(var:n_layers) = type_cable(var);
-                N_Cu(var:n_layers) = N_Cu(var);
-                N_Sc(var:n_layers) = N_Sc(var);
-                N_tot(var:n_layers) = N_tot(var);
-                S_Cable(var:n_layers) = S_Cable(var);
-                S_REBCO(var:n_layers) = S_REBCO(var);
-                S_Cu_HTS(var:n_layers) = S_Cu_HTS(var);
-                THS(var:n_layers) = THS(var);
-            end
-
-            % Define cable cross-sections in each layer
-            T_bf = 0.5*(g.k_bf*p.n_TF*(n_spire_(1)*Iop)^2*Mu_0/(2*pi)); % Hoop tension along TF longitudinal axis
-
-            WP_w0(1) = 2*Re(1)*tan(theta_TF/2) - lateral_w*2 - p.GoundIns*2; % maximum toroidal WP envelope
-            S_z_JT = T_bf/(WP_w0(1)^2)/2;
-            n_turns_add = 0;
-            p_rs = B_TF^2/(2*Mu_0); % Magnetic pressure, thin WP
-
-            for var = 1:n_layers
-                Cond_w(var) = WP_w0(1)/n_turns(1);
-                E_cbl = pick_E_cbl(type_cable{var}, p.E_cbl_HTS, p.E_cbl_LTS);
-
-                sized = size_grade_cable(Cond_w(var), S_Cable(var), p.r_SC_min, p.r_SC_max, tins_const, ...
-                    p.E_jckt, E_cbl, p.E_ins, p.shape_cable, p_rs, S_z_JT, ...
-                    p.S_amm_JT, p.safety_membrane, p.min_JT, p.JT_step, p.max_sizing_iterations);
-                tins(var) = tins_const;
-                Cond_h(var) = sized.Cond_h; JT(var) = sized.JT;
-                SC_w(var) = sized.SC_w;     SC_h(var) = sized.SC_h; R_J(var) = sized.R_J;
-                Ke_cavo_rad(var) = sized.Ke_rad; Ke_cavo_tor(var) = sized.Ke_tor;
-                S_CICC(var) = sized.S_CICC; S_JT(var) = sized.S_JT;
-
-                Ri(var) = Re(var) - Cond_h(var);          % Inner radius of the i-th grade of the WP
-                Re(var+1) = Ri(var) - p.INS_grades;       % Outer radius of the (i+1)-th grade of the WP
-                WP_w0(var) = Cond_w(var)*n_turns(var);
-                check_w = 2*Ri(var)*tan(theta_TF/2);
-
-                shrink_iter = 0;
-                while (check_w - (WP_w0(var) + p.GoundIns*2))/2 <= p.toroidal_gap
-                    shrink_iter = shrink_iter + 1;
-                    if shrink_iter > p.max_sizing_iterations
-                        error('scan_wp_designs:turn_shrink_not_converged', ...
-                            'Turn-count reduction for grade %d did not converge: check the input parameters.', var);
-                    end
-                    n_turns(var) = n_turns(var) - 2;
-                    Cond_w(var) = WP_w0(1)/n_turns(1);
-                    E_cbl = pick_E_cbl(type_cable{var}, p.E_cbl_HTS, p.E_cbl_LTS);
-
-                    sized = size_grade_cable(Cond_w(var), S_Cable(var), p.r_SC_min, p.r_SC_max, tins_const, ...
-                        p.E_jckt, E_cbl, p.E_ins, p.shape_cable, p_rs, S_z_JT, ...
-                        p.S_amm_JT, p.safety_membrane, p.min_JT, p.JT_step, p.max_sizing_iterations);
-                    Cond_h(var) = sized.Cond_h; JT(var) = sized.JT;
-                    SC_w(var) = sized.SC_w;     SC_h(var) = sized.SC_h; R_J(var) = sized.R_J;
-                    Ke_cavo_rad(var) = sized.Ke_rad; Ke_cavo_tor(var) = sized.Ke_tor;
-                    S_CICC(var) = sized.S_CICC; S_JT(var) = sized.S_JT;
-
-                    Ri(var) = Re(var) - Cond_h(var);
-                    Re(var+1) = Ri(var) - p.INS_grades;
-                    WP_w0(var) = Cond_w(var)*n_turns(var);
-                    check_w = 2*Ri(var)*tan(theta_TF/2);
-                    n_turns_add = n_spire_(1) - sum(n_turns(1:n_layers0));
-                end
-            end
-
-            if n_turns(n_layers0) <= 0
-                continue
-            end
-
-            if var == n_layers && n_turns_add >= 1
-                n_layers_add = ceil(n_turns_add/n_turns(n_layers0));
-                n_layers = n_layers + n_layers_add;
-
-                same_parity = (mod(n_turns(n_layers0), 2) == 0) == (mod(n_turns_add/n_layers_add, 2) == 0);
-                if same_parity
-                    pluss = round(n_turns_add/n_layers_add);
+                % Field each grade is sized for: first pass = smeared model;
+                % then the per-layer peak of the discrete model on the
+                % previous pass's sized WP (layers added by the turn
+                % reduction take the field of the last layer)
+                if isempty(B_field_layer)
+                    B_size_layer = B_layers;
                 else
-                    pluss = round(n_turns_add/n_layers_add) + 1;
+                    B_size_layer = B_field_layer([1:min(n_layers, numel(B_field_layer)), ...
+                        numel(B_field_layer)*ones(1, n_layers - numel(B_field_layer))]);
+                end
+                jump_grade = pick_jump_grades(p.n_grades, B_size_layer, p.grade_B_target_2, p.grade_B_target_3);
+                grade_end = max(jump_grade, [jump_grade(2:end)-1, n_layers]);   % repeated jump indices -> one layer
+
+                for ig = 1:numel(jump_grade)
+                    var = jump_grade(ig);
+                    B = max(B_size_layer(var:grade_end(ig)));
+                    [type_cable(var), N_Cu(var), N_Sc(var), N_tot(var), S_Cable(var), ...
+                        S_REBCO(var), S_Cu_HTS(var), THS(var)] = cicc(B, Iop, Tau_discharge, p.WP_SC_type, ...
+                        p.THS_max_LTS, p.THS_max_HTS);
+                    B_grade(var:n_layers) = B;
+
+                    type_cable(var:n_layers) = type_cable(var);
+                    N_Cu(var:n_layers) = N_Cu(var);
+                    N_Sc(var:n_layers) = N_Sc(var);
+                    N_tot(var:n_layers) = N_tot(var);
+                    S_Cable(var:n_layers) = S_Cable(var);
+                    S_REBCO(var:n_layers) = S_REBCO(var);
+                    S_Cu_HTS(var:n_layers) = S_Cu_HTS(var);
+                    THS(var:n_layers) = THS(var);
                 end
 
-                n_turns(n_layers0+1 : n_layers0+n_layers_add) = pluss;
+                % Define cable cross-sections in each layer
+                T_bf = 0.5*(g.k_bf*p.n_TF*(n_spire_(1)*Iop)^2*Mu_0/(2*pi)); % Hoop tension along TF longitudinal axis
 
-                var_ = var;
-                for var = var_+1:n_layers
+                WP_w0(1) = 2*Re(1)*tan(theta_TF/2) - lateral_w*2 - p.GoundIns*2; % maximum toroidal WP envelope
+                S_z_JT = T_bf/(WP_w0(1)^2)/2;
+                n_turns_add = 0;
+                p_rs = B_TF^2/(2*Mu_0); % Magnetic pressure, thin WP
+
+                for var = 1:n_layers
                     Cond_w(var) = WP_w0(1)/n_turns(1);
-                    S_Cable(var) = S_Cable(var-1);
-                    type_cable(var) = type_cable(var-1);
-                    THS(var) = THS(var-1); B_grade(var) = B_grade(var-1);
-                    N_Sc(var) = N_Sc(var-1); N_Cu(var) = N_Cu(var-1);
-                    S_REBCO(var) = S_REBCO(var-1); S_Cu_HTS(var) = S_Cu_HTS(var-1);
                     E_cbl = pick_E_cbl(type_cable{var}, p.E_cbl_HTS, p.E_cbl_LTS);
 
                     sized = size_grade_cable(Cond_w(var), S_Cable(var), p.r_SC_min, p.r_SC_max, tins_const, ...
@@ -233,168 +205,272 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                     Ke_cavo_rad(var) = sized.Ke_rad; Ke_cavo_tor(var) = sized.Ke_tor;
                     S_CICC(var) = sized.S_CICC; S_JT(var) = sized.S_JT;
 
-                    Ri(var) = Re(var) - Cond_h(var);
-                    Re(var+1) = Ri(var) - p.INS_grades;
+                    Ri(var) = Re(var) - Cond_h(var);          % Inner radius of the i-th grade of the WP
+                    Re(var+1) = Ri(var) - p.INS_grades;       % Outer radius of the (i+1)-th grade of the WP
                     WP_w0(var) = Cond_w(var)*n_turns(var);
-                end
-            end
+                    check_w = 2*Ri(var)*tan(theta_TF/2);
 
-            if n_layers > maxdim || n_layers < 0
-                continue
-            end
+                    shrink_iter = 0;
+                    while (check_w - (WP_w0(var) + p.GoundIns*2))/2 <= p.toroidal_gap
+                        shrink_iter = shrink_iter + 1;
+                        if shrink_iter > p.max_sizing_iterations
+                            error('scan_wp_designs:turn_shrink_not_converged', ...
+                                'Turn-count reduction for grade %d did not converge: check the input parameters.', var);
+                        end
+                        n_turns(var) = n_turns(var) - 2;
+                        Cond_w(var) = WP_w0(1)/n_turns(1);
+                        E_cbl = pick_E_cbl(type_cable{var}, p.E_cbl_HTS, p.E_cbl_LTS);
 
-            % Recompute B per grade
-            n_spire_ = zeros(1, n_layers);
-            n_spire_(1) = sum(n_turns(1:n_layers));
-            for var = 2:n_layers
-                n_spire_(var) = n_spire_(var-1) - n_turns(var);
-            end
-            B_layers = B_TF .* (n_spire_/n_spire_(1));
-            Iop = ceil(g.NI/n_spire_(1));
+                        sized = size_grade_cable(Cond_w(var), S_Cable(var), p.r_SC_min, p.r_SC_max, tins_const, ...
+                            p.E_jckt, E_cbl, p.E_ins, p.shape_cable, p_rs, S_z_JT, ...
+                            p.S_amm_JT, p.safety_membrane, p.min_JT, p.JT_step, p.max_sizing_iterations);
+                        Cond_h(var) = sized.Cond_h; JT(var) = sized.JT;
+                        SC_w(var) = sized.SC_w;     SC_h(var) = sized.SC_h; R_J(var) = sized.R_J;
+                        Ke_cavo_rad(var) = sized.Ke_rad; Ke_cavo_tor(var) = sized.Ke_tor;
+                        S_CICC(var) = sized.S_CICC; S_JT(var) = sized.S_JT;
 
-            % WP data
-            WP_w = WP_w0(1);
-            WP_h = sum(Cond_h(1:n_layers));
-            A_WP = sum(Cond_h(1:n_layers).*Cond_w(1:n_layers).*n_turns(1:n_layers));
-            A_SC_tot = sum(S_Cable(1:n_layers).*n_turns(1:n_layers));
-            A_JT_tot = sum(S_JT(1:n_layers).*n_turns(1:n_layers));
-            Ri_ = g.R_TF_Innerleg;
-            % WP inner radius: cells + inter-layer insulation + ground insulation
-            % (same radial stack as the Re/Ri recursion above, the section plot
-            % and export_ansys_input's WPH; before, the (n_layers-1)*INS_grades
-            % gaps were missing, so the nose DTF was over-estimated - by 6 mm
-            % on the 13-layer design 7 checked against FEM).
-            Rj_ = Ri_ - WP_h - (n_layers-1)*p.INS_grades - p.dr_plasma_side - p.GoundIns*2;
-
-            check_w_arr = 2*Ri(1:n_layers)*tan(theta_TF/2); % maximum toroidal Case envelope
-            if min((check_w_arr - (WP_w0(1:n_layers)+p.GoundIns*2))/2) < p.toroidal_gap
-                continue
-            end
-
-            % Geometric check on the obtained cable dimensions
-            r_cable(1:n_layers) = Cond_w(1:n_layers)./Cond_h(1:n_layers);
-            if min(SC_w) <= p.min_SC_w || min(r_cable(1:n_layers)) < p.min_cable_aspect_ratio || min(JT(1:n_layers)) < p.min_JT
-                continue
-            end
-
-            % Hot-spot temperature check (CICC): the allowable depends on
-            % the cable type (LTS/HTS), so it cannot be folded into a
-            % single scalar threshold.
-            ths_exceeded = false;
-            for var = 1:n_layers
-                if strcmp(type_cable{var}, 'HTS')
-                    ths_limit = p.THS_max_HTS;
-                else
-                    ths_limit = p.THS_max_LTS;
-                end
-                if THS(var) > ths_limit
-                    ths_exceeded = true;
-                    break
-                end
-            end
-            if ths_exceeded
-                continue
-            end
-
-            % Primary radial stress (Pm+Pb) - evaluated at every layer,
-            % keeping the worst case, instead of only the last layer.
-            %
-            % NOTE: even checking every layer, a lumped stiffness-network
-            % model like this one cannot reproduce the local bending stress
-            % a true 2D FEM shows at a grade transition (see
-            % validation/TF_FEM_benchmark_2026_findings.md: the FEM Jacket
-            % peak sits at the grade1/grade2 row boundary, roughly 2x higher
-            % than this formula predicts there). p.SCF_transition_provisional
-            % is an explicit, clearly-flagged empirical multiplier applied
-            % only to layers adjacent to a grade change, calibrated against
-            % that single FEM benchmark point - a placeholder for the
-            % physics-based local-bending correction still to be developed,
-            % not a validated general law. Revisit once more FEM points are
-            % available.
-            p_rs = B_TF^2/(2*Mu_0);
-            is_transition = false(1, n_layers);
-            for k = 2:numel(jump_grade)
-                is_transition(max(jump_grade(k)-1, 1)) = true;
-                is_transition(jump_grade(k)) = true;
-            end
-
-            S_rm_per_layer = zeros(1, n_layers);
-            E_cbl_per_layer = zeros(1, n_layers);
-            xxx = [1.087,1.136,1.190,1.250,1.316,1.389,1.471,1.563,1.667,1.786,1.923,2.083,2.273,2.500,2.778];
-            yyy_LTS = [1.01,1.03,1.06,1.10,1.16,1.22,1.29,1.36,1.43,1.50,1.57,1.64,1.71,1.78,1.85];
-            yyy_HTS = [1.01,1.02,1.02,1.04,1.06,1.07,1.11,1.13,1.16,1.18,1.22,1.27,1.29,1.29,1.31];
-            for var = 1:n_layers
-                if strcmp(type_cable{var}, 'HTS')
-                    E_cbl_var = p.E_cbl_HTS;
-                    yyy = yyy_HTS;
-                else
-                    E_cbl_var = p.E_cbl_LTS;
-                    yyy = yyy_LTS;
-                end
-                param = Cond_w(var)/SC_w(var);
-                if param > 1 && param < 2.8
-                    pf = polyfit(xxx, yyy, 5);
-                    scf = polyval(pf, param);
-                else
-                    scf = 1.5;
+                        Ri(var) = Re(var) - Cond_h(var);
+                        Re(var+1) = Ri(var) - p.INS_grades;
+                        WP_w0(var) = Cond_w(var)*n_turns(var);
+                        check_w = 2*Ri(var)*tan(theta_TF/2);
+                        n_turns_add = n_spire_(1) - sum(n_turns(1:n_layers0));
+                    end
                 end
 
-                K_jckt = 2*p.E_jckt*JT(var)/Cond_h(var);
-                dcr_jckt = K_jckt/Ke_cavo_rad(var);
-                r_steel = (Cond_w(var)-2*tins(var))/(2*JT(var));
-                S_rm_var = p_rs*r_steel*scf*dcr_jckt; % Radial membrane stress, this Jacket layer
-                if is_transition(var)
-                    S_rm_var = S_rm_var*p.SCF_transition_provisional;
+                if n_turns(n_layers0) <= 0
+                    reject = true; break
                 end
-                S_rm_per_layer(var) = S_rm_var;
-                E_cbl_per_layer(var) = E_cbl_var;
-            end
-            [S_rm, worst_var] = max(S_rm_per_layer);
-            E_cbl = E_cbl_per_layer(worst_var);
 
-            % Case/vault sizing (fix #1 + fix #4 live in size_case_vault.m)
-            ctx = struct();
-            ctx.Rj_ = Rj_; ctx.Ri_ = Ri_; ctx.CASE_w = env.CASE_w; ctx.theta_TF = theta_TF;
-            ctx.A_WP = A_WP; ctx.A_SC_tot = A_SC_tot; ctx.A_JT_tot = A_JT_tot;
-            ctx.WP_h = WP_h; ctx.lateral_w = lateral_w;
-            ctx.E_case = p.E_case; ctx.E_cbl = E_cbl; ctx.E_jckt = p.E_jckt;
-            ctx.p_rs = p_rs; ctx.S_rm = S_rm;
-            ctx.n_TF = p.n_TF; ctx.RTFo = g.RTFo; ctx.RTFi = g.RTFi;
-            ctx.n_spire1 = n_spire_(1); ctx.Iop = Iop; ctx.Mu_0 = Mu_0;
-            ctx.dr_plasma_side = p.dr_plasma_side;
-            ctx.S_amm_VT = p.S_amm_VT; ctx.S_amm_JT = p.S_amm_JT; ctx.safety_membrane = p.safety_membrane;
-            ctx.Ke_cavo_rad = Ke_cavo_rad(1:n_layers); ctx.n_turns = n_turns(1:n_layers);
-            ctx.DTF0 = p.DTF_initial; ctx.DTF_step = p.DTF_step; ctx.max_iter = p.max_sizing_iterations;
+                if var == n_layers && n_turns_add >= 1
+                    n_layers_add = ceil(n_turns_add/n_turns(n_layers0));
+                    n_layers = n_layers + n_layers_add;
 
-            cv = size_case_vault(ctx);
-            Rk_ = cv.Rk_; S_T_VT = cv.S_T_VT; S_T_JT = cv.S_T_JT;
+                    same_parity = (mod(n_turns(n_layers0), 2) == 0) == (mod(n_turns_add/n_layers_add, 2) == 0);
+                    if same_parity
+                        pluss = round(n_turns_add/n_layers_add);
+                    else
+                        pluss = round(n_turns_add/n_layers_add) + 1;
+                    end
 
-            if S_T_VT < p.S_amm_VT && S_T_JT < p.S_amm_JT && S_T_JT > 0 && S_T_VT > 0   % vault vs its own allowable (review C07)
-                counter = counter + 1;
-                n_cond = n_spire_(1);
+                    n_turns(n_layers0+1 : n_layers0+n_layers_add) = pluss;
+
+                    var_ = var;
+                    for var = var_+1:n_layers
+                        Cond_w(var) = WP_w0(1)/n_turns(1);
+                        S_Cable(var) = S_Cable(var-1);
+                        type_cable(var) = type_cable(var-1);
+                        THS(var) = THS(var-1); B_grade(var) = B_grade(var-1);
+                        N_Sc(var) = N_Sc(var-1); N_Cu(var) = N_Cu(var-1);
+                        S_REBCO(var) = S_REBCO(var-1); S_Cu_HTS(var) = S_Cu_HTS(var-1);
+                        E_cbl = pick_E_cbl(type_cable{var}, p.E_cbl_HTS, p.E_cbl_LTS);
+
+                        sized = size_grade_cable(Cond_w(var), S_Cable(var), p.r_SC_min, p.r_SC_max, tins_const, ...
+                            p.E_jckt, E_cbl, p.E_ins, p.shape_cable, p_rs, S_z_JT, ...
+                            p.S_amm_JT, p.safety_membrane, p.min_JT, p.JT_step, p.max_sizing_iterations);
+                        tins(var) = tins_const;
+                        Cond_h(var) = sized.Cond_h; JT(var) = sized.JT;
+                        SC_w(var) = sized.SC_w;     SC_h(var) = sized.SC_h; R_J(var) = sized.R_J;
+                        Ke_cavo_rad(var) = sized.Ke_rad; Ke_cavo_tor(var) = sized.Ke_tor;
+                        S_CICC(var) = sized.S_CICC; S_JT(var) = sized.S_JT;
+
+                        Ri(var) = Re(var) - Cond_h(var);
+                        Re(var+1) = Ri(var) - p.INS_grades;
+                        WP_w0(var) = Cond_w(var)*n_turns(var);
+                    end
+                end
+
+                if n_layers > maxdim || n_layers < 0
+                    reject = true; break
+                end
+
+                % Recompute B per grade
+                n_spire_ = zeros(1, n_layers);
+                n_spire_(1) = sum(n_turns(1:n_layers));
+                for var = 2:n_layers
+                    n_spire_(var) = n_spire_(var-1) - n_turns(var);
+                end
+                B_layers = B_TF .* (n_spire_/n_spire_(1));
+                Iop = ceil(g.NI/n_spire_(1));
+
+                % WP data
                 WP_w = WP_w0(1);
-                JENG = Iop/(min(Cond_w(1:n_layers))*min(Cond_h(1:n_layers)))*1e-6;
-                E = 0.5*L*Iop^2*1e-6;
-                S_T_VT = S_T_VT*1e-6;
-                S_T_JT = S_T_JT*1e-6;
-                Nose = Rj_-Rk_;
-                R_0 = p.R0;
-                radial_build = Ri_-Rk_;
+                WP_h = sum(Cond_h(1:n_layers));
+                A_WP = sum(Cond_h(1:n_layers).*Cond_w(1:n_layers).*n_turns(1:n_layers));
+                A_SC_tot = sum(S_Cable(1:n_layers).*n_turns(1:n_layers));
+                A_JT_tot = sum(S_JT(1:n_layers).*n_turns(1:n_layers));
+                Ri_ = g.R_TF_Innerleg;
+                % WP inner radius: cells + inter-layer insulation + ground insulation
+                % (same radial stack as the Re/Ri recursion above, the section plot
+                % and export_ansys_input's WPH; before, the (n_layers-1)*INS_grades
+                % gaps were missing, so the nose DTF was over-estimated - by 6 mm
+                % on the 13-layer design 7 checked against FEM).
+                Rj_ = Ri_ - WP_h - (n_layers-1)*p.INS_grades - p.dr_plasma_side - p.GoundIns*2;
 
-                % shape_cable is saved with the solution (200 RIS / 201 Rect): every
-                % downstream step (section plots, FEM surrogate, ANSYS export)
-                % reads the conductor shape from the row, so a reloaded RIS
-                % design cannot silently become Rect under a different input file.
-                shape_cable = p.shape_cable;
-                row = table(S_T_VT,S_T_JT,R_0,g.B_PHI_0,B_TF,Iop,JENG,L,E,Ri_,Rj_,Rk_,radial_build,Nose,WP_h,WP_w,...
-                    lateral_w,n_cond,n_layers,n_turns,type_cable,Cond_w,Cond_h,JT,r_cable,N_Sc,N_Cu,S_Cable,S_REBCO,S_Cu_HTS,THS,B_grade,Tau_discharge, ...
-                    shape_cable, ...
-                    'VariableNames', {'S_T_VT','S_T_JT','R_0','B_PHI_0','B_TF','Iop','JENG','L','E','Ri_','Rj_','Rk_', ...
-                    'radial_build','Nose','WP_h','WP_w','lateral_w','n_cond','n_layers','n_turns','type_cable','Cond_w', ...
-                    'Cond_h','JT','r_cable','N_Sc','N_Cu','S_Cable','S_REBCO','S_Cu_HTS','THS','B_grade','Tau_discharge', ...
-                    'shape_cable'});
-                DATA(counter,:) = row;
+                check_w_arr = 2*Ri(1:n_layers)*tan(theta_TF/2); % maximum toroidal Case envelope
+                if min((check_w_arr - (WP_w0(1:n_layers)+p.GoundIns*2))/2) < p.toroidal_gap
+                    reject = true; break
+                end
+
+                % Geometric check on the obtained cable dimensions
+                r_cable(1:n_layers) = Cond_w(1:n_layers)./Cond_h(1:n_layers);
+                if min(SC_w) <= p.min_SC_w || min(r_cable(1:n_layers)) < p.min_cable_aspect_ratio || min(JT(1:n_layers)) < p.min_JT
+                    reject = true; break
+                end
+
+                % Hot-spot temperature check (CICC): the allowable depends on
+                % the cable type (LTS/HTS), so it cannot be folded into a
+                % single scalar threshold.
+                ths_exceeded = false;
+                for var = 1:n_layers
+                    if strcmp(type_cable{var}, 'HTS')
+                        ths_limit = p.THS_max_HTS;
+                    else
+                        ths_limit = p.THS_max_LTS;
+                    end
+                    if THS(var) > ths_limit
+                        ths_exceeded = true;
+                        break
+                    end
+                end
+                if ths_exceeded
+                    reject = true; break
+                end
+
+                % Primary radial stress (Pm+Pb) - evaluated at every layer,
+                % keeping the worst case, instead of only the last layer.
+                %
+                % NOTE: even checking every layer, a lumped stiffness-network
+                % model like this one cannot reproduce the local bending stress
+                % a true 2D FEM shows at a grade transition (see
+                % validation/TF_FEM_benchmark_2026_findings.md: the FEM Jacket
+                % peak sits at the grade1/grade2 row boundary, roughly 2x higher
+                % than this formula predicts there). p.SCF_transition_provisional
+                % is an explicit, clearly-flagged empirical multiplier applied
+                % only to layers adjacent to a grade change, calibrated against
+                % that single FEM benchmark point - a placeholder for the
+                % physics-based local-bending correction still to be developed,
+                % not a validated general law. Revisit once more FEM points are
+                % available.
+                p_rs = B_TF^2/(2*Mu_0);
+                is_transition = false(1, n_layers);
+                for k = 2:numel(jump_grade)
+                    is_transition(max(jump_grade(k)-1, 1)) = true;
+                    is_transition(jump_grade(k)) = true;
+                end
+
+                S_rm_per_layer = zeros(1, n_layers);
+                E_cbl_per_layer = zeros(1, n_layers);
+                xxx = [1.087,1.136,1.190,1.250,1.316,1.389,1.471,1.563,1.667,1.786,1.923,2.083,2.273,2.500,2.778];
+                yyy_LTS = [1.01,1.03,1.06,1.10,1.16,1.22,1.29,1.36,1.43,1.50,1.57,1.64,1.71,1.78,1.85];
+                yyy_HTS = [1.01,1.02,1.02,1.04,1.06,1.07,1.11,1.13,1.16,1.18,1.22,1.27,1.29,1.29,1.31];
+                for var = 1:n_layers
+                    if strcmp(type_cable{var}, 'HTS')
+                        E_cbl_var = p.E_cbl_HTS;
+                        yyy = yyy_HTS;
+                    else
+                        E_cbl_var = p.E_cbl_LTS;
+                        yyy = yyy_LTS;
+                    end
+                    param = Cond_w(var)/SC_w(var);
+                    if param > 1 && param < 2.8
+                        pf = polyfit(xxx, yyy, 5);
+                        scf = polyval(pf, param);
+                    else
+                        scf = 1.5;
+                    end
+
+                    K_jckt = 2*p.E_jckt*JT(var)/Cond_h(var);
+                    dcr_jckt = K_jckt/Ke_cavo_rad(var);
+                    r_steel = (Cond_w(var)-2*tins(var))/(2*JT(var));
+                    S_rm_var = p_rs*r_steel*scf*dcr_jckt; % Radial membrane stress, this Jacket layer
+                    if is_transition(var)
+                        S_rm_var = S_rm_var*p.SCF_transition_provisional;
+                    end
+                    S_rm_per_layer(var) = S_rm_var;
+                    E_cbl_per_layer(var) = E_cbl_var;
+                end
+                [S_rm, worst_var] = max(S_rm_per_layer);
+                E_cbl = E_cbl_per_layer(worst_var);
+
+                % Case/vault sizing (fix #1 + fix #4 live in size_case_vault.m)
+                ctx = struct();
+                ctx.Rj_ = Rj_; ctx.Ri_ = Ri_; ctx.CASE_w = env.CASE_w; ctx.theta_TF = theta_TF;
+                ctx.A_WP = A_WP; ctx.A_SC_tot = A_SC_tot; ctx.A_JT_tot = A_JT_tot;
+                ctx.WP_h = WP_h; ctx.lateral_w = lateral_w;
+                ctx.E_case = p.E_case; ctx.E_cbl = E_cbl; ctx.E_jckt = p.E_jckt;
+                ctx.p_rs = p_rs; ctx.S_rm = S_rm;
+                ctx.n_TF = p.n_TF; ctx.RTFo = g.RTFo; ctx.RTFi = g.RTFi;
+                ctx.n_spire1 = n_spire_(1); ctx.Iop = Iop; ctx.Mu_0 = Mu_0;
+                ctx.dr_plasma_side = p.dr_plasma_side;
+                ctx.S_amm_VT = p.S_amm_VT; ctx.S_amm_JT = p.S_amm_JT; ctx.safety_membrane = p.safety_membrane;
+                ctx.Ke_cavo_rad = Ke_cavo_rad(1:n_layers); ctx.n_turns = n_turns(1:n_layers);
+                ctx.DTF0 = p.DTF_initial; ctx.DTF_step = p.DTF_step; ctx.max_iter = p.max_sizing_iterations;
+
+                cv = size_case_vault(ctx);
+                Rk_ = cv.Rk_; S_T_VT = cv.S_T_VT; S_T_JT = cv.S_T_JT;
+
+                if ~(S_T_VT < p.S_amm_VT && S_T_JT < p.S_amm_JT && S_T_JT > 0 && S_T_VT > 0)   % vault vs its own allowable (review C07)
+                    reject = true; break
+                end
+
+                % Real peak field of the sized candidate vs the field each
+                % layer's cable was sized for (B_grade); smeared model only:
+                % accept as before
+                if ~use_discrete_field
+                    B_peak_layer = nan(1, n_layers);  % not computed
+                    field_ok = true; break
+                end
+                fr = struct('Iop', Iop, 'n_layers', n_layers, 'n_turns', n_turns(1:n_layers), ...
+                    'Cond_w', Cond_w(1:n_layers), 'Cond_h', Cond_h(1:n_layers), 'JT', JT(1:n_layers), ...
+                    'Ri_', Ri_, 'shape_cable', p.shape_cable);
+                B_peak_layer = wp_peak_field_fast(fr, p);
+                % converged: every grade sized for its own peak (within
+                % field_tol, neither under- nor over-sized) and no layer
+                % above the field its cable was sized for
+                ge = max(jump_grade, [jump_grade(2:end)-1, n_layers]);
+                dB = zeros(1, numel(jump_grade));
+                for ig = 1:numel(jump_grade)
+                    dB(ig) = max(B_peak_layer(jump_grade(ig):ge(ig))) - B_grade(jump_grade(ig));
+                end
+                if all(abs(dB) <= field_tol) && all(B_peak_layer <= B_grade(1:n_layers) + field_tol)
+                    field_ok = true; break
+                end
+                B_field_layer = B_peak_layer;
             end
+            if reject || ~field_ok
+                n_field_rejected = n_field_rejected + (~reject);
+                continue
+            end
+            counter = counter + 1;
+            n_cond = n_spire_(1);
+            WP_w = WP_w0(1);
+            JENG = Iop/(min(Cond_w(1:n_layers))*min(Cond_h(1:n_layers)))*1e-6;
+            E = 0.5*L*Iop^2*1e-6;
+            S_T_VT = S_T_VT*1e-6;
+            S_T_JT = S_T_JT*1e-6;
+            Nose = Rj_-Rk_;
+            R_0 = p.R0;
+            radial_build = Ri_-Rk_;
+
+            % shape_cable is saved with the solution (200 RIS / 201 Rect): every
+            % downstream step (section plots, FEM surrogate, ANSYS export)
+            % reads the conductor shape from the row, so a reloaded RIS
+            % design cannot silently become Rect under a different input file.
+            shape_cable = p.shape_cable;
+            % peak field on the conductor (discrete model; NaN with the
+            % smeared model), per layer padded to maxdim like n_turns, and
+            % the number of sizing/field passes
+            B_peak = max(B_peak_layer);
+            B_peak_layers = nan(1, maxdim); B_peak_layers(1:n_layers) = B_peak_layer;
+            field_iter = field_it;
+            row = table(S_T_VT,S_T_JT,R_0,g.B_PHI_0,B_TF,Iop,JENG,L,E,Ri_,Rj_,Rk_,radial_build,Nose,WP_h,WP_w,...
+                lateral_w,n_cond,n_layers,n_turns,type_cable,Cond_w,Cond_h,JT,r_cable,N_Sc,N_Cu,S_Cable,S_REBCO,S_Cu_HTS,THS,B_grade,Tau_discharge, ...
+                shape_cable, B_peak, B_peak_layers, field_iter, ...
+                'VariableNames', {'S_T_VT','S_T_JT','R_0','B_PHI_0','B_TF','Iop','JENG','L','E','Ri_','Rj_','Rk_', ...
+                'radial_build','Nose','WP_h','WP_w','lateral_w','n_cond','n_layers','n_turns','type_cable','Cond_w', ...
+                'Cond_h','JT','r_cable','N_Sc','N_Cu','S_Cable','S_REBCO','S_Cu_HTS','THS','B_grade','Tau_discharge', ...
+                'shape_cable','B_peak','B_peak_layers','field_iter'});
+            DATA(counter,:) = row;
         end
     end
 end
@@ -403,6 +479,10 @@ if progress_msg_len > 0 && examined < total_candidates
     fprintf('\n'); % make sure the cursor isn't left mid-progress-line on an early return path
 end
 
+if use_discrete_field && n_field_rejected > 0
+    fprintf(['%d candidate(s) passed every check but their grade fields did not converge to the ' ...
+        'discrete peak within %.3g T in %d passes: rejected.\n'], n_field_rejected, field_tol, field_max_iter);
+end
 if counter == 0
     DATA = table();
 end
