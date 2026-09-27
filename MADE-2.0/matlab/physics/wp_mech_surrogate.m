@@ -110,6 +110,10 @@ else
     out.primary = [];
 end
 out.geo = geo; out.mesh = mesh; out.sol = sol; out.T_bf = opts.T_bf;
+% load resultants of the assembled vectors (per unit length): Lorentz
+% (the sector's Fx must vanish by symmetry) and cool-down (self-balanced)
+out.load_resultant = struct('Fx_lorentz', sum(sys.F_lor(1:2:end-1)), 'Fy_lorentz', sum(sys.F_lor(2:2:end-1)), ...
+    'Fx_thermal', sum(sys.F_th(1:2:end-1)), 'Fy_thermal', sum(sys.F_th(2:2:end-1)));
 out.load_sequence = opts.load_sequence;
 out.checks = surr_checks(out, sys, geo, opts);
 out.valid = out.checks.all_ok;
@@ -182,15 +186,35 @@ geo.cable = [ (c(:,1)+c(:,2))/2, (c(:,3)+c(:,4))/2, ...
 if any(geo.cable(:,3) <= 0) || any(geo.cable(:,4) <= 0)
     error('wp_mech_surrogate:geometry', 'Cable size <= 0: check Cond_w/Cond_h vs JT and turn insulation.');
 end
-% cable corner fillet: r_SC = JT clamped to [r_SC_min, r_SC_max] (as
-% size_cicc_cable / export_ansys_input); opts.r_SC overrides
-if isfield(opts, 'r_SC') && ~isempty(opts.r_SC)
-    rl = opts.r_SC.*ones(1, nl);
+% Conductor shape of THIS design point (row.shape_cable, WP_TURN_GEOMETRY):
+% Rect = rounded-rectangle cable in a constant-thickness jacket; RIS =
+% circular cable (diameter d = Cond_w - 2*t_ins - 2*JT = sqrt(4*A/pi)) in a
+% square jacket with outer corner radius R_J = clamp(JT), jacket thickness
+% varying from JT (mid-side) to its maximum on the diagonals.
+tg = wp_turn_geometry(row, p);
+geo.tg = tg; geo.is_round = tg.is_round; geo.shape_name = tg.shape_name;
+if tg.is_round
+    if isfield(opts, 'r_SC') && ~isempty(opts.r_SC)
+        error('wp_mech_surrogate:ris_r_SC', 'opts.r_SC (cable corner fillet) has no meaning for a RIS conductor.');
+    end
+    rl = tg.cab_r;                               % d/2: the rounded rectangle is the circle
+    geo.r_SC = rl;
+    r = rl(L)';
 else
-    rl = min(max(geo.JT, get_or(p, 'r_SC_min', 2e-3)), get_or(p, 'r_SC_max', 6e-3));
+    % cable corner fillet: r_SC = JT clamped to [r_SC_min, r_SC_max] (as
+    % size_cicc_cable / export_ansys_input); opts.r_SC overrides
+    if isfield(opts, 'r_SC') && ~isempty(opts.r_SC)
+        rl = opts.r_SC.*ones(1, nl);
+    else
+        rl = min(max(geo.JT, get_or(p, 'r_SC_min', 2e-3)), get_or(p, 'r_SC_max', 6e-3));
+    end
+    geo.r_SC = rl;
+    r = min(rl(L)', 0.49*min(geo.cable(:,3), geo.cable(:,4)));
 end
-geo.r_SC = rl;
-r = min(rl(L)', 0.49*min(geo.cable(:,3), geo.cable(:,4)));
+% jacket outer contour of every turn [xa xb ya yb corner_radius]
+jw = c(:,2) - c(:,1) - 2*geo.tins; jh = c(:,4) - c(:,3) - 2*geo.tins;
+if tg.is_round, jr = tg.jk_r(L)'; else, jr = r + geo.JT(L)'; end
+geo.jacket_rr = [geo.cable(:,1)-jw/2, geo.cable(:,1)+jw/2, geo.cable(:,2)-jh/2, geo.cable(:,2)+jh/2, jr];
 geo.cable_rr = [geo.cable(:,1)-geo.cable(:,3)/2, geo.cable(:,1)+geo.cable(:,3)/2, ...
                 geo.cable(:,2)-geo.cable(:,4)/2, geo.cable(:,2)+geo.cable(:,4)/2, r];
 geo.cable_area = geo.cable(:,3).*geo.cable(:,4) - (4-pi)*r.^2;
@@ -276,26 +300,47 @@ nth = get_or(opts, 'n_thk', 1);                    % elements through the jacket
 
 QX = cell(nt,1); QI = cell(nt,1);
 for t = 1:nt
-    c = geo.cable_rr(t,:);                         % [xa xb ya yb r]
-    k = geo.cells(t,5); J = geo.JT(k); ti = geo.tins; r = c(5);
+    k = geo.cells(t,5); ti = geo.tins;
+    if geo.is_round
+        % RIS: stations on the jacket OUTER contour (rounded square, corner
+        % radius R_J), each mapped radially onto the circular hole; the
+        % jacket quads blend linearly between the two curves, so the jacket
+        % thickness varies along the contour (JT at mid-side, maximum on the
+        % diagonals). Two elements per outer corner fillet: the fillet spans
+        % only a few degrees seen from the hole centre.
+        c = geo.jacket_rr(t,:); J = 0; r = c(5);
+        na_t = 2;
+        nsx = 2*ceil(max(opts.n_cable, ceil((c(2)-c(1)-2*r)/lmax))/2);   % even: a station at mid-side
+        nsy = 2*ceil(max(opts.n_cable, ceil((c(4)-c(3)-2*r)/lmax))/2);
+        [P, Nn, wall, kk] = ring_stations(c(1), c(2), c(3), c(4), r, nsx, nsy, na_t);
+        ctr = geo.cable(t,1:2); rc = geo.cable_rr(t,5);
+        V = P - ctr; Pin = ctr + rc*V./sqrt(sum(V.^2, 2));
+        dl = [(0:nth)/nth, 1 + ti];                % jacket blend fractions, then insulation offset
+        pos = @(s, d) ris_pos(P, Pin, Nn, s, d);
+    else
+        c = geo.cable_rr(t,:);                     % [xa xb ya yb r]
+        J = geo.JT(k); r = c(5);
+        na_t = na;
+        nsx = max(opts.n_cable, ceil((c(2)-c(1)-2*r)/lmax));
+        nsy = max(opts.n_cable, ceil((c(4)-c(3)-2*r)/lmax));
+        [P, Nn, wall, kk] = ring_stations(c(1), c(2), c(3), c(4), r, nsx, nsy, na_t);
+        dl = [(0:nth)*J/nth, J + ti];              % jacket sub-layers, then insulation
+        pos = @(s, d) P(s,:) + d*Nn(s,:);
+    end
     Ro = r + J + ti;
-    nsx = max(opts.n_cable, ceil((c(2)-c(1)-2*r)/lmax));
-    nsy = max(opts.n_cable, ceil((c(4)-c(3)-2*r)/lmax));
-    [P, Nn, wall, kk] = ring_stations(c(1), c(2), c(3), c(4), r, nsx, nsy, na);
     ne = numel(wall);
     X = zeros(0,16); info = zeros(0,6);
-    dl = [(0:nth)*J/nth, J + ti];                  % jacket sub-layers, then insulation
     for e = 1:ne
         s0 = 2*e-1; sm = 2*e; s1 = mod(2*e, 2*ne) + 1;
         for L = 1:nth+1
-            d0 = dl(L); d1 = dl(L+1); ring = 1 + (L > nth);
-            Q = [P(s0,:)+d1*Nn(s0,:); P(s1,:)+d1*Nn(s1,:); P(s1,:)+d0*Nn(s1,:); P(s0,:)+d0*Nn(s0,:); ...
-                 P(sm,:)+d1*Nn(sm,:); P(s1,:)+(d0+d1)/2*Nn(s1,:); P(sm,:)+d0*Nn(sm,:); P(s0,:)+(d0+d1)/2*Nn(s0,:)];
+            d0 = dl(L); d1 = dl(L+1); ring = 1 + (L > nth); dm = (d0+d1)/2;
+            Q = [pos(s0,d1); pos(s1,d1); pos(s1,d0); pos(s0,d0); ...
+                 pos(sm,d1); pos(s1,dm); pos(sm,d0); pos(s0,dm)];
             X(end+1,:) = reshape(Q', 1, []); %#ok<AGROW>
             info(end+1,:) = [t, ring, wall(e), kk(e), atan2(Nn(sm,2), Nn(sm,1)), L]; %#ok<AGROW>
         end
         if wall(e) >= 5                           % corner filler fan outside the ring
-            C = P(s0,:) - r*Nn(s0,:);              % fillet centre
+            C = P(s0,:) - r*Nn(s0,:);              % fillet centre (cable fillet for Rect, jacket outer fillet for RIS)
             A0 = C + Ro*Nn(s0,:); A1 = C + Ro*Nn(s1,:); Am = C + Ro*Nn(sm,:);
             Q0 = C + Ro*Nn(s0,:)/max(abs(Nn(s0,:))); Q1 = C + Ro*Nn(s1,:)/max(abs(Nn(s1,:)));
             Q = [A1; A0; Q0; Q1; Am; (A0+Q0)/2; (Q0+Q1)/2; (Q1+A1)/2];
@@ -307,7 +352,7 @@ for t = 1:nt
     if k < geo.n_layers
         yb = geo.cells(t,3); ys = yb - geo.INS;
         xs = unique(round([c(1)-J-ti, c(1)+r+(0:2*nsx)*(c(2)-c(1)-2*r)/(2*nsx), c(2)+J+ti, ...
-            C_fan_x(c, Ro, na)]/tol))*tol;
+            C_fan_x(c, Ro, na_t)]/tol))*tol;
         for i = 1:2:numel(xs)-2
             xa = xs(i); xm = xs(i+1); xb = xs(i+2);
             Q = [xa ys; xb ys; xb yb; xa yb; xm ys; xb (ys+yb)/2; xm yb; xa (ys+yb)/2];
@@ -354,6 +399,12 @@ end
 hf = opts.h_fine;
 Pq = qn(unique(bedge(:,1:2)),:);
 P = [Pq; sample_polyline(geo.cav, hf); sample_outer(geo, hf); interior_points(geo, opts)];
+if geo.is_round
+    % RIS cable interiors: concentric rings of points, otherwise the
+    % Delaunay of points that all lie on one circle is degenerate (any
+    % triangulation qualifies, typically slivers spanning the chords)
+    P = [P; ris_cable_points(geo)];
+end
 [~, iu] = unique(round(P/tol), 'rows', 'stable');
 P = P(iu,:);
 [~, locA] = ismember(round(qn(bedge(:,1),:)/tol), round(P/tol), 'rows');
@@ -429,11 +480,42 @@ for e = 1:size(q8,1)
 end
 At = 0;
 gt = [1/6 1/6; 2/3 1/6; 1/6 2/3];
+Acab = zeros(size(geo.cells,1), 1);
 for e = 1:size(mesh.t6,1)
     Xe = xy(mesh.t6(e,:),:);
-    for i = 1:3, [~, dJ] = elem_B(Xe, @t6_dN, gt(i,:)); At = At + dJ/6; end
+    Ae = 0;
+    for i = 1:3, [~, dJ] = elem_B(Xe, @t6_dN, gt(i,:)); Ae = Ae + dJ/6; end
+    At = At + Ae;
+    if mesh.t6_turn(e) > 0, Acab(mesh.t6_turn(e)) = Acab(mesh.t6_turn(e)) + Ae; end
 end
 mesh.area_check = [At + Aq, domain_area(geo)];     % isoparametric areas (curved edges)
+mesh.cable_area_mesh = Acab;                        % meshed cable area per turn (vs geo.cable_area)
+end
+
+function Q = ris_cable_points(geo)
+Q = zeros(0,2);
+for t = 1:size(geo.cable_rr,1)
+    ctr = geo.cable(t,1:2); rc = geo.cable_rr(t,5);
+    nr = 3;
+    Q = [Q; ctr]; %#ok<AGROW>
+    for i = 1:nr
+        rr = rc*i/(nr + 0.6);                   % keep the last ring clear of the hole
+        n = max(6, round(2*pi*rr/(rc*0.9/nr)));
+        a = (0:n-1)'/n*2*pi + i*0.37;
+        Q = [Q; ctr + rr*[cos(a) sin(a)]]; %#ok<AGROW>
+    end
+end
+end
+
+function X = ris_pos(Po, Pin, Nn, s, d)
+% RIS turn: d in [0,1] blends from the circular hole (0) to the jacket
+% outer contour (1); d > 1 offsets outwards along the contour normal by
+% d - 1 (turn insulation).
+if d <= 1
+    X = Pin(s,:) + d*(Po(s,:) - Pin(s,:));
+else
+    X = Po(s,:) + (d - 1)*Nn(s,:);
+end
 end
 
 function x = C_fan_x(c, Ro, na)
@@ -847,8 +929,15 @@ end
 K = sparse(I(1:ptr), Jc(1:ptr), V(1:ptr), ndof, ndof);
 K = (K + K')/2;
 
-% layer-to-layer ties where the nodes do not coincide (penalty)
-kt = 1e3*max(diag(K));
+% Penalty stiffnesses (ties and contacts) are both scaled on the ELASTIC
+% stiffness: 1e3 x the largest displacement diagonal of K before any
+% penalty. Previously the contact penalty was taken from K after the tie
+% penalties had been added, i.e. up to 1e3 x larger again whenever the
+% mesh has ties, which only worsens the conditioning. The eps_z row
+% (generalized DOF, different units) is excluded from the reference.
+dK = full(diag(K));
+k_ref = max(dK(1:end-1));
+kt = 1e3*k_ref;
 if isfield(mesh, 'tie') && ~isempty(mesh.tie)
     Ii = []; Jj = []; Vv = [];
     for q = 1:numel(mesh.tie)
@@ -864,7 +953,7 @@ if isfield(mesh, 'tie') && ~isempty(mesh.tie)
 end
 F_ax = zeros(ndof,1); F_ax(iz) = T_bf;
 sys.K = K; sys.F_th = F_th; sys.F_lor = F_lor; sys.F_ax = F_ax;
-sys.kp = 1e3*max(diag(K)); sys.min_detJ = min_detJ; sys.T_bf = T_bf;
+sys.kp = 1e3*k_ref; sys.k_ref = k_ref; sys.min_detJ = min_detJ; sys.T_bf = T_bf;
 end
 
 function sol = surr_solve_case(sys, mesh, steps, thermal, opts)
@@ -949,7 +1038,7 @@ for st_i = 1:numel(steps)
         ft(sl) = -mu(sl).*max(N(sl),0).*slip(sl);
         Fc = F + accumarray([2*a-1; 2*a], [ft.*t(:,1); ft.*t(:,2)], [ndof 1]);
         Fc = Fc - accumarray([2*b(gb)-1; 2*b(gb)], [ft(gb).*t(gb,1); ft(gb).*t(gb,2)], [ndof 1]);
-        U = spd_solve(Kc, Fc);
+        [U, sinfo] = spd_solve(Kc, Fc);
         ua = [U(2*a-1), U(2*a)];
         ub = zeros(np_,2); ub(gb,:) = [U(2*b(gb)-1), U(2*b(gb))];
         gn = sum((ub - ua).*n, 2);                 % >0: open
@@ -969,6 +1058,7 @@ for st_i = 1:numel(steps)
         nchg = sum(closed_new ~= closed) + sum(slip_new ~= slip);
         info.hist(end+1,:) = [st_i, it, sum(closed_new), sum(slip_new ~= 0), nchg, dN];
         done = nchg <= max(2, tolc*np_) && dN < 1e-2;
+        closed_used = closed; slip_used = slip;     % state the current U is in equilibrium with
         closed = closed_new; slip = slip_new; N = N_new;
         if done, break, end
     end
@@ -987,6 +1077,26 @@ info.last_changes = nchg; info.n_pairs = np_;
 % linear-solve residual and global force balance (Lorentz and thermal
 % loads against the flank reactions; contact and tie forces are internal)
 info.residual = norm(Kc*U - Fc)/max(norm(Fc), eps);
+info.residual_first_solve = sinfo.residual_first;   % before iterative refinement
+info.refinement_steps = sinfo.refinement_steps;
+% Contact-state consistency of the RETURNED solution: U is in equilibrium
+% with the contact state used to build Kc/Fc (the one of the last
+% iteration). Re-evaluate the contact conditions on U and measure the
+% pairs that would still change state, and their force as a fraction of
+% the total normal contact force: a small global unbalance alone does not
+% prove the local contact conditions hold.
+info.final_state_changes = nchg;
+f_n = kp*abs(gn).*(closed_new ~= closed_used);  % tension carried by a closed pair / penetration of an open one
+% stuck beyond the friction cone: only pairs closed before and after (a
+% pair that is just closing has no normal force yet in U, its tangential
+% state is set in the next solve, not a violation of this one)
+both = closed_used & closed_new & slip_used == 0 & slip_new ~= 0;
+f_t = max(abs(Tst) - mu.*max(N_new,0), 0).*both;
+Nref = max(sum(abs(N_new(closed_used))), eps);
+info.final_violation_force = (sum(f_n) + sum(f_t))/Nref;
+info.final_violation_normal = sum(f_n)/Nref;
+info.final_violation_friction = sum(f_t)/Nref;
+info.final_violations = sum((closed_new ~= closed_used) | (slip_new ~= slip_used));
 fl = find(bil);
 Rn = -kp*(ua(fl,1).*n(fl,1) + ua(fl,2).*n(fl,2));
 R = [sum(Rn.*n(fl,1) + Tlast(fl).*t(fl,1)); sum(Rn.*n(fl,2) + Tlast(fl).*t(fl,2))];
@@ -1014,17 +1124,49 @@ for r = 1:4
 end
 end
 
-function U = spd_solve(K, F)
+function [U, sinfo] = spd_solve(K, F)
 % Sparse Cholesky with fill-reducing ordering (backslash may miss the
-% symmetry after penalty assembly and fall back to a much slower LU)
+% symmetry after penalty assembly and fall back to a much slower LU), on
+% the symmetrically Jacobi-scaled system (D K D)(D^-1 U) = D F with
+% D = diag(K)^-1/2: the unknowns mix displacements, the generalized axial
+% strain eps_z and penalty-stiffened contact/tie DOFs whose diagonals span
+% many orders of magnitude. Then iterative refinement with the same
+% factorization (U <- U + K^-1 (F - K U)), which removes the rounding
+% error of the triangular solves; the reported residual is that of the
+% returned U against the UNSCALED system.
 K = (K + K')/2;
-[R, flag, q] = chol(K, 'vector');
-if flag == 0
-    U = zeros(size(F));
-    U(q) = R\(R'\F(q));
-else
-    U = K\F;
+n = size(K,1);
+d = full(diag(K));
+if any(d <= 0)
+    error('wp_mech_surrogate:solve', 'Non-positive diagonal in the stiffness matrix.');
 end
+s = 1./sqrt(d);
+Ks = spdiags(s, 0, n, n)*K*spdiags(s, 0, n, n);
+Ks = (Ks + Ks')/2;
+[R, flag, q] = chol(Ks, 'vector');
+if flag == 0
+    solve = @(b) chol_solve(R, q, b);
+else
+    solve = @(b) Ks\b;
+end
+nF = max(norm(F), eps);
+U = s.*solve(s.*F);
+res0 = norm(K*U - F)/nF;
+res = res0; it = 0;
+while it < 2 && res > 1e-13
+    r = F - K*U;
+    Un = U + s.*solve(s.*r);
+    rn = norm(K*Un - F)/nF;
+    it = it + 1;
+    if rn >= res, break, end                   % stagnation: keep the best
+    U = Un; res = rn;
+end
+sinfo = struct('residual_first', res0, 'residual', res, 'refinement_steps', it, 'chol_ok', flag == 0);
+end
+
+function x = chol_solve(R, q, b)
+x = zeros(size(b));
+x(q) = R\(R'\b(q));
 end
 
 function [I, J, V] = pair_matrix(a, b, v, k)
@@ -1343,14 +1485,38 @@ c.min_detJ = sys.min_detJ;                         c.jacobian_ok = sys.min_detJ 
 c.contact_converged = out.sol.contact.converged;
 if ~isempty(out.primary), c.contact_converged = c.contact_converged && out.primary.contact.converged; end
 c.contact_ok = c.contact_converged;
-c.solve_residual = out.sol.contact.residual;       c.residual_ok = c.solve_residual < 1e-6;
-c.force_balance = out.sol.contact.force_balance;   c.balance_ok = c.force_balance < 1e-4;
+% residual and global balance of BOTH load cases (total and primary): the
+% primary case feeds the Pm / Pm+Pb criteria, so it must pass too
+c.solve_residual = out.sol.contact.residual;
+c.solve_residual_first = out.sol.contact.residual_first_solve;
+c.force_balance = out.sol.contact.force_balance;
+c.contact_violation_force = out.sol.contact.final_violation_force;
+if ~isempty(out.primary)
+    c.solve_residual_primary = out.primary.contact.residual;
+    c.solve_residual_first_primary = out.primary.contact.residual_first_solve;
+    c.force_balance_primary = out.primary.contact.force_balance;
+    c.contact_violation_force_primary = out.primary.contact.final_violation_force;
+else
+    c.solve_residual_primary = 0; c.force_balance_primary = 0; c.contact_violation_force_primary = 0;
+end
+c.residual_ok = max(c.solve_residual, c.solve_residual_primary) < 1e-6;
+% local contact consistency of the returned solutions: force of the pairs
+% that would still change state (tension in closed pairs, penetration of
+% open ones, stuck pairs beyond the friction cone) over the total normal
+% contact force; consistent with the 1% normal-force stability of the
+% contact iterations
+c.contact_state_ok = max(c.contact_violation_force, c.contact_violation_force_primary) < 2e-2;
+c.balance_ok = max(c.force_balance, c.force_balance_primary) < 1e-4;
 c.axial_rel_err = abs(out.Fz_integral - sys.T_bf)/max(abs(sys.T_bf), 1);
 c.axial_ok = c.axial_rel_err < 1e-3;
 cov = [out.case_scl.valid_fraction];
 if ~isempty(out.primary), cov = [cov, out.primary.case_scl.valid_fraction]; end
 c.scl_min_coverage = min(cov);                     c.scl_ok = c.scl_min_coverage >= 0.98;
-names = {'area_ok','jacobian_ok','contact_ok','residual_ok','balance_ok','axial_ok','scl_ok'};
+% meshed cable area of every turn vs its analytic area (rounded rectangle
+% for Rect, circle for RIS): the current density J = Iop/A uses the latter
+c.cable_area_rel_err = max(abs(out.mesh.cable_area_mesh(:) - geo.cable_area(:))./geo.cable_area(:));
+c.cable_area_ok = c.cable_area_rel_err < 1e-3;
+names = {'area_ok','jacobian_ok','contact_ok','contact_state_ok','residual_ok','balance_ok','axial_ok','scl_ok','cable_area_ok'};
 okv = cellfun(@(n) c.(n), names);
 c.all_ok = all(okv);
 if c.all_ok

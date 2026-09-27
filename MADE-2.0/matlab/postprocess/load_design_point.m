@@ -25,8 +25,19 @@ mat_file = fullfile(base_dir, [base_name '.mat']);
 if isfile(mat_file)
     S = load(mat_file, 'DATA', 'p');
     row = S.DATA(idx, :);
+    % Conductor shape identity (RIS/Rect): results saved before shape_cable
+    % was a DATA column take it from the p saved WITH them (the run's own
+    % input), never from an override input file.
+    if ~any(strcmp(row.Properties.VariableNames, 'shape_cable'))
+        row.shape_cable = S.p.shape_cable;
+    end
     if nargin >= 3 && ~isempty(input_file)
         p = read_machine_input(input_file); % explicit override
+        if p.shape_cable ~= row.shape_cable
+            warning('load_design_point:shape_override', ...
+                ['The override input file has shape_cable = %d but this design point is %d: ' ...
+                 'the design point keeps its own conductor shape.'], p.shape_cable, row.shape_cable);
+        end
     else
         p = S.p;
     end
@@ -72,5 +83,13 @@ for a = 1:numel(array_cols)
     else
         row.(base) = cellfun(@(v) T.(v)(idx), pieces);
     end
+end
+if ~isfield(row, 'shape_cable')
+    % xlsx written before shape_cable was saved: the conductor shape is not
+    % recoverable from the file itself; use the given input file, loudly.
+    row.shape_cable = p.shape_cable;
+    warning('load_design_point:shape_from_input', ...
+        ['%s has no shape_cable column: conductor shape taken from %s (shape_cable = %d). ' ...
+         'Make sure it is the input that produced this run.'], results_file, input_file, p.shape_cable);
 end
 end

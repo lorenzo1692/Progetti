@@ -93,6 +93,7 @@ mech_answer = strtrim(input('Run the 2D FE mechanical surrogate on this design (
 if strcmpi(mech_answer, 'y')
     mech = wp_mech_surrogate(DATA(sel_idx,:), p);
     [mech_fig, mech_gps_fig] = plot_wp_mech_surrogate(mech, p, sprintf('%s - design #%d', tag, sel_idx));
+    mech_zoom_fig = plot_conductor_zoom(mech, 1, sprintf('%s - design #%d - turn 1 mesh', tag, sel_idx));
     if ~mech.valid
         fprintf(2, ['The mechanical verification is NOT valid (%s): do not use its figure ' ...
             'of merit; check the mesh/contact settings or run the FEM.\n'], mech.checks.summary);

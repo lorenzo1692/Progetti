@@ -24,6 +24,14 @@ if p.GoundIns<0||p.INS_grades<0||p.dr_plasma_side<0||p.Increm<=0||p.turn_insulat
     error('tf3d:geometry','Invalid insulation or case dimensions.');
 end
 tins=p.turn_insulation_nominal*p.Increm;
+% Conductor shape from the SOLUTION (RIS stays RIS, see WP_TURN_GEOMETRY).
+tg=wp_turn_geometry(row,p);
+d.shape_name=tg.shape_name;d.cable_is_round=tg.is_round;
+% Gauss sources: a square of side s has second moment s^2/12 per axis, a
+% circle of diameter D has D^2/16, so a RIS cable is represented by the
+% equivalent square of side D*sqrt(3)/2 (same centroidal second moment).
+qf=1-(1-sqrt(3)/2)*tg.is_round;
+d.qw=[];d.qh=[];
 d.x=[];d.y=[];d.layer=[];d.w=[];d.h=[];d.cell_h=[];d.cell_w=[];
 Re=row.Ri_-p.dr_plasma_side-p.GoundIns;
 d.wp_plasma_radius=Re;
@@ -34,6 +42,8 @@ for k=1:nl
     d.layer=[d.layer repmat(k,1,nt(k))]; %#ok<AGROW>
     d.w=[d.w repmat(cw-2*j-2*tins,1,nt(k))]; %#ok<AGROW>
     d.h=[d.h repmat(ch-2*j-2*tins,1,nt(k))]; %#ok<AGROW>
+    d.qw=[d.qw repmat(qf*tg.cab_w(k),1,nt(k))]; %#ok<AGROW>
+    d.qh=[d.qh repmat(qf*tg.cab_h(k),1,nt(k))]; %#ok<AGROW>
     d.cell_h=[d.cell_h repmat(ch,1,nt(k))]; %#ok<AGROW>
     d.cell_w=[d.cell_w repmat(cw,1,nt(k))]; %#ok<AGROW>
     if k<nl, Re=Re-ch-p.INS_grades; else, Re=Re-ch; end

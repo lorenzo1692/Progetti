@@ -22,7 +22,7 @@ Cond_h   = row.Cond_h(1:n_layers);
 JT       = row.JT(1:n_layers);
 
 theta_TF = 2*pi/p.n_TF;
-tins = p.turn_insulation_nominal*p.Increm;
+tg = wp_turn_geometry(row, p);    % conductor shape of THIS design point (Rect or RIS)
 
 Re = zeros(1, n_layers+1);
 Re(1) = row.Ri_ - p.dr_plasma_side - p.GoundIns;
@@ -74,21 +74,11 @@ for k = 1:n_layers
     h  = Cond_h(k);
     w_total = Cond_w(k)*n_turns(k);
     x0 = -w_total/2;
-    sc_w = Cond_w(k) - 2*JT(k) - 2*tins;
-    sc_h = h - 2*JT(k) - 2*tins;
     for t = 1:n_turns(k)
         turn_i = turn_i + 1;
         xc = x0 + (t-1)*Cond_w(k);
-        rectangle('Position', [xc, y0, Cond_w(k), h], 'FaceColor', col_tins, 'EdgeColor', [0.3 0.3 0.3]);
-        if Cond_w(k)-2*tins > 0 && h-2*tins > 0
-            rectangle('Position', [xc+tins, y0+tins, Cond_w(k)-2*tins, h-2*tins], ...
-                'FaceColor', col_jacket, 'EdgeColor', 'none');
-        end
-        if sc_w > 0 && sc_h > 0
-            ci = 1 + round((field.B_discrete(turn_i)-B_min)/(B_max-B_min)*255);
-            rectangle('Position', [xc+JT(k)+tins, y0+JT(k)+tins, sc_w, sc_h], ...
-                'FaceColor', cmap(ci,:), 'EdgeColor', 'none');
-        end
+        ci = 1 + round((field.B_discrete(turn_i)-B_min)/(B_max-B_min)*255);
+        draw_turn_section(tg, k, xc, y0, col_tins, col_jacket, cmap(ci,:));
     end
     text(x0 - 0.01, y0 + h/2, sprintf('L%d', k), 'FontSize', 8, 'HorizontalAlignment', 'right');
 end
@@ -100,7 +90,7 @@ ylabel(c, 'Peak B on cable [T] (discrete Biot-Savart + self-field)');
 
 xlabel('Toroidal x [m]');
 ylabel('Radial y [m]');
-title(fig_title, 'Interpreter', 'none');
+title(sprintf('%s [conductor: %s]', fig_title, tg.shape_name), 'Interpreter', 'none');
 grid on
 hold off
 end

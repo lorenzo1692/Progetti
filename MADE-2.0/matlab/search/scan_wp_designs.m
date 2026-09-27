@@ -28,6 +28,9 @@ theta_TF = g.theta_TF;
 Mu_0 = g.Mu_0;
 
 tins_const = p.turn_insulation_nominal*p.Increm;   % Turn insulation
+if ~isfield(p, 'shape_cable') || ~isscalar(p.shape_cable) || ~any(p.shape_cable == [200 201])
+    error('scan_wp_designs:shape_cable', 'p.shape_cable must be 200 (RIS) or 201 (Rect).');
+end
 
 counter = 0;
 % DATA is intentionally left undefined here: like the original script, it
@@ -378,11 +381,18 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                 R_0 = p.R0;
                 radial_build = Ri_-Rk_;
 
+                % shape_cable is saved with the solution (200 RIS / 201 Rect): every
+                % downstream step (section plots, FEM surrogate, ANSYS export)
+                % reads the conductor shape from the row, so a reloaded RIS
+                % design cannot silently become Rect under a different input file.
+                shape_cable = p.shape_cable;
                 row = table(S_T_VT,S_T_JT,R_0,g.B_PHI_0,B_TF,Iop,JENG,L,E,Ri_,Rj_,Rk_,radial_build,Nose,WP_h,WP_w,...
                     lateral_w,n_cond,n_layers,n_turns,type_cable,Cond_w,Cond_h,JT,r_cable,N_Sc,N_Cu,S_Cable,S_REBCO,S_Cu_HTS,THS,B_grade,Tau_discharge, ...
+                    shape_cable, ...
                     'VariableNames', {'S_T_VT','S_T_JT','R_0','B_PHI_0','B_TF','Iop','JENG','L','E','Ri_','Rj_','Rk_', ...
                     'radial_build','Nose','WP_h','WP_w','lateral_w','n_cond','n_layers','n_turns','type_cable','Cond_w', ...
-                    'Cond_h','JT','r_cable','N_Sc','N_Cu','S_Cable','S_REBCO','S_Cu_HTS','THS','B_grade','Tau_discharge'});
+                    'Cond_h','JT','r_cable','N_Sc','N_Cu','S_Cable','S_REBCO','S_Cu_HTS','THS','B_grade','Tau_discharge', ...
+                    'shape_cable'});
                 DATA(counter,:) = row;
             end
         end

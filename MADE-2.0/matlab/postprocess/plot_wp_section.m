@@ -30,6 +30,7 @@ function plot_wp_section(row, p, fig_title)
 if nargin < 3 || isempty(fig_title)
     fig_title = sprintf('WP section - Iop=%.0f A, n_layers=%d, Rk=%.4f m', row.Iop, row.n_layers, row.Rk_);
 end
+fig_title = sprintf('%s [conductor: %s]', fig_title, conductor_label(row, p));
 
 n_layers = row.n_layers;
 n_turns  = row.n_turns(1:n_layers);
@@ -39,7 +40,7 @@ JT       = row.JT(1:n_layers);
 type_cable = row.type_cable(1:n_layers);
 
 theta_TF = 2*pi/p.n_TF;
-tins = p.turn_insulation_nominal*p.Increm;
+tg = wp_turn_geometry(row, p);    % conductor shape of THIS design point (row.shape_cable)
 
 % Recompute per-layer radial positions exactly as search/scan_wp_designs.m
 Re = zeros(1, n_layers+1);
@@ -106,31 +107,17 @@ for k = 1:n_layers
     else
         col = col_LTS;
     end
-    sc_w = Cond_w(k) - 2*JT(k) - 2*tins;
-    sc_h = h - 2*JT(k) - 2*tins;
     for t = 1:n_turns(k)
         xc = x0 + (t-1)*Cond_w(k);
-        % Turn insulation (full cell, outermost - wraps the jacket from
-        % the outside, as in the original Plot_WP_TF.m and physically:
-        % cable -> jacket -> turn insulation -> next turn)
-        rt = rectangle('Position', [xc, y0, Cond_w(k), h], ...
-            'FaceColor', col_tins, 'EdgeColor', [0.2 0.2 0.2]);
-        if isempty(h_tins_leg), h_tins_leg = rt; end
-        % Jacket steel (inset by tins)
-        if Cond_w(k)-2*tins > 0 && h-2*tins > 0
-            rj = rectangle('Position', [xc+tins, y0+tins, Cond_w(k)-2*tins, h-2*tins], ...
-                'FaceColor', col_jacket, 'EdgeColor', 'none');
-            if isempty(h_jacket_leg), h_jacket_leg = rj; end
-        end
-        % Cable (inset by tins+JT)
-        if sc_w > 0 && sc_h > 0
-            rc = rectangle('Position', [xc+JT(k)+tins, y0+JT(k)+tins, sc_w, sc_h], ...
-                'FaceColor', col, 'EdgeColor', 'none');
-            if strcmp(type_cable{k}, 'HTS')
-                if isempty(h_hts), h_hts = rc; end
-            else
-                if isempty(h_lts), h_lts = rc; end
-            end
+        % cable -> jacket -> turn insulation -> next turn, with the real
+        % conductor shape of this design point (Rect or RIS, WP_TURN_GEOMETRY)
+        hh = draw_turn_section(tg, k, xc, y0, col_tins, col_jacket, col);
+        if isempty(h_tins_leg), h_tins_leg = hh(1); end
+        if isempty(h_jacket_leg), h_jacket_leg = hh(2); end
+        if strcmp(type_cable{k}, 'HTS')
+            if isempty(h_hts), h_hts = hh(3); end
+        else
+            if isempty(h_lts), h_lts = hh(3); end
         end
     end
     text(x0 - 0.01, y0 + h/2, sprintf('L%d', k), 'FontSize', 8, 'HorizontalAlignment', 'right');
@@ -165,4 +152,9 @@ end
 legend(legend_handles, legend_labels, 'Location', 'eastoutside');
 grid on
 hold off
+end
+
+function s = conductor_label(row, p)
+tg = wp_turn_geometry(row, p);
+s = tg.shape_name;
 end

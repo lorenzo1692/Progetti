@@ -14,7 +14,9 @@ function [Bx, By] = wp_field_at_points(px, py, xc, yc, w, h, I, n_TF, r)
 %                  cable is then the real rounded rectangle (as in the FEM),
 %                  decomposed exactly into rectangles (central cross + an
 %                  area-preserving staircase of strips for each quarter
-%                  disk); default 0 = sharp rectangle
+%                  disk); default 0 = sharp rectangle. r = w/2 = h/2 is
+%                  a circular cable (RIS): the central cross vanishes and
+%                  the four quarter-disk staircases make the whole disk
 %
 %   Coil 1: every cable carries a uniform current density over its own
 %   (rounded) cross-section, closed-form Biot-Savart per rectangle, so its
@@ -61,6 +63,9 @@ for j = 1:numel(xc)
     end
 end
 
+% a fully round cable (RIS, r = w/2 = h/2) has zero-width central and side
+% rectangles: they carry no current and are skipped (0/0 otherwise)
+R = R(R(:,3) > 0 & R(:,4) > 0, :);
 for q = 1:size(R,1)
     k = Mu_0*R(q,5)/(R(q,3)*R(q,4))/(2*pi);
     ua = px - (R(q,1) - R(q,3)/2); ub = px - (R(q,1) + R(q,3)/2);

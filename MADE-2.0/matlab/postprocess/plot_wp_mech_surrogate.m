@@ -17,7 +17,14 @@ function [fig, gps_fig] = plot_wp_mech_surrogate(out, p, fig_title)
 %   out - result of WP_MECH_SURROGATE; p - machine parameters.
 
 if nargin < 3 || isempty(fig_title), fig_title = 'WP mechanical surrogate'; end
+fig_title = sprintf('%s [%s conductor]', fig_title, out.geo.shape_name);
+if ~out.valid
+    % keep the diagnostic plots, but make it impossible to mistake them for
+    % a verified result
+    fig_title = sprintf('NOT VALIDATED (%s) - %s', out.checks.summary, fig_title);
+end
 gps_fig = plot_wp_gps_section(out, [fig_title ' - GPS']);
+mark_invalid(gps_fig, out);
 drawnow;
 Smj = out.fom.Sm_jacket; Smc = out.fom.Sm_case;
 m = out.mesh; xy = m.xy;
@@ -68,12 +75,21 @@ title(ax3, {sprintf('Jacket P_m %.0f, P_m+P_b %.0f, P+Q %.0f, peak %.0f MPa', f.
     'Interpreter', 'tex');
 grid(ax3, 'on');
 
+mark_invalid(fig, out);
+
 % --- console table --------------------------------------------------
-fprintf('\nMechanical surrogate - checks: %s\n', out.checks.summary);
+fprintf('\nMechanical surrogate (%s conductor) - checks: %s\n', out.geo.shape_name, out.checks.summary);
 c = out.checks;
-fprintf(['  area %.1e | min detJ %.2e | contact converged %d | residual %.1e | ' ...
-    'force balance %.1e | axial %.1e | SCL coverage %.2f\n'], c.area_rel_err, c.min_detJ, ...
-    c.contact_converged, c.solve_residual, c.force_balance, c.axial_rel_err, c.scl_min_coverage);
+fprintf(['  area %.1e | cable area %.1e | min detJ %.2e | contact converged %d | ' ...
+    'residual total %.1e / primary %.1e | force balance %.1e / %.1e | ' ...
+    'contact violation %.1e / %.1e | axial %.1e | SCL coverage %.2f\n'], c.area_rel_err, ...
+    c.cable_area_rel_err, c.min_detJ, c.contact_converged, c.solve_residual, c.solve_residual_primary, ...
+    c.force_balance, c.force_balance_primary, c.contact_violation_force, c.contact_violation_force_primary, ...
+    c.axial_rel_err, c.scl_min_coverage);
+if ~out.valid
+    fprintf(2, ['  NOT VALIDATED: the plots are kept for diagnosis only; do not use this figure of ' ...
+        'merit to accept or rank the design point.\n']);
+end
 if f.classified
     fprintf('Figure of merit (linearized Tresca; P = Lorentz + axial, Q = cool-down):\n');
 else
@@ -107,4 +123,14 @@ axis(ax, 'equal'); box(ax, 'on');
 colormap(ax, jet(256));
 set(ax, 'CLim', clim_);
 xlabel(ax, 'Toroidal x [m]'); ylabel(ax, 'Radial y [m]');
+end
+
+function mark_invalid(f, out)
+% red banner on figures of a result whose validity checks failed
+if out.valid || isempty(f) || ~ishghandle(f), return, end
+set(f, 'Name', [get(f, 'Name') ' - NOT VALIDATED']);
+annotation(f, 'textbox', [0 0.955 1 0.045], 'String', ...
+    sprintf('NOT VALIDATED (%s): diagnostic only, figure of merit not usable', out.checks.summary), ...
+    'Color', [0.8 0 0], 'FontWeight', 'bold', 'HorizontalAlignment', 'center', 'EdgeColor', 'none', ...
+    'Interpreter', 'none');
 end

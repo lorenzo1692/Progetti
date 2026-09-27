@@ -23,6 +23,7 @@ row.Cond_w   = repmat(0.046, 1, 11);                % [m] cell width (toroidal),
 row.Cond_h   = [repmat(0.0326,1,6) repmat(0.0228,1,5)]; % [m] cell height (radial), per layer
 row.JT       = repmat(0.0035, 1, 11);               % [m] jacket thickness, per layer
 row.type_cable = repmat({'LTS'}, 1, 11);            % 'LTS' or 'HTS', per layer
+row.shape_cable = 201;  % 201 = Rect, 200 = RIS (needs Cond_w = Cond_h; JT = minimum jacket thickness)
 
 row.Ri_ = 1.18;   % [m] Case outer (plasma-side) radius
 row.Rj_ = 0.8354; % [m] WP inner boundary radius

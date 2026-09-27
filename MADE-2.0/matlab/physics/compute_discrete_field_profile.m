@@ -84,13 +84,12 @@ if any(sc_w <= 0) || any(sc_h <= 0)
         'Cable size <= 0 (Cond_w/Cond_h too small for JT + turn insulation).');
 end
 
-% Cable corner fillet, as the FEM and size_cicc_cable: r_SC = JT clamped
-% to [r_SC_min, r_SC_max]
-rmin = 2e-3; rmax = 6e-3;
-if isfield(p, 'r_SC_min'), rmin = p.r_SC_min; end
-if isfield(p, 'r_SC_max'), rmax = p.r_SC_max; end
-r_l = min(max(JT, rmin), rmax);
-rc = min(r_l(layer_of_turn), 0.49*min(sc_w, sc_h));
+% Cable cross-section from the design point's own conductor shape
+% (WP_TURN_GEOMETRY): Rect = rounded rectangle with r_SC = clamp(JT),
+% RIS = circle of diameter d = sqrt(4*A_cable/pi) (w = h = d, r = d/2)
+tg = wp_turn_geometry(row, p);
+sc_w = tg.cab_w(layer_of_turn); sc_h = tg.cab_h(layer_of_turn);
+rc = tg.cab_r(layer_of_turn);
 
 % Field points on every cable: its whole boundary (48 points on the rounded
 % outline, where the peak of the self-field lies) plus a 3x3 interior grid
@@ -99,9 +98,10 @@ np_b = 48;
 [PXl, PYl] = deal(zeros(np_b + 9, n_tot));
 [a, b] = meshgrid([-0.5 0 0.5], [-0.5 0 0.5]);
 for t = 1:n_tot
-    [bx, by] = rr_outline(sc_w(t)*(1-1e-6), sc_h(t)*(1-1e-6), rc(t), np_b);
-    PXl(:,t) = [xt(t) + bx; xt(t) + a(:)*sc_w(t)];
-    PYl(:,t) = [rt(t) + by; rt(t) + b(:)*sc_h(t)];
+    [bx, by] = rr_outline(sc_w(t)*(1-1e-6), sc_h(t)*(1-1e-6), rc(t)*(1-1e-6), np_b);
+    gf = 1 - 0.3*tg.is_round;                   % RIS: keep the 3x3 grid inside the circle
+    PXl(:,t) = [xt(t) + bx; xt(t) + gf*a(:)*sc_w(t)];
+    PYl(:,t) = [rt(t) + by; rt(t) + gf*b(:)*sc_h(t)];
 end
 owner = repmat(1:n_tot, np_b + 9, 1);
 [Bx, By] = wp_field_at_points(PXl(:), PYl(:), xt, rt, sc_w, sc_h, I_turn, p.n_TF, rc);
