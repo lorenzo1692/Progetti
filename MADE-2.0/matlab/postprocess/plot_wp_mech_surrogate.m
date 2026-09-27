@@ -1,4 +1,4 @@
-function plot_wp_mech_surrogate(out, p, fig_title)
+function [fig, gps_fig] = plot_wp_mech_surrogate(out, p, fig_title)
 %PLOT_WP_MECH_SURROGATE Stress map and figure of merit of WP_MECH_SURROGATE.
 %
 %   PLOT_WP_MECH_SURROGATE(out, p) plots, for one solved design point:
@@ -11,13 +11,19 @@ function plot_wp_mech_surrogate(out, p, fig_title)
 %   and prints the validity checks and the figure of merit in the console.
 %   A result whose checks fail is labelled INVALID.
 %
+%   fig = PLOT_WP_MECH_SURROGATE(...) also returns the figure handle.
+%   [fig,gps_fig] also returns the dedicated GPS mesh/solution figure.
+%   All original panels and console diagnostics are retained.
 %   out - result of WP_MECH_SURROGATE; p - machine parameters.
 
 if nargin < 3 || isempty(fig_title), fig_title = 'WP mechanical surrogate'; end
+gps_fig = plot_wp_gps_section(out, [fig_title ' - GPS']);
+drawnow;
 Smj = out.fom.Sm_jacket; Smc = out.fom.Sm_case;
 m = out.mesh; xy = m.xy;
 
-figure('units', 'normalized', 'outerposition', [0.05 0.08 0.9 0.84]);
+fig = figure('Name', 'WP mechanical surrogate', 'NumberTitle', 'off', ...
+    'units', 'normalized', 'outerposition', [0.05 0.08 0.9 0.84]);
 
 % --- 1. Tresca map: whole section and WP zoom ---------------------------
 clim_ = [0, max(1.5*max(Smj, Smc), out.fom.jacket_peak)/1e6];

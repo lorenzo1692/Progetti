@@ -413,3 +413,7 @@ Senza raffreddamento il cavo non è serrato dal jacket e le pareti portano il ca
 
 - Il **campo smeared** sottostima il picco reale (−7% sul primo grade, fino a −44% sui grade interni): i conduttori dei grade interni risultano dimensionati a un campo troppo basso (per il design 7, Ic effettiva 0.53–0.64·Iop). Proposta: dimensionare ogni grade sul picco discreto (iterazione dimensionamento ↔ campo).
 - La **formula analitica del jacket** e lo `SCF_transition_provisional` non riproducono la distribuzione di sforzi del FEM. Proposta: tarare una stima analitica veloce sul surrogato (usando molte soluzioni della scansione come punti di taratura) oppure usare il surrogato come secondo filtro sulle soluzioni fattibili.
+
+## Aggiornamento del 25 settembre 2026: modulo 3D a valle
+
+È disponibile `coil3d/tf3d_from_design`, con un passo facoltativo nel main, dopo la scelta della soluzione. Geometria, campo e carichi 3D sono documentati in `TF3D_IMPLEMENTAZIONE.md`. I sorgenti di dimensionamento e meccanica 2D restano invariati. Questa estensione è una versione di ricerca: i controlli Python indipendenti non equivalgono all'esecuzione dei file MATLAB o alla validazione FEM 3D. L'iterazione di forma e l'energia sono disattivate per default. Il fit a tre archi del Design 7 supera il limite iniziale di 10 mm; il default usa la curva libera e non nasconde il controllo fallito.

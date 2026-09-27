@@ -1,0 +1,32 @@
+{
+  "scope": "Independent Python mathematical reference; MATLAB code NOT executed",
+  "finite_segment_max_rel_error_vs_adaptive_quadrature": 7.387823071595105e-16,
+  "circular_loop_max_relative_errors_64_128_256": [
+    0.0011246211674318385,
+    0.0002811263337355596,
+    7.027977017781684e-05
+  ],
+  "design7": {
+    "r1": 1.0370565420697762,
+    "r2": 5.254120307308087,
+    "NI": 6721312,
+    "arc_max_error_m": 0.022011395247344478,
+    "arc_radii_m": [
+      0.9494011722174538,
+      2.3212420003307463,
+      4.086294136084844
+    ]
+  },
+  "arc_fit_10mm_gate_pass": false,
+  "analytic_curvature_identity_max_error": 4.440892098500626e-16,
+  "ampere_rel_errors_90_180_360": [
+    2.220446049250313e-16,
+    2.220446049250313e-16,
+    2.220446049250313e-16
+  ],
+  "centre_field_resolution_max_relative_change_90_to_180": 2.930205744711145e-09,
+  "centre_field_resolution_max_relative_change_180_to_360": 9.885389173902581e-10,
+  "grouped_neighbour_centre_max_relative_error": 0.005268018607389124,
+  "elapsed_seconds": 29.471708297729492,
+  "status": "Kernel checks passed; 10 mm arc-fit gate FAILED; MATLAB and FEM validation pending"
+}

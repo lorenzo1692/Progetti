@@ -276,3 +276,7 @@ plate), requires the validity checks to pass and ends with an error on any
 failure. Run time: ~4 min per design in Octave with both load cases,
 expected well under a minute in MATLAB; used on the chosen design point
 (main_WP_TF_design step 5b), not inside the combinatorial scan.
+
+## Modulo 3D — aggiornamento 25 settembre 2026
+
+Il nuovo modulo a valle è descritto in `../docs/TF3D_IMPLEMENTAZIONE.md`. Le prove di questa consegna sono eseguite in Python e salvate in `results/tf3d_*`; **non sono nuove corse MATLAB, Octave o ANSYS**. La regressione 2D precedente non è stata rieseguita e i suoi sorgenti e riferimenti sono invariati. Il nuovo test nativo è `validate_tf3d(false/true)`. Il controllo geometrico del fit a tre archi sul Design 7 fallisce il limite iniziale di 10 mm (circa 22 mm); il default usa la forma analitica. Non sono ancora validati picchi sulle curve, iterazione della forma, separazione delle forze assiali tra le due gambe e induttanza equivalente.

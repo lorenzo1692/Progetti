@@ -1,73 +1,54 @@
-function files = export_tf3d_shape(c3, out_dir, tag)
-%EXPORT_TF3D_SHAPE Write CAD offset curves and shape details for a 3D coil.
-%
-%   files = EXPORT_TF3D_SHAPE(c3, out_dir, tag) writes, from the coil's
-%   current-centroid path (c3.path_rz, half-shape, public convention),
-%   offset curves at constant perpendicular distance from it: the WP
-%   plasma-side and back faces (constant thickness along the whole coil,
-%   dr_plasma_side and WP_h from the chosen design point) and the case
-%   plasma-facing and nose surfaces (nose thickness tapering linearly from
-%   the inner-leg value geo.nose_il to the outer-leg value geo.nose_ol -
-%   TO BE CONFIRMED, see docs/HANDOFF.md #3 - since only the inner leg is
-%   sized by the WP_TF scan). Same file layout as coil3d/legacy (r,z pairs
-%   in mm, one column pair per curve), plus a plain-text arc summary.
-%
-%   This replaces coil3d/legacy's fixed WP_w x WP_h=1.0x0.5 m ANSYS source
-%   (review point #3) with the actual chosen design's dimensions, and
-%   removes the dependency on a specific dated output filename.
-
-if ~isfolder(out_dir), mkdir(out_dir); end
-rz = c3.path_rz;                                     % public convention half-shape (centroid)
-geo = c3.geo;
-
-[nr, nz] = local_normals(rz);
-n = size(rz, 1);
-d_nose = linspace(geo.nose_il, geo.nose_ol, n)';      % linear taper, inner leg -> outer leg
-
-curve_WP_i    = offset_curve(rz, nr, nz,  geo.WP_i - geo.r_c);
-curve_WP_e    = offset_curve(rz, nr, nz,  geo.WP_e - geo.r_c);
-curve_case_i  = offset_curve(rz, nr, nz,  geo.case_i - geo.r_c);
-curve_case_e  = [rz(:,1) + nr.*(geo.WP_e - geo.r_c - d_nose), rz(:,2) + nz.*(geo.WP_e - geo.r_c - d_nose)];
-curve_CL      = rz;
-
-mirror = @(C) [ [C; flipud([C(1:end-1,1), -C(1:end-1,2)])] ];  %#ok<NBRAK> full closed curve, up-down mirrored
-
-mm = 1e3;
-shape_file = fullfile(out_dir, sprintf('%s_TF3D_shape_%s.txt', tag, datestr(now, 'yyyymmdd_HHMMSS'))); %#ok<TNOW1,DATST>
-fid = fopen(shape_file, 'w');
-fprintf(fid, 'r_case_CL z_case_CL r_case_i z_case_i r_case_e z_case_e r_WP_i z_WP_i r_WP_e z_WPe\n');
-data = [mirror(curve_CL), mirror(curve_case_i), mirror(curve_case_e), mirror(curve_WP_i), mirror(curve_WP_e)]*mm;
-fprintf(fid, '%f %f %f %f %f %f %f %f %f %f\n', data');
-fclose(fid);
-
-detail_file = fullfile(out_dir, sprintf('%s_TF3D_arcs_%s.txt', tag, datestr(now, 'yyyymmdd_HHMMSS'))); %#ok<TNOW1,DATST>
-fid = fopen(detail_file, 'w');
-fprintf(fid, 'TF 3D coil - three-arc fit (coil3d/tf_three_arc_fit.m)\n');
-fprintf(fid, 'Shape mode used: %d (0=analytic bending-free, 1=iterated under the real n_TF-coil field)\n', c3.shape.mode);
-if isfield(c3.shape, 'iter'), fprintf(fid, 'Shape iterations: %d (err_r=%.2e, err_z=%.2e)\n', c3.shape.iter, c3.shape.err_r, c3.shape.err_z); end
-fprintf(fid, '\nC1: %.6f %.6f\nR1: %.6f\n', c3.arcs.C1, c3.arcs.R1);
-fprintf(fid, '\nC2: %.6f %.6f\nR2: %.6f\n', c3.arcs.C2, c3.arcs.R2);
-fprintf(fid, '\nC3: %.6f %.6f\nR3: %.6f\n', c3.arcs.C3, c3.arcs.R3);
-fprintf(fid, '\nFit quality: RMS %.2f mm, max %.2f mm\n', 1e3*c3.arcs.rms, 1e3*c3.arcs.max_dev);
-fprintf(fid, '\n%s\n', c3.checks.summary);
-fclose(fid);
-
-files = {shape_file, detail_file};
+function files = export_tf3d_shape(out,outdir,tag)
+%EXPORT_TF3D_SHAPE CAD polylines [mm], arc definitions and turn centrelines.
+% Radial case envelopes are geometric assumptions, not full 3D CAD solids.
+if nargin<2||isempty(outdir),outdir=pwd;end
+if nargin<3||isempty(tag),tag='TF3D';end
+if isempty(regexp(tag,'^[A-Za-z0-9_.-]+$','once')),error('tf3d:tag','Use letters, numbers, dot, hyphen or underscore.');end
+c=out.checks;
+if ~c.shape_converged||~c.geometry_offset_pass||~c.ampere_pass|| ...
+        (out.options.use_arcs&&~c.arc_fit_pass)
+    error('tf3d:export','Numerical/geometric checks failed: CAD export blocked. Inspect out.checks.');
 end
-
-function [nr, nz] = local_normals(rz)
-% Outward unit normal (increasing r on the inner leg) at every point of
-% the half-shape, from a central-difference tangent.
-n = size(rz, 1);
-t = zeros(n, 2);
-t(2:end-1,:) = rz(3:end,:) - rz(1:end-2,:);
-t(1,:) = rz(2,:) - rz(1,:);
-t(end,:) = rz(end,:) - rz(end-1,:);
-len = sqrt(sum(t.^2, 2)); t = t./len;
-nr = -t(:,2); nz = t(:,1);                            % rotate tangent by +90 deg
-if nr(1) < 0, nr = -nr; nz = -nz; end                 % fix sign: outward = increasing r at the inner leg
+if ~exist(outdir,'dir'),mkdir(outdir);end
+d=out.design;L=out.loop;
+u_outer=d.wp_u_max+d.ground_insulation+d.nose_il* ...
+    (1+(out.options.nose_ol_factor-1)*(L.rz(:,1)-d.r1)/(d.r2-d.r1));
+ci=L.rz+d.case_u_min*L.normal;
+co=L.rz+u_outer.*L.normal;
+wi=L.rz+d.wp_u_min*L.normal;wo=L.rz+d.wp_u_max*L.normal;
+cl=(ci+co)/2;
+files.shape=fullfile(outdir,[tag '_shape_mm.csv']);
+writecsv(files.shape,'r_case_CL_mm,z_case_CL_mm,r_case_plasma_mm,z_case_plasma_mm,r_case_back_mm,z_case_back_mm,r_WP_plasma_mm,z_WP_plasma_mm,r_WP_back_mm,z_WP_back_mm,r_current_mm,z_current_mm', ...
+    1e3*[cl ci co wi wo L.rz]);
+files.arcs=fullfile(outdir,[tag '_arcs_mm.csv']);
+a=out.arcs;
+writecsv(files.arcs,'arc,centre_r_mm,centre_z_mm,radius_mm,sweep_start_rad,sweep_end_rad', ...
+    [(1:3)' 1e3*a.centres 1e3*a.radii(:) a.angles(1:3)' a.angles(2:4)']);
+files.turns=fullfile(outdir,[tag '_turn_centrelines_mm.csv']);
+turns=zeros((L.n_seg+1)*d.n_turns,5);
+for j=1:d.n_turns
+    rz=L.rz+d.u(j)*L.normal;ix=(j-1)*(L.n_seg+1)+(1:L.n_seg+1);
+    turns(ix,:)=[repmat(j,L.n_seg+1,1) (0:L.n_seg)' -1e3*d.v(j)*ones(L.n_seg+1,1) 1e3*rz];
 end
-
-function C = offset_curve(rz, nr, nz, d)
-C = [rz(:,1) + nr*d, rz(:,2) + nz*d];
+writecsv(files.turns,'turn,node,X_mm,Y_mm,Z_mm',turns);
+files.mat=fullfile(outdir,[tag '_results.mat']);save(files.mat,'out','-v7');
+files.notes=fullfile(outdir,[tag '_README.txt']);
+fid=fopen(files.notes,'w');if fid<0,error('tf3d:io','Cannot open export notes.');end
+clean=onCleanup(@()fclose(fid));
+fprintf(fid,['TF3D research export. Coordinates in mm; angles in radians.\n' ...
+    'Coil 1 in YZ plane; local toroidal coordinate v=-X. Current goes up the inner leg.\n' ...
+    'Turn paths are closed independent circuits; winding crossovers/leads omitted.\n' ...
+    'Case back thickness interpolates in radius between inner and outer nose.\n' ...
+    'These are section envelopes, not a wedged 3D case solid or clearance certification.\n' ...
+    'Three-arc file describes the fitted reference even if use_arcs=0.\n' ...
+    'Shape mode=%d; use_arcs=%d; convergence=%d; arc max error=%.6g mm.\n' ...
+    '3D peak is a scalar 2D-uplift estimate. Forces require resolution studies.\n' ...
+    'Fz_half/2 is a mean of two axial cut forces, not automatically T_inner.\n' ...
+    'No validated 3D FEM comparison. No feedback to scan/discharge sizing.\n'], ...
+    out.options.shape_mode,out.options.use_arcs,c.shape_converged,1e3*a.max_error);
+end
+function writecsv(path,header,data)
+fid=fopen(path,'w');if fid<0,error('tf3d:io','Cannot open %s',path);end
+cleanup=onCleanup(@()fclose(fid));fprintf(fid,'%s\n',header);
+fmt=[repmat('%.12g,',1,size(data,2)-1) '%.12g\n'];fprintf(fid,fmt,data');
 end

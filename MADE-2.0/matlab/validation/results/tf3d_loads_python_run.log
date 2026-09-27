@@ -1,0 +1,38 @@
+{'nseg': 90, 'n_half': 45, 'half_force_N': [-6.453472840561858e-07, -114072885.58577429, 89304022.19888203], 'mean_cut_force_N': 44652011.099441014, 'centre_max_T': 13.814199246485071, 'midplane_2d_max_T': 13.736938918837595, 'midplane_3d_max_T': 13.733299638831848, 'midplane_max_relative_difference': 0.017421746353604384}
+{'nseg': 180, 'n_half': 90, 'half_force_N': [-6.697176788694748e-07, -114123816.80637555, 89754478.98036714], 'mean_cut_force_N': 44877239.49018357, 'centre_max_T': 13.86903929476852, 'midplane_2d_max_T': 13.736938918837595, 'midplane_3d_max_T': 13.733299636268427, 'midplane_max_relative_difference': 0.017421743474447915}
+{
+  "scope": "Python reference only, not MATLAB execution",
+  "resolutions": [
+    {
+      "nseg": 90,
+      "n_half": 45,
+      "half_force_N": [
+        -6.453472840561858e-07,
+        -114072885.58577429,
+        89304022.19888203
+      ],
+      "mean_cut_force_N": 44652011.099441014,
+      "centre_max_T": 13.814199246485071,
+      "midplane_2d_max_T": 13.736938918837595,
+      "midplane_3d_max_T": 13.733299638831848,
+      "midplane_max_relative_difference": 0.017421746353604384
+    },
+    {
+      "nseg": 180,
+      "n_half": 90,
+      "half_force_N": [
+        -6.697176788694748e-07,
+        -114123816.80637555,
+        89754478.98036714
+      ],
+      "mean_cut_force_N": 44877239.49018357,
+      "centre_max_T": 13.86903929476852,
+      "midplane_2d_max_T": 13.736938918837595,
+      "midplane_3d_max_T": 13.733299636268427,
+      "midplane_max_relative_difference": 0.017421743474447915
+    }
+  ],
+  "mean_force_relative_change": 0.0050187666019836374,
+  "elapsed_seconds": 170.601909160614,
+  "force_5percent_resolution_gate_pass": true
+}

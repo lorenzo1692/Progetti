@@ -29,13 +29,6 @@ clearvars; close all; clc
 this_dir = fileparts(mfilename('fullpath'));
 addpath(genpath(this_dir));
 
-% All outputs of this run (results table, plots, ANSYS export) are saved
-% here, next to the code, instead of MATLAB's current folder (which
-% depends on where you happened to be when you launched the script).
-out_dir = fullfile(this_dir, 'outputs');
-if ~isfolder(out_dir), mkdir(out_dir); end
-fprintf('Outputs of this run will be saved to: %s\n', out_dir);
-
 default_input = fullfile(this_dir, 'input', 'WP_TF_input_template.xlsx');
 
 %% 1. Select and review the input file
@@ -76,31 +69,20 @@ end
 
 %% 5. Save all results, then browse and pick one
 run_stamp = string(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
-results_file = fullfile(out_dir, sprintf('%s_results_%s.xlsx', tag, run_stamp));
+results_file = sprintf('%s_results_%s.xlsx', tag, run_stamp);
 writetable(DATA, results_file);
 % .mat companion (same base name): exact round-trip of DATA and p for
 % LOAD_DESIGN_POINT, since a plain xlsx re-read cannot reconstruct the
 % array-valued columns (n_turns, Cond_w, ...) on its own.
-save(fullfile(out_dir, sprintf('%s_results_%s.mat', tag, run_stamp)), 'DATA', 'p');
+save(sprintf('%s_results_%s.mat', tag, run_stamp), 'DATA', 'p');
 fprintf('\n%d feasible design point(s) saved to %s (+ .mat companion)\n', height(DATA), results_file);
 
 sel_idx = browse_solutions(DATA);
-plot_solution(DATA, sel_idx, tag, out_dir);
-
-fig_section = figure; plot_wp_section(DATA(sel_idx,:), p, sprintf('%s - design #%d', tag, sel_idx));
-fig_bfield = figure; plot_wp_section_bfield(DATA(sel_idx,:), p, sprintf('%s - design #%d', tag, sel_idx));
-fig_diag = figure; plot_wp_diagnostics(DATA(sel_idx,:), p, sprintf('%s - design #%d', tag, sel_idx));
-fig_hotspot = figure; plot_hotspot_transient(DATA(sel_idx,:), p, sprintf('%s - design #%d - hot spot', tag, sel_idx));
-
-% Optional: save the generated plots
-save_plots_answer = strtrim(input('Save all plots as PNG? [y/N]: ', 's'));
-if strcmpi(save_plots_answer, 'y')
-    print(fig_section, '-dpng', '-r300', fullfile(out_dir, sprintf('%s_design_%d_section.png', tag, sel_idx)));
-    print(fig_bfield, '-dpng', '-r300', fullfile(out_dir, sprintf('%s_design_%d_bfield.png', tag, sel_idx)));
-    print(fig_diag, '-dpng', '-r300', fullfile(out_dir, sprintf('%s_design_%d_diagnostics.png', tag, sel_idx)));
-    print(fig_hotspot, '-dpng', '-r300', fullfile(out_dir, sprintf('%s_design_%d_hotspot.png', tag, sel_idx)));
-    fprintf('All plots saved to %s\n', out_dir);
-end
+plot_solution(DATA, sel_idx, tag);
+plot_wp_section(DATA(sel_idx,:), p, sprintf('%s - design #%d', tag, sel_idx));
+plot_wp_section_bfield(DATA(sel_idx,:), p, sprintf('%s - design #%d', tag, sel_idx));
+plot_wp_diagnostics(DATA(sel_idx,:), p, sprintf('%s - design #%d', tag, sel_idx));
+plot_hotspot_transient(DATA(sel_idx,:), p, sprintf('%s - design #%d - hot spot', tag, sel_idx));
 
 %% 5b. Optional: 2D FE mechanical verification of the chosen design point
 % Solves the true equilibrium of the inner-leg section (rounded turns,
@@ -110,18 +92,43 @@ end
 mech_answer = strtrim(input('Run the 2D FE mechanical surrogate on this design (about a minute)? [y/N]: ', 's'));
 if strcmpi(mech_answer, 'y')
     mech = wp_mech_surrogate(DATA(sel_idx,:), p);
-    plot_wp_mech_surrogate(mech, p, sprintf('%s - design #%d', tag, sel_idx));
+    [mech_fig, mech_gps_fig] = plot_wp_mech_surrogate(mech, p, sprintf('%s - design #%d', tag, sel_idx));
     if ~mech.valid
         fprintf(2, ['The mechanical verification is NOT valid (%s): do not use its figure ' ...
             'of merit; check the mesh/contact settings or run the FEM.\n'], mech.checks.summary);
     end
 end
 
-%% 6. Optional: export the chosen design point as an ANSYS APDL input file
+%% 6. Optional: downstream 3D geometry and magnetic-field research module
+coil3d_answer = strtrim(input('Run the 3D coil step (shape + 3D field, research module)? [y/N]: ', 's'));
+if strcmpi(coil3d_answer, 'y')
+    try
+        tf3d = tf3d_from_design(DATA(sel_idx,:), p);
+        if tf3d.options.export
+            tf3d_dir = fullfile(pwd, sprintf('%s_tf3d_%s', tag, run_stamp));
+            tf3d_numeric_files = export_tf3d_results(tf3d, tf3d_dir, sprintf('%s_%d', tag, sel_idx));
+            try
+                tf3d_files = export_tf3d_shape(tf3d, tf3d_dir, sprintf('%s_%d', tag, sel_idx));
+                fprintf('3D exports saved in %s\n', tf3d_dir);
+            catch err
+                warning('main_WP_TF_design:tf3d_export', '3D export failed: %s', err.message);
+            end
+        end
+        tf3d_figs = plot_tf3d(tf3d, p);
+    catch err
+        warning('main_WP_TF_design:tf3d', '3D stage failed (calculation, export or plotting): %s', err.message);
+    end
+end
+
+%% 7. Optional: export the chosen design point as an ANSYS APDL input file
 export_answer = strtrim(input('Export this design point as an ANSYS input file for FEM verification? [y/N]: ', 's'));
 if strcmpi(export_answer, 'y')
-    export_ansys_input(DATA(sel_idx,:), p, out_dir, sprintf('%s_%d', tag, sel_idx));
+    export_ansys_input(DATA(sel_idx,:), p, pwd, sprintf('%s_%d', tag, sel_idx));
 end
+
+%% 8. Optional: save all open run plots, including the surrogate FEM
+plot_files = ask_save_plots(findall(0, 'Type', 'figure'), ...
+    fullfile(pwd, sprintf('%s_plots_%s', tag, run_stamp)));
 
 fprintf(['\nTo revisit this design point later without re-running the scan:\n' ...
     '  [row, p] = load_design_point(''%s'', %d);\n' ...
