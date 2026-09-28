@@ -477,6 +477,18 @@ flowchart LR
   <div class="callout bad">
     <p><strong>Conseguenza sul design 7.</strong> Nella scansione mirata con la stessa macchina, il campo spalmato ritrova il design 7 (13 × 8 turn, W = 344 mm, 64.6 kA, grade a 13.48 / 9.33 / 6.22 T). Con il campo reale, il picco del layer 1 è 14.48 T (ANSYS: 14.482 T). Il profilo scende più lentamente di quello lineare, quindi il grade 1 si estende ai layer 1–7. Il cavo Nb<sub>3</sub>Sn del grade 1, dimensionato a 14.48 T, diventa alto 48.5 mm in una cella larga 43 mm: rapporto d'aspetto 0.89, sotto il minimo 0.99. Il candidato non è più fattibile: era accettato solo perché il campo era sottostimato di 1 T.</p>
   </div>
+  <p><strong>Scansione completa sulla macchina del template</strong> (301 combinazioni; qui le tre larghezze di case che danno soluzioni, 0.134 / 0.154 / 0.174 m), dopo la correzione di <code>cicc</code> descritta sotto:</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Grandezza</th><th class="num">Campo spalmato</th><th class="num">Picco discreto</th></tr></thead>
+    <tbody>
+      <tr><td>Soluzioni fattibili</td><td class="num">100 (26 / 47 / 27)</td><td class="num">42 (10 / 25 / 7)</td></tr>
+      <tr><td>Campo di dimensionamento del grade 1</td><td class="num">13.48 T per tutte</td><td class="num">13.76–14.20 T</td></tr>
+      <tr><td>Area del cavo del grade 1 (stessa configurazione)</td><td class="num">es. 796 mm²</td><td class="num">es. 1023 mm² (+15…+35%)</td></tr>
+      <tr><td>Passate campo/dimensionamento</td><td class="num">1</td><td class="num">3–6, tutte convergenti</td></tr>
+    </tbody>
+  </table></div>
+  <p>Il picco reale cresce con I<sub>op</sub> (auto-campo) e con la larghezza del WP: 13.8 T per WP profondi a 20 kA, 14.2 T a 60–66 kA, 14.48 T per il design 7 (64.6 kA, 13 layer).</p>
+  <p><strong>Correzione in <code>cicc</code>.</strong> La ricerca del rame si fermava sul punto con l'hot spot più vicino al limite in valore assoluto, anche fino a 5 K sopra. Il controllo THS della scansione scartava allora il candidato per un arrotondamento, non per fisica. Con il campo reale, che sposta B con continuità, 14 dei 20 progetti ammessi col campo spalmato cadevano così, con THS di 251–255 K. Ora si tiene il punto più vicino al limite <em>da sotto</em>, cioè con più rame e mai meno. La correzione cambia anche la scansione col campo spalmato: da 20 a 100 soluzioni sulle stesse tre larghezze.</p>
 </section>
 
 <section id="s7">
@@ -907,7 +919,7 @@ flowchart LR
     <li>Il picco nella scansione è 2D (gamba interna, conduttori infiniti): non include l'aumento di campo 3D nelle zone curve. Il modulo 3D lo stima, ma è un modulo di ricerca non ancora validato.</li>
     <li>Nel modulo 3D il cavo RIS è rappresentato con 2×2 filamenti di Gauss del quadrato equivalente (stesso momento del secondo ordine del cerchio), non con un modello di auto-campo del cavo tondo.</li>
     <li>La formula di Ampère in <code>compute_operating_params</code> divide per 2πR<sub>TFi</sub> − dr<sub>plasma</sub> invece di 2π(R<sub>TFi</sub> − dr<sub>plasma</sub>): +1.4% su B<sub>TF</sub>. Ora influisce solo sulla prima stima e sulla pressione p<sub>rs</sub> della formula del jacket. Non è stata toccata per non spostare gli sforzi già calibrati: da decidere.</li>
-    <li><code>cicc</code> cerca il rame con una tolleranza di 5 K sull'hot spot e può restituire 251 K con un limite di 250 K; la scansione scarta il candidato. Il comportamento c'era già prima.</li>
+    <li><code>cicc</code>: la ricerca del rame ora resta sotto il limite di hot spot (entro 5 K). Prima poteva superarlo fino a 5 K e la scansione scartava il candidato: corretto (§6.8).</li>
   </ul>
   <h3>Scansione: decisioni aperte (C06)</h3>
   <ol>

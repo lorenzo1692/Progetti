@@ -127,6 +127,19 @@ cavo Nb3Sn diventa alto 48.5 mm in una cella larga 43 mm (rapporto 0.89 <
 0.99): il candidato non è più fattibile. Era accettato solo perché il
 campo era sottostimato.
 
+Scansione completa della macchina del template, tre larghezze di case
+con soluzioni (0.134/0.154/0.174 m), dopo la correzione di `cicc` sotto:
+campo spalmato 100 soluzioni (26/47/27), picco discreto 42 (10/25/7);
+campo di dimensionamento del grade 1 13.76-14.20 T invece di 13.48 T;
+area del cavo del grade 1 +15...+35%; 3-6 passate, tutte convergenti.
+
+Correzione in `cicc.m`: la ricerca del rame si fermava sul punto con THS
+più vicino al limite in valore assoluto, fino a 5 K sopra; il controllo
+THS della scansione scartava il candidato per un arrotondamento (14 dei
+20 progetti ammessi dal campo spalmato, con THS 251-255 K). Ora tiene il
+più vicino al limite da sotto (più rame, mai meno). Col campo spalmato le
+soluzioni sulle stesse tre larghezze passano da 20 a 100.
+
 ## 5. Verifica riproducibile
 
 ```matlab
