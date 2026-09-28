@@ -58,7 +58,10 @@ env = wp_envelope(p, g);
 combT = generate_combinations(env);
 
 fprintf('\nScanning the design space (this can take a while)...\n');
-DATA = scan_wp_designs(p, g, env, combT);
+[DATA, field_cal] = scan_wp_designs(p, g, env, combT);
+if ~isempty(field_cal)
+    plot_field_calibration(field_cal, p, tag);   % peak factor k(W, Iop) and layer profile used by the scan
+end
 
 if height(DATA) == 0
     error('main_WP_TF_design:no_feasible_design', ...
@@ -74,7 +77,7 @@ writetable(DATA, results_file);
 % .mat companion (same base name): exact round-trip of DATA and p for
 % LOAD_DESIGN_POINT, since a plain xlsx re-read cannot reconstruct the
 % array-valued columns (n_turns, Cond_w, ...) on its own.
-save(sprintf('%s_results_%s.mat', tag, run_stamp), 'DATA', 'p');
+save(sprintf('%s_results_%s.mat', tag, run_stamp), 'DATA', 'p', 'field_cal');
 fprintf('\n%d feasible design point(s) saved to %s (+ .mat companion)\n', height(DATA), results_file);
 
 sel_idx = browse_solutions(DATA);

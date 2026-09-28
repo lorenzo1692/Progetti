@@ -1,4 +1,4 @@
-function DATA = scan_wp_designs(p, g, env, combT)
+function [DATA, cal] = scan_wp_designs(p, g, env, combT)
 %SCAN_WP_DESIGNS Explore every case-wedge x turns/layers candidate design.
 %
 %   DATA = SCAN_WP_DESIGNS(p, g, env, combT) plays out each candidate
@@ -32,12 +32,28 @@ if ~isfield(p, 'shape_cable') || ~isscalar(p.shape_cable) || ~any(p.shape_cable 
     error('scan_wp_designs:shape_cable', 'p.shape_cable must be 200 (RIS) or 201 (Rect).');
 end
 
-% field model used to size the grades (see the sizing / field loop below)
-field_model = 'discrete'; if isfield(p, 'field_model') && ~isempty(p.field_model), field_model = p.field_model; end
-if ~any(strcmpi(field_model, {'discrete', 'smeared'}))
-    error('scan_wp_designs:field_model', 'p.field_model must be ''discrete'' or ''smeared''.');
+% field model used to size the grades (see the sizing / field loop below):
+%   0 'smeared'    Ampere x corr_B_WP, linear across the WP (old model)
+%   1 'calibrated' k(W, Iop) and per-layer profile calibrated at the start
+%                  with the discrete model (WP_FIELD_CALIBRATION); with
+%                  p.field_verify = 1 (default) the accepted candidates are
+%                  then checked with the discrete model and re-sized if the
+%                  calibrated field is off by more than field_tol
+%   2 'discrete'   smeared first guess, then discrete model and re-sizing
+%                  until converged
+field_model = 1; if isfield(p, 'field_model') && ~isempty(p.field_model), field_model = p.field_model; end
+if ischar(field_model) || isstring(field_model)
+    field_model = find(strcmpi(field_model, {'smeared', 'calibrated', 'discrete'})) - 1;
 end
-use_discrete_field = strcmpi(field_model, 'discrete');
+if isempty(field_model) || ~isscalar(field_model) || ~any(field_model == [0 1 2])
+    error('scan_wp_designs:field_model', 'p.field_model must be 0 (smeared), 1 (calibrated) or 2 (discrete).');
+end
+field_verify = 1; if isfield(p, 'field_verify') && ~isempty(p.field_verify), field_verify = p.field_verify; end
+use_discrete_field = field_model == 2 || (field_model == 1 && field_verify);
+cal = [];                 % returned: the start-of-scan field calibration (field_model = 1)
+if field_model == 1
+    cal = wp_field_calibration(p, g, env);
+end
 field_tol = 0.05;     if isfield(p, 'field_tol') && ~isempty(p.field_tol), field_tol = p.field_tol; end           % [T]
 field_max_iter = 6;   if isfield(p, 'field_max_iter') && ~isempty(p.field_max_iter), field_max_iter = p.field_max_iter; end
 n_field_rejected = 0;
@@ -103,17 +119,19 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
             end
 
             % Sizing / field loop: size the candidate with the field of
-            % each grade, then (p.field_model = 'discrete', default) compute
-            % the real per-layer peak on the sized WP with the discrete
-            % 2D model (WP_PEAK_FIELD_FAST, validated vs ANSYS) and re-size
-            % with it until the field each grade was sized for matches its
-            % peak within p.field_tol. The smeared model (Ampere field of
-            % n_TF current sheets x p.corr_B_WP, linear across the WP) is
-            % only the first guess: its error on the peak grows with the
-            % toroidal narrowness of the WP (+1 to +2 T on the plasma side,
-            % more on the low-field grades), so no constant corr_B_WP can
-            % fix it. Candidates failing any check are rejected on the pass
-            % where they fail (a higher field only makes cables bigger).
+            % each grade. First pass: the calibrated field k(W, Iop) x
+            % Ampere x profile (field_model = 1, default) or the smeared
+            % Ampere x corr_B_WP linear field (0 and 2). Then, with
+            % field_model = 2 or with 1 and field_verify, compute the real
+            % per-layer peak on the sized WP with the discrete 2D model
+            % (WP_PEAK_FIELD_FAST, validated vs ANSYS) and re-size with it
+            % until the field each grade was sized for matches its peak
+            % within p.field_tol. The smeared model's error on the peak
+            % grows with the toroidal narrowness of the WP (+1 to +2 T on
+            % the plasma side, more on the low-field grades), so no
+            % constant corr_B_WP can fix it. Candidates failing any check
+            % are rejected on the pass where they fail (a higher field only
+            % makes cables bigger).
             n_layers_start = n_layers; n_turns_start = n_turns;
             n_spire_start = n_spire_; Iop_start = Iop;
             B_field_layer = []; reject = false; field_ok = false;
@@ -157,7 +175,14 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                 % then the per-layer peak of the discrete model on the
                 % previous pass's sized WP (layers added by the turn
                 % reduction take the field of the last layer)
-                if isempty(B_field_layer)
+                B_cal_layer = nan(1, n_layers);
+                if field_model == 1
+                    W_cand = 2*Re(1)*tan(theta_TF/2) - lateral_w*2 - p.GoundIns*2;
+                    B_cal_layer = wp_field_calibrated(cal, W_cand, Iop, n_spire_(1:n_layers));
+                end
+                if isempty(B_field_layer) && field_model == 1
+                    B_size_layer = B_cal_layer;
+                elseif isempty(B_field_layer)
                     B_size_layer = B_layers;
                 else
                     B_size_layer = B_field_layer([1:min(n_layers, numel(B_field_layer)), ...
@@ -462,14 +487,16 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
             % the number of sizing/field passes
             B_peak = max(B_peak_layer);
             B_peak_layers = nan(1, maxdim); B_peak_layers(1:n_layers) = B_peak_layer;
+            % calibrated estimate of the first pass (NaN unless field_model = 1)
+            B_cal = max(B_cal_layer);
             field_iter = field_it;
             row = table(S_T_VT,S_T_JT,R_0,g.B_PHI_0,B_TF,Iop,JENG,L,E,Ri_,Rj_,Rk_,radial_build,Nose,WP_h,WP_w,...
                 lateral_w,n_cond,n_layers,n_turns,type_cable,Cond_w,Cond_h,JT,r_cable,N_Sc,N_Cu,S_Cable,S_REBCO,S_Cu_HTS,THS,B_grade,Tau_discharge, ...
-                shape_cable, B_peak, B_peak_layers, field_iter, ...
+                shape_cable, B_peak, B_peak_layers, field_iter, B_cal, ...
                 'VariableNames', {'S_T_VT','S_T_JT','R_0','B_PHI_0','B_TF','Iop','JENG','L','E','Ri_','Rj_','Rk_', ...
                 'radial_build','Nose','WP_h','WP_w','lateral_w','n_cond','n_layers','n_turns','type_cable','Cond_w', ...
                 'Cond_h','JT','r_cable','N_Sc','N_Cu','S_Cable','S_REBCO','S_Cu_HTS','THS','B_grade','Tau_discharge', ...
-                'shape_cable','B_peak','B_peak_layers','field_iter'});
+                'shape_cable','B_peak','B_peak_layers','field_iter','B_cal'});
             DATA(counter,:) = row;
         end
     end
