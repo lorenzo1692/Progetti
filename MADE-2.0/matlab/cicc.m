@@ -131,7 +131,16 @@ while true
         a = round(N_Cu0(max(1,indx-1))); b = round(N_Cu0(indx));
     end          
     %
-    if abs(Tlim-THS(indx)) <= 5 || b-a <= 1 || a > 980 
+    if abs(Tlim-THS(indx)) <= 5 || b-a <= 1 || a > 980
+        % keep the safe side: among the evaluated copper counts, the one
+        % whose hot spot is closest to the limit FROM BELOW (THS falls with
+        % N_Cu). The closest in absolute value could be up to 5 K above the
+        % limit, and the scan's THS check then rejected the candidate for a
+        % tolerance round-off, not for physics.
+        ok = find(THS <= Tlim);
+        if ~isempty(ok)
+            [~, m] = max(THS(ok)); indx = ok(m);
+        end
         N_Cu = ceil(N_Cu0(indx));
         THS = THS(indx);
         break
