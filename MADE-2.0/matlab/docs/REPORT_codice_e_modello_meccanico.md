@@ -134,7 +134,7 @@ flowchart TD
 | `forward_eval_wp_stress.m` | Valuta le formule analitiche di jacket e case a geometria fissata (usata dagli script sopra). |
 | `TF_FEM_benchmark_2026_findings.md` | Diario dei confronti con i numeri. |
 
-### 3.8 File legacy (non usati dalla pipeline attuale)
+### 3.8 File legacy (non usati dalla pipeline attuale, in `legacy/`)
 
 Gli script originali monolitici sono conservati come riferimento e **non sono richiamati** dal main:
 `WP_TF_*_Design_*.m`, `WP_TF_Esplorazione.m`, `PLOT_TF_*.m`, `Plot_WP_TF.m` (riferimento grafico originale), `CICC_CEFTR.m`, `CICC_DEMO.m`, `Ths_TF_Nb3Sn.m`, `Jc_REBCO.m`, `Ic_NbTi_TF.m`, `scf.m`, `xbr.m`, `xbz.m`, `xlm.m`, `xlsheet.m`, `ColorQuiver.m`.

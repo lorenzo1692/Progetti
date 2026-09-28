@@ -28,6 +28,7 @@ clearvars; close all; clc
 
 this_dir = fileparts(mfilename('fullpath'));
 addpath(genpath(this_dir));
+rmpath(genpath(fullfile(this_dir, 'legacy')));   % old scripts and functions, not used by the pipeline
 
 default_input = fullfile(this_dir, 'input', 'WP_TF_input_template.xlsx');
 

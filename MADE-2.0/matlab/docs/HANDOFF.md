@@ -170,7 +170,7 @@ Probabilmente mancano le parentesi: dovrebbe essere `2*pi*(g.RTFi - p.dr_plasma_
 
 > "questi file vanno sistemati ma contengono il primo passaggio al 3D dopo aver scelto la sezione. mettili a valle di made"
 
-I file originali sono in `coil3d/legacy/`, copiati senza modifiche. `ColorQuiver.m` è identico a quello già presente nella radice.
+I file originali sono in `legacy/coil3d/`, copiati senza modifiche. `ColorQuiver.m` è in `legacy/emag_axisym/`.
 
 | File | Cosa fa |
 |---|---|
@@ -328,4 +328,4 @@ Il piano non è ancora implementato. Nuova cartella `coil3d/`, eseguita dopo la 
 | `validation/validate_mech_surrogate_2026.m` | 110 | Validazione PASS/FAIL |
 | `docs/REPORT_codice_e_modello_meccanico.md` | 415 | Guida completa |
 
-I file nella radice con nomi come `WP_TF_*_Design_*.m`, `PLOT_TF_*.m`, `CICC_*.m` sono **legacy**: non sono usati dalla pipeline e non vanno modificati.
+Gli script e le funzioni non usati dalla pipeline (`WP_TF_*_Design_*.m`, `PLOT_TF_*.m`, `CICC_*.m`, ...) sono in `legacy/` (vedi `legacy/README.md`): non vanno modificati.

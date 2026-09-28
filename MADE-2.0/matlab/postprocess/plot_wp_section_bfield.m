@@ -2,7 +2,7 @@ function plot_wp_section_bfield(row, p, fig_title)
 %PLOT_WP_SECTION_BFIELD WP+Case cross-section, cable colored by local field.
 %
 %   PLOT_WP_SECTION_BFIELD(row, p) reproduces the field-colored section
-%   plot from the original Plot_WP_TF.m (Case trapezoid in gray, turn
+%   plot from the original legacy/scripts/Plot_WP_TF.m (Case trapezoid in gray, turn
 %   insulation/jacket rings, cable region colored by a jet colormap), but
 %   colors each individual turn by the peak discrete Biot-Savart field on
 %   that turn's cable, self-field included (COMPUTE_DISCRETE_FIELD_PROFILE), instead of the per-grade

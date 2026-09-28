@@ -10,7 +10,7 @@
 
 clearvars; clc
 this_dir = fileparts(mfilename('fullpath'));
-addpath(genpath(fullfile(this_dir, '..')));
+addpath(genpath(fullfile(this_dir, '..'))); rmpath(genpath(fullfile(this_dir, '..', 'legacy')));
 
 p = read_machine_input(fullfile(this_dir, '..', 'input', 'WP_TF_input_template.xlsx'));
 
