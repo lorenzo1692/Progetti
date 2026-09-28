@@ -17,7 +17,7 @@ function [DATA, cal] = scan_wp_designs(p, g, env, combT)
 %   times over the whole scan so it stays cheap even for very large scans.
 %
 %   This function is a direct, line-by-line port of the scan loop from
-%   WP_TF_VNS_Design_Point_2026.m: it calls the external CICC(...) sizing
+%   legacy/scripts/WP_TF_VNS_Design_Point_2026.m: it calls CICC(...) (conductor/)
 %   function exactly as before, and keeps the same array layout and
 %   control flow, only delegating the three duplicated jacket-sizing
 %   while-loops to SIZE_CICC_CABLE and the case/vault sizing while-loop to
