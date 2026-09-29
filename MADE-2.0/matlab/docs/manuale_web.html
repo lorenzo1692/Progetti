@@ -206,6 +206,8 @@ details[open] summary { margin-bottom: 10px; }
       <tr><td>Conduttore RIS (round-in-square)</td><td>La forma del conduttore (<code>shape_cable</code>: 200 RIS, 201 Rect) è salvata con la soluzione e letta da tutte le fasi a valle: plot, campo, FEM, export ANSYS, modulo 3D. Prima un RIS veniva ricostruito come rettangolo. Nel FEM il cavo RIS è un cerchio in un jacket quadrato raccordato, con spessore variabile e il lato caricato sempre a contatto.</td><td>§7.5, §8.4–8.7</td></tr>
       <tr><td>Campo di picco nella scansione</td><td>Il fattore costante <code>corr_B_WP</code> sottostimava il picco di 1–2 T. Ora (<code>field_model</code> = 1, default) il campo è <strong>tarato all'inizio della scansione</strong> come k(W, I<sub>op</sub>) × Ampère con un profilo per layer, dal modello discreto validato su ANSYS; con <code>field_verify</code> le soluzioni accettate sono ricontrollate col modello discreto. Il vecchio modello resta disponibile (<code>field_model</code> = 0).</td><td>§5, §6.7–6.9</td></tr>
       <tr><td>Struttura del codice</td><td>Il conduttore CICC è in <code>conductor/</code>; tutto ciò che la pipeline non usa è in <code>legacy/</code>, fuori dal path, con un README. Nella radice restano solo <code>main_WP_TF_design.m</code> e <code>README.md</code>.</td><td>§3</td></tr>
+      <tr><td>Tensione del jacket nella scansione</td><td>Nuova opzione <code>scf_model</code> = 1: surrogato veloce tarato sul FE che stima Pm e Pm+Pb primari del jacket per layer, verificati come la figura di merito del FE. Il metodo attuale (tabella SCF × 3.15) resta il default.</td><td>§5b</td></tr>
+      <tr><td>Pressione magnetica e celle</td><td><code>p_rs</code> ora viene dal campo del modello scelto (picco tarato con <code>field_model</code> = 1); nuovo limite <code>max_cable_aspect_ratio</code> (default 2).</td><td>§5</td></tr>
       <tr><td><code>cicc</code></td><td>La ricerca del rame resta sempre sotto il limite di hot spot: prima poteva superarlo fino a 5 K e la scansione scartava il candidato per un arrotondamento.</td><td>§6.8</td></tr>
       <tr><td>Residuo del FEM</td><td>Cholesky su matrice scalata (Jacobi) con raffinamento iterativo; penalità riferita alla rigidezza elastica. Residuo da ~10<sup>−6</sup> a ~10<sup>−9</sup>, senza cambiare le soglie.</td><td>§8.8</td></tr>
       <tr><td>Coerenza dello stato di contatto</td><td>Nuovo controllo: le coppie che cambierebbero stato sulla soluzione restituita devono portare meno del 2% della forza normale. L'iterazione di contatto converge solo se è soddisfatto.</td><td>§8.7, §8.9</td></tr>
@@ -284,6 +286,7 @@ flowchart TD
       <tr><td><code>wp_turn_geometry</code></td><td>Unica fonte della geometria di un turn (cella, jacket, cavo, aree) per Rect e RIS. La forma viene dalla riga (<code>row.shape_cable</code>), da <code>p</code> solo se la riga non la porta; codici diversi da 200/201 e RIS con cella non quadrata danno errore.</td><td>plot, campo, FEM, export, 3D</td><td>§7.5</td></tr>
       <tr><td><code>wp_peak_field_fast</code></td><td>Picco di campo per layer con lo stesso modello discreto, valutato solo dove il picco può stare (turn di bordo, vicino al bordo, centrale; 48 punti sul contorno). Scarto ≤ 0.09 T dal profilo completo, circa 10 volte più veloce.</td><td>scan</td><td>§6.8</td></tr>
       <tr><td><code>wp_field_calibration</code>, <code>wp_field_calibrated</code></td><td>Taratura del campo all'inizio della scansione: k(W, I<sub>op</sub>) = picco / Ampère e profilo per layer, dal modello discreto su WP di riferimento costruiti come nella scansione; interpolazione delle tabelle per ogni candidato.</td><td>scan</td><td>§6.9</td></tr>
+      <tr><td><code>jacket_stress_surrogate</code></td><td>Surrogato veloce della tensione del jacket (Pm, Pm+Pb primari per layer), tarato sul FE; usato con <code>scf_model</code> = 1.</td><td>scan</td><td>§5b</td></tr>
       <tr><td><code>wp_field_at_points</code></td><td>Stesso modello di campo in punti arbitrari (forze di Lorentz del modello FE).</td><td>modello FE</td><td>§6.2–6.5</td></tr>
       <tr><td><code>wp_mech_surrogate</code></td><td>Modello a elementi finiti 2D autonomo della sezione, con controlli di validità e figura di merito classificata.</td><td>main passo 5b, esempio manuale, validazione</td><td>§8</td></tr>
     </tbody>
@@ -381,7 +384,7 @@ flowchart TD
       <div class="math-block">\[ \sigma_{rm} = p_{rs}\,\frac{w-2t_{ins}}{2\,JT}\,\frac{K_{jckt}}{K_{e,rad}} + \sigma_{z,JT} \le \frac{S_{amm,JT}}{s_{membrane}}, \qquad p_{rs}=\frac{B_{TF}^2}{2\mu_0} \]</div>
       Se un layer non entra nel case con il gap toroidale minimo si tolgono 2 turn, che vengono aggiunti come layer in fondo.</li>
     <li><strong>Verifiche geometriche e di hot spot</strong>: larghezza minima del cavo, rapporto d'aspetto, JT minimo, THS entro il limite del tipo.</li>
-    <li><strong>Jacket su tutti i layer</strong>, con <code>SCF_transition_provisional</code> = 3.15 sui layer adiacenti a un cambio di grade (calibrazione su un solo FEM).</li>
+    <li><strong>Jacket su tutti i layer</strong>: con <code>scf_model</code> = 0 (default) formula analitica × SCF di tabella × <code>SCF_transition_provisional</code> = 3.15 sui layer adiacenti a un cambio di grade (calibrazione su un solo FEM); con <code>scf_model</code> = 1 il surrogato di §5b. La pressione <code>p_rs</code> viene dal campo con cui è dimensionato il grade 1 (picco tarato o discreto con <code>field_model</code> 1/2, Ampère × <code>corr_B_WP</code> con 0). Le celle con Cond<sub>w</sub>/Cond<sub>h</sub> fuori da [<code>min_cable_aspect_ratio</code>, <code>max_cable_aspect_ratio</code>] sono scartate.</li>
     <li><strong>Case</strong>: <code>size_case_vault</code> cresce il nose finché vault e jacket rispettano gli ammissibili.</li>
     <li><strong>Accettazione meccanica</strong>: <code>S_T_VT &lt; S_amm_VT</code> e <code>S_T_JT &lt; S_amm_JT</code> (il confronto del vault con l'ammissibile del jacket era un bug, corretto dopo la revisione).</li>
     <li><strong>Campo reale e ridimensionamento</strong> (<code>field_model</code> = 2, oppure 1 con <code>field_verify</code> = 1): sul candidato dimensionato che ha passato tutti i controlli, <code>wp_peak_field_fast</code> calcola il picco reale di ogni layer. Se il picco di un grade differisce dal campo con cui è stato dimensionato di più di <code>field_tol</code> (0.05 T), o un layer lo supera, i passi 4–9 si ripetono con il campo reale di ogni grade, fino a <code>field_max_iter</code> passate (6). Un candidato che non converge è scartato e il numero dei candidati scartati viene stampato. Un candidato che fallisce un controllo in una passata è scartato subito: con un campo più alto i cavi crescono e i controlli peggiorano.</li>
@@ -399,6 +402,28 @@ flowchart LR
   <div class="callout">
     <p><strong>Cosa dice la validazione su questi modelli analitici.</strong> Il campo spalmato sottostimava il picco reale del 7% sul primo grade e fino al 44% sui grade interni: nel design 7 i conduttori dei grade interni avrebbero avuto I<sub>c</sub> effettiva di 0.53–0.64·Iop. Questo è ora corretto dal passo 10. La formula analitica del jacket resta invece approssimata: la verifica meccanica della soluzione scelta va fatta con il modello FE.</p>
   </div>
+
+  <h3>5b Tensione del jacket: formula analitica o surrogato tarato sul FE</h3>
+  <p>La formula della scansione (<code>scf_model</code> = 0) stima la tensione radiale del jacket come σ<sub>nom</sub> × SCF di tabella (su Cond<sub>w</sub>/SC<sub>w</sub>) × 3.15 vicino ai cambi di grade × <code>dcr_WP_rad</code>, con σ<sub>nom</sub> = p<sub>rs</sub>·r<sub>steel</sub>·dcr<sub>jckt</sub>. Contro il FE (§8), validato su ANSYS, sottostima il Pm+Pb primario massimo del design fino al 62%. Il motivo è che non vede la crescita della tensione con la profondità: nel FE è circa +70% dal layer lato plasma a quelli profondi, per il carico radiale che si accumula verso il nose.</p>
+  <p>Con <code>scf_model</code> = 1, <code>jacket_stress_surrogate</code> stima per ogni layer i Pm e Pm+Pb primari del jacket del FE:</p>
+  <div class="math-block">\[ \sigma_k = S_z + a\,\sigma_{nom,k} + b\,\sigma_{acc,k},\qquad \sigma_{acc,k}=\frac{q_k}{p_{rs}}\,\sigma_{nom,k},\qquad q_k=\frac{\sum_{j<k} n_j I_{op} B_j+\tfrac12 n_k I_{op}B_k}{W_1} \]</div>
+  <p>con a = 0.697, b = 0.249 per P<sub>m</sub> e a = 1.274, b = 0.606 per P<sub>m</sub>+P<sub>b</sub>, S<sub>z</sub> la tensione assiale e q<sub>k</sub> la pressione radiale accumulata vera. La scansione li verifica come la figura di merito del FE (P<sub>m</sub> ≤ S<sub>m</sub>, P<sub>m</sub>+P<sub>b</sub> ≤ 1.5 S<sub>m</sub>). In questa modalità il nose è dimensionato solo dai criteri del vault. Le nuove colonne <code>JT_Pm</code> e <code>JT_PmPb</code> riportano i valori.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Errore sul massimo del design (leave-one-design-out, 12 design, 229 layer)</th><th class="num">P<sub>m</sub></th><th class="num">P<sub>m</sub>+P<sub>b</sub></th></tr></thead>
+    <tbody>
+      <tr><td>Formula analitica attuale (tabella × 3.15 × dcr_WP_rad)</td><td class="num">−26 … +64%</td><td class="num">−62 … −2%</td></tr>
+      <tr><td>Surrogato</td><td class="num">−16 … +12%</td><td class="num">−25 … +12%</td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li><strong>Dati:</strong> design 7, benchmark e 10 soluzioni della scansione tarata (W 304–344 mm, 14–29 layer, 21–66 kA), tutti calcolati col FE.</li>
+    <li><strong>Transizione tra grade:</strong> un termine dedicato non è risultato significativo; il FE non mostra il salto che il 3.15 assume.</li>
+    <li><strong>Errore peggiore:</strong> sui WP stretti con gli ultimi layer ristretti, dove ci sono picchi locali di flessione ai gradini di larghezza.</li>
+    <li><strong>Limiti:</strong> il surrogato non è tarato per RIS (la scansione si ferma con un errore). È un modello di screening preliminare: la soluzione scelta va verificata col FE.</li>
+    <li><strong>Riproducibilità:</strong> <code>validation/jacket_surrogate_fe_data.m</code>, <code>validation/results/jacket_surrogate_calibration.csv</code>, <code>validation/tools/fit_jacket_surrogate.py</code>.</li>
+  </ul>
+  <div class="callout bad"><p>Nel FE il P<sub>m</sub>+P<sub>b</sub> primario del jacket va da 991 a 1369 MPa: 11 design su 12 superano 1.5 S<sub>m</sub> = 1000 MPa, come il design 7. Con la formula attuale la scansione accetta 23 soluzioni sulle due larghezze utili (W 304 e 344 mm); con <code>scf_model</code> = 1 nessuna, perché tutte superano P<sub>m</sub>+P<sub>b</sub> ≤ 1.5 S<sub>m</sub>, in accordo col FE. Il costo del surrogato è trascurabile (tempo di scansione 2625 contro 2949 s): è algebra sui layer, non un FE; il FE completo resta per la soluzione scelta.</p></div>
+  <p>La colonna <code>JT_crit_layer</code> indica il layer del jacket critico (massimo P<sub>m</sub>+P<sub>b</sub> del surrogato, o massima tensione della formula analitica con <code>scf_model</code> = 0): è il punto da controllare per primo nel FE o in ANSYS.</p>
 </section>
 
 <section id="s6">
@@ -962,7 +987,7 @@ flowchart LR
   <ol>
     <li><s>Dimensionare ogni grade sul picco di campo discreto, con un'iterazione tra dimensionamento e campo.</s> Fatto (§5 passo 10).</li>
     <li>Usare il modello FE come filtro obbligatorio sulle soluzioni fattibili prima di dichiararle accettate.</li>
-    <li>Tarare una stima analitica veloce sul modello FE e usarla nella scansione al posto dello SCF provvisorio.</li>
+    <li><s>Tarare una stima analitica veloce sul modello FE e usarla nella scansione al posto dello SCF provvisorio.</s> Fatto come opzione (<code>scf_model</code> = 1, §5b).</li>
   </ol>
 </section>
 

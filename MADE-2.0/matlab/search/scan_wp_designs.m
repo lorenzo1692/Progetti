@@ -462,6 +462,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                 Rk_ = cv.Rk_; S_T_VT = cv.S_T_VT; S_T_JT = cv.S_T_JT;
 
                 JT_Pm = NaN; JT_PmPb = NaN;
+                JT_crit_layer = worst_var;      % critical jacket layer (analytic formula)
                 if scf_model == 1
                     % jacket primary Pm and Pm+Pb per layer from the fast
                     % surrogate calibrated on the 2D FE (JACKET_STRESS_SURROGATE),
@@ -470,7 +471,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                         numel(B_size_layer)*ones(1, n_layers - numel(B_size_layer))]);
                     [Pm_l, PmPb_l] = jacket_stress_surrogate(sigma_nom, p_rs, n_turns(1:n_layers), B_lay, ...
                         Iop, Cond_w(1)*n_turns(1), cv.S_z);
-                    JT_Pm = max(Pm_l); JT_PmPb = max(PmPb_l);
+                    JT_Pm = max(Pm_l); [JT_PmPb, JT_crit_layer] = max(PmPb_l);   % critical jacket layer (surrogate)
                     S_T_JT = JT_Pm;
                     if JT_Pm > Sm_jacket || JT_PmPb > 1.5*Sm_jacket
                         reject = true; break
@@ -536,11 +537,11 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
             field_iter = field_it;
             row = table(S_T_VT,S_T_JT,R_0,g.B_PHI_0,B_TF,Iop,JENG,L,E,Ri_,Rj_,Rk_,radial_build,Nose,WP_h,WP_w,...
                 lateral_w,n_cond,n_layers,n_turns,type_cable,Cond_w,Cond_h,JT,r_cable,N_Sc,N_Cu,S_Cable,S_REBCO,S_Cu_HTS,THS,B_grade,Tau_discharge, ...
-                shape_cable, B_peak, B_peak_layers, field_iter, B_cal, JT_Pm, JT_PmPb, ...
+                shape_cable, B_peak, B_peak_layers, field_iter, B_cal, JT_Pm, JT_PmPb, JT_crit_layer, ...
                 'VariableNames', {'S_T_VT','S_T_JT','R_0','B_PHI_0','B_TF','Iop','JENG','L','E','Ri_','Rj_','Rk_', ...
                 'radial_build','Nose','WP_h','WP_w','lateral_w','n_cond','n_layers','n_turns','type_cable','Cond_w', ...
                 'Cond_h','JT','r_cable','N_Sc','N_Cu','S_Cable','S_REBCO','S_Cu_HTS','THS','B_grade','Tau_discharge', ...
-                'shape_cable','B_peak','B_peak_layers','field_iter','B_cal','JT_Pm','JT_PmPb'});
+                'shape_cable','B_peak','B_peak_layers','field_iter','B_cal','JT_Pm','JT_PmPb','JT_crit_layer'});
             DATA(counter,:) = row;
         end
     end
