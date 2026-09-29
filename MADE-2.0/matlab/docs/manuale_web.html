@@ -333,6 +333,9 @@ flowchart TD
       <tr><td><code>verify_ris_rect_fem.m</code></td><td>Verifica riproducibile RIS/Rect di geometria, mesh e FEM, con report e figure.</td></tr>
       <tr><td><code>validate_mech_surrogate_2026.m</code></td><td>Modello FE contro le due analisi ANSYS, con bande di accettazione e esito PASS/FAIL.</td></tr>
       <tr><td><code>validate_TF_FEM_design7_2026.m</code>, <code>validate_TF_FEM_benchmark_2026.m</code></td><td>Confronto dei modelli analitici della scansione e del campo con il FEM.</td></tr>
+      <tr><td><code>verify_made_vs_gps2d.m</code></td><td>Catena della scansione (campo calibrato, surrogato del jacket, formula del vault) contro i due FEM ANSYS 2D GPS, anello per anello (§9).</td></tr>
+      <tr><td><code>verify_tf3d_ansys_mag.m</code>, <code>verify_tf3d_ansys_beam.m</code></td><td>Carichi lungo la linea media contro MAG_360 e trave nel piano (<code>coil3d/tf3d_beam_inplane.m</code>) contro il modello globale STR_360.</td></tr>
+      <tr><td><code>ansys/POST_TF_BEAM_EXPORT.mac</code></td><td>Post-processing APDL del modello globale a travi: forze e sforzi di trave, spostamenti, shell, reazioni.</td></tr>
       <tr><td><code>forward_eval_wp_stress.m</code></td><td>Formule analitiche di jacket e case a geometria fissata.</td></tr>
       <tr><td><code>tools/</code></td><td>Script Python di estrazione dei riferimenti dagli export ANSYS, con README.</td></tr>
       <tr><td><code>TF_FEM_benchmark_2026_findings.md</code></td><td>Diario dei confronti con i numeri.</td></tr>
@@ -915,6 +918,37 @@ flowchart LR
   </ol>
   <p>Dopo le modifiche al solutore (scaling, penalità, convergenza con coerenza di stato) la validazione è ripetuta: <strong>PASSED</strong>, rapporti invariati (P<sub>m</sub> 0.96–0.99, P<sub>m</sub>+P<sub>b</sub> 0.96–0.98, picco 0.99–1.02 in media).</p>
 
+  <h3>Catena della scansione contro il FEM 2D GPS</h3>
+  <p><code>verify_made_vs_gps2d</code> valuta le grandezze della scansione alla geometria dei due FEM, con T<sub>bf</sub> presa dal FEM. I run ANSYS applicano raffreddamento, Lorentz e forza assiale in un solo passo: i loro sforzi linearizzati sono <strong>totali</strong> (P+Q). I criteri della scansione e il surrogato del jacket sono <strong>primari</strong> (Lorentz + assiale). Il confronto passa quindi per il modello FE 2D.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Anello</th><th class="num">Benchmark</th><th class="num">Design 7</th></tr></thead>
+    <tbody>
+      <tr><td>Picco di campo: ANSYS / discreto (= calibrato) / Ampère</td><td class="num">13.489 / 13.487 / 12.945 T</td><td class="num">14.482 / 14.476 / 13.068 T</td></tr>
+      <tr><td>Jacket P<sub>m</sub>+P<sub>b</sub> totale, massimo: ANSYS / FE 2D</td><td class="num">863 / 805 (−6.8%)</td><td class="num">963 / 889 (−7.7%)</td></tr>
+      <tr><td>Jacket P<sub>m</sub> totale, massimo: ANSYS / FE 2D</td><td class="num">581 / 567 (−2.3%)</td><td class="num">581 / 556 (−4.4%)</td></tr>
+      <tr><td>Jacket P<sub>m</sub>+P<sub>b</sub> primario: FE 2D / surrogato (<code>scf_model</code> 1)</td><td class="num">991 / 946 (−4.5%)</td><td class="num">1114 / 1241 (+11.4%)</td></tr>
+      <tr><td>Jacket P<sub>m</sub> primario: FE 2D / surrogato</td><td class="num">596 / 573 (−3.9%)</td><td class="num">625 / 690 (+10.5%)</td></tr>
+      <tr><td>Formula analitica con SCF 3.15 (<code>scf_model</code> 0) contro FE primario</td><td class="num">979 (−1.2%)</td><td class="num">717 (−35.6%)</td></tr>
+      <tr><td>Effetto del raffreddamento sul massimo P<sub>m</sub>+P<sub>b</sub> (FE)</td><td class="num">−18.8%</td><td class="num">−20.2%</td></tr>
+      <tr><td>Case: formula del vault contro P<sub>m</sub> massimo di nose/vault ANSYS</td><td class="num">672 / 697 (−3.6%)</td><td class="num">743 / 647 (+14.8%)</td></tr>
+    </tbody>
+  </table></div>
+  <p>Il campo calibrato coincide con ANSYS. Sul massimo totale del jacket il FE 2D sta 7–8% sotto ANSYS. Il surrogato segue il FE primario entro −5/+11%, ma i due design fanno parte del suo insieme di taratura. Manca un risultato ANSYS <strong>primario</strong>: un run senza raffreddamento (TUNIF = TREF, o un caso di carico EM + assiale separato) con lo stesso export chiuderebbe il confronto direttamente sulla grandezza che la scansione verifica.</p>
+
+  <h3>Modello globale a travi (STR_360)</h3>
+  <p>Il modello ANSYS STR_360 è un sistema TF semplificato: BEAM188 lungo la linea media, shell tra le bobine alla gamba interna (lo shell cilindrico rappresenta il nose del case) e nella zona OIS, supporto gravitazionale. Serve soprattutto a verificare i carichi fuori piano, a valle del dimensionamento 2D. <code>tf3d_beam_inplane</code> ricostruisce la parte nel piano: telaio di Timoshenko della bobina 1 con strisce di collegamento in simmetria ciclica, stessi carichi (riga j di FL_TF_1 sul nodo j) e stesso supporto.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Grandezza</th><th class="num">ANSYS</th><th class="num">MATLAB</th></tr></thead>
+    <tbody>
+      <tr><td>Forza assiale nella trave</td><td class="num">7.7 … 52.4 MN</td><td class="num">8.9 … 52.6 MN (scarto max 3%)</td></tr>
+      <tr><td>Spostamento radiale</td><td class="num">−5.02 … +0.39 mm</td><td class="num">−4.90 … +0.56 mm</td></tr>
+      <tr><td>Spostamento verticale</td><td class="num">−0.39 … 10.59 mm</td><td class="num">−0.51 … 10.96 mm</td></tr>
+      <tr><td>Vault, forza circonferenziale N<sub>11</sub></td><td class="num">−109 … −87 MN/m</td><td class="num">−108 … −88 MN/m</td></tr>
+      <tr><td>Reazione al supporto per bobina</td><td class="num">1.838 MN</td><td class="num">1.838 MN</td></tr>
+      <tr><td>Momento nel piano, picco</td><td class="num">3.0 MN·m</td><td class="num">2.0 MN·m (locale, strisce di chiusura OIS)</td></tr>
+    </tbody>
+  </table></div>
+
   <h3>Verifica RIS / Rect</h3>
   <p><code>verify_ris_rect_fem</code> su un caso Rect (design 7) e uno RIS (10 layer × 7 turn, celle quadrate da 46 mm, cavi da 900/700/600 mm² dimensionati con <code>size_cicc_cable</code>, 96 kA). In entrambi <code>p.shape_cable</code> è volutamente l'opposto della riga: la forma usata è sempre quella della soluzione. Il caso RIS è un punto di prova costruito apposta, non l'uscita di una scansione.</p>
   <div class="table-wrap"><table>
@@ -974,13 +1008,14 @@ flowchart LR
     <li>Validato su design LTS con 2–3 grade e layer allineati. I vincoli tra layer non allineati sono verificati numericamente ma non contro un FEM; nessun design HTS confrontato.</li>
     <li>Troppo lento per ogni candidato della scansione: serve a verificare la soluzione scelta o un sottoinsieme.</li>
     <li>RIS: validato solo numericamente (area, Jacobiani, equilibrio, contatti), non contro un FEM ANSYS. Le sezioni di linearizzazione sono radiali: vicino agli spigoli non sono normali alla faccia esterna. Il ramo RIS dell'export APDL non è stato provato in ANSYS. Il lato legato assume che il cavo sia premuto sul lato verso cui spinge la forza di Lorentz: la trazione trasmessa è riportata e finora è nulla.</li>
+    <li>Il confronto con ANSYS è sugli sforzi totali (P+Q); i criteri primari (P<sub>m</sub>, P<sub>m</sub>+P<sub>b</sub>) non hanno ancora un riferimento ANSYS diretto: serve un run 2D GPS senza raffreddamento.</li>
     <li>Contatti a penalty: penetrazione riportata e trascurabile sui casi provati (§8.7b); se superasse ~1% di JT servirebbe il Lagrangiano aumentato.</li>
   </ul>
   <h3>Campo e modulo 3D</h3>
   <ul>
     <li>Il picco nella scansione è 2D (gamba interna, conduttori infiniti): non include l'aumento di campo 3D nelle zone curve. Il modulo 3D lo stima, ma è un modulo di ricerca non ancora validato.</li>
     <li>Nel modulo 3D il cavo RIS è rappresentato con 2×2 filamenti di Gauss del quadrato equivalente (stesso momento del secondo ordine del cerchio), non con un modello di auto-campo del cavo tondo.</li>
-    <li>La formula di Ampère in <code>compute_operating_params</code> divide per 2πR<sub>TFi</sub> − dr<sub>plasma</sub> invece di 2π(R<sub>TFi</sub> − dr<sub>plasma</sub>): +1.4% su B<sub>TF</sub>. Ora influisce solo sulla prima stima e sulla pressione p<sub>rs</sub> della formula del jacket. Non è stata toccata per non spostare gli sforzi già calibrati: da decidere.</li>
+    <li>La formula di Ampère in <code>compute_operating_params</code> divide per 2πR<sub>TFi</sub> − dr<sub>plasma</sub> invece di 2π(R<sub>TFi</sub> − dr<sub>plasma</sub>): +1.4% su B<sub>TF</sub>. Ora influisce solo sulla prima stima e sulla pressione p<sub>rs</sub> della formula del jacket. Non è stata toccata per non spostare gli sforzi già calibrati: scelta confermata, resta così.</li>
     <li><code>cicc</code>: la ricerca del rame ora resta sotto il limite di hot spot (entro 5 K). Prima poteva superarlo fino a 5 K e la scansione scartava il candidato: corretto (§6.8).</li>
   </ul>
   <h3>Scansione: decisioni aperte (C06)</h3>
