@@ -366,3 +366,8 @@ per side. Design 10 added to the surrogate calibration set (13 designs, 242
 layers); coefficients refitted (Pm 0.711 / 0.244, Pm+Pb 1.285 / 0.601).
 A width-step term (turns lost to the next layer) was tried and did not
 reduce the leave-one-out error.
+
+Re-run of `validate_mech_surrogate_2026.m` with the current code (RIS bonded
+side, contact-state tolerance), 29-Sep-2026: **PASSED**, ratios unchanged
+(benchmark Pm 0.99, Pm+Pb 0.98, peak 1.02 mean; design 7 Pm 0.96, Pm+Pb
+0.96, peak 0.99; eps_z +0.3 % / 0.0 %).
