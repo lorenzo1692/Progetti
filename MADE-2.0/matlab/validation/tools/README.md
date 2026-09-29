@@ -13,6 +13,7 @@ FEM run.
 | `cmp_sections.py <tag> <dir> <sections.csv>` | Linearizes the FEM jacket stresses on exactly the sections exported by the surrogate (`out.sections`, with the layer appended as last column), by interpolation on the jacket elements, and compares Pm and Pm+Pb |
 | `turn_peaks.py <tag> <dir> <surrogate.mat> "<geometry dict>" <JT>` | Maximum SINT of the FEM jacket per turn and per layer, against the surrogate peaks |
 | `case_scl.py` | Linearization of the FEM case stresses along given lines (the surrogate case SCLs, `out.case_scl(q).P0/P1`) |
+| `em_layer_peaks.py <TFBM_em_*.txt> [B_peak_layers]` | Peak BSUM per turn and per layer from a 2D EM export (NLIST, ELIST with one real set per turn, PRNSOL,B), compared with the per-layer peaks of the scan |
 | `fem_lin_generic.py` | Linearization on the straight jacket walls at 1/4, 1/2, 3/4 of each wall from the design geometry |
 
 Typical sequence for a new FEM run:

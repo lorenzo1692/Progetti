@@ -320,3 +320,23 @@ coil in both; in-plane moment peak 3.0 vs 2.0 MN m (local, OIS closure
 strips). The STR_360 model is a simplified TF system (the inner cylindrical
 shell stands for the case nose): it is kept for the out-of-plane load check
 downstream of the 2D sizing.
+
+## Design 10 - field (ANSYS PLANE233 conductor-only, 29-Sep-2026)
+
+Scan design point 10 (template machine, calibrated field with verification,
+`scf_model` 1): 13 layers (18x4, 16x5, 14x2, 10x2 turns), Cond_w 30.2 mm,
+Cond_h 29.0 / 23.5 / 22.1 mm, JT 2.1 mm, Iop 33.607 kA, Ri_ 1.2594 m,
+Rk_ 0.7181 m; ANSYS geometry from `export_ansys_input`. Extraction:
+`tools/em_layer_peaks.py` (one real set per turn, layers by centroid height).
+
+| | Peak B on conductor |
+|---|---|
+| ANSYS BSUM | **13.341 T** |
+| Scan, discrete verification (B_peak) | 13.340 T |
+| Scan, calibrated field (B_cal) | 13.319 T (−0.16 %) |
+| Smeared Ampere (B_TF) | 13.483 T |
+
+Per layer the scan (`B_peak_layers`) is within 0.011 T of ANSYS
+(13.341 ... 2.373 T). Field each grade was sized at vs ANSYS peak on the
+grade: 13.336 / 8.967 / 6.078 T vs 13.341 / 8.956 / 6.056 T. ANSYS Lorentz
+force on the coil: −46.78 MN/m (radial).
