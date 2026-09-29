@@ -140,6 +140,60 @@ THS della scansione scartava il candidato per un arrotondamento (14 dei
 più vicino al limite da sotto (più rame, mai meno). Col campo spalmato le
 soluzioni sulle stesse tre larghezze passano da 20 a 100.
 
+### Pressione magnetica dal campo del modello scelto
+
+`p_rs` (dimensionamento del jacket, tensione radiale, vault) ora viene dal
+campo con cui è dimensionato il grade 1: picco tarato o discreto con
+`field_model` 1/2, Ampère × `corr_B_WP` con `field_model` 0 (invariato).
+Con il campo tarato cresce di (k/1.05)^2, fino a circa +11% sui WP stretti.
+La formula di Ampère (`2*pi*RTFi - dr_plasma_side`) resta com'è.
+
+### Rapporto d'aspetto massimo della cella
+
+`max_cable_aspect_ratio` (WP dimensioning, default 2): la scansione scarta
+le celle con Cond_w/Cond_h sopra questo valore.
+
+## 4b. Surrogato veloce della tensione del jacket (`scf_model` = 1)
+
+Il metodo attuale (`scf_model` = 0, default) stima la tensione del jacket
+con σ_nom × SCF di tabella (su Cond_w/SC_w) × `SCF_transition_provisional`
+(3.15, sui layer vicini a un cambio di grade) × `dcr_WP_rad`. Contro il FE 2D
+validato su ANSYS sottostima il Pm+Pb primario massimo del design fino al
+62%: non vede la crescita della tensione con la profondità (circa +70% dal
+layer lato plasma a quelli profondi) e `dcr_WP_rad` introduce una
+variazione di 2 volte tra design con tensioni FE simili.
+
+`physics/jacket_stress_surrogate.m` stima per ogni layer i Pm e Pm+Pb
+primari del jacket come nel FE:
+
+    stress_k = S_z + a*sigma_nom_k + b*sigma_acc_k
+    Pm:    a = 0.697, b = 0.249      Pm+Pb: a = 1.274, b = 0.606
+
+con sigma_nom = p_rs*r_steel*dcr_jckt (la formula attuale senza SCF) e
+sigma_acc dalla pressione radiale accumulata vera (somma di n*Iop*B dei
+layer sopra, per unità di larghezza del WP). La scansione li verifica come
+la figura di merito del FE (Pm ≤ Sm_jacket, Pm+Pb ≤ 1.5 Sm_jacket) e, in
+questa modalità, il nose è dimensionato solo dai criteri del vault. Nuove
+colonne `JT_Pm`, `JT_PmPb` [MPa].
+
+Taratura: 229 layer di 12 design a cavo rettangolare calcolati con il FE
+(design 7, benchmark, 10 soluzioni della scansione tarata, W 304–344 mm,
+14–29 layer, 21–66 kA). Verifica leave-one-design-out, errore sul massimo del
+design: Pm+Pb −25…+12% (rms per layer 12%), Pm −16…+12% (rms 7%); formula
+attuale: Pm+Pb −62…−2%. Il termine di transizione tra grade non è
+significativo (il FE non mostra il salto che il 3.15 assume). L'errore
+peggiore è sui WP stretti con gli ultimi layer ristretti (picchi locali di
+flessione ai gradini di larghezza). Non tarato per RIS: con `scf_model` = 1
+e `shape_cable` = 200 la scansione si ferma con un errore. È un modello
+preliminare di screening: la soluzione scelta va verificata con il FE.
+
+Riproducibilità: `validation/jacket_surrogate_fe_data.m` (dati FE per
+layer), `validation/results/jacket_surrogate_calibration.csv`,
+`validation/tools/fit_jacket_surrogate.py` (coefficienti ed errori).
+
+Nota importante dai dati: il Pm+Pb primario del jacket nel FE va da 991 a
+1369 MPa; 11 design su 12 superano 1.5 Sm = 1000 MPa, come già il design 7.
+
 ## 5. Verifica riproducibile
 
 ```matlab
