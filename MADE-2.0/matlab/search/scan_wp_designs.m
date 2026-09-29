@@ -48,6 +48,18 @@ end
 if isempty(field_model) || ~isscalar(field_model) || ~any(field_model == [0 1 2])
     error('scan_wp_designs:field_model', 'p.field_model must be 0 (smeared), 1 (calibrated) or 2 (discrete).');
 end
+% jacket stress model: 0 = analytic formula with the SCF table and
+% SCF_transition_provisional (default); 1 = fast surrogate calibrated on
+% the 2D FE (JACKET_STRESS_SURROGATE), checked as the FE figure of merit
+scf_model = 0; if isfield(p, 'scf_model') && ~isempty(p.scf_model), scf_model = p.scf_model; end
+if ~any(scf_model == [0 1])
+    error('scan_wp_designs:scf_model', 'p.scf_model must be 0 (SCF table) or 1 (surrogate).');
+end
+if scf_model == 1 && p.shape_cable == 200
+    error('scan_wp_designs:scf_model_ris', ['scf_model = 1: the jacket stress surrogate is calibrated on ' ...
+        'rectangular cables only; use scf_model = 0 for RIS (shape_cable = 200).']);
+end
+Sm_jacket = p.S_amm_JT; if isfield(p, 'Sm_jacket') && ~isempty(p.Sm_jacket), Sm_jacket = p.Sm_jacket; end
 % maximum cell aspect ratio Cond_w/Cond_h (input files without it: 2)
 max_cable_aspect_ratio = 2;
 if isfield(p, 'max_cable_aspect_ratio') && ~isempty(p.max_cable_aspect_ratio), max_cable_aspect_ratio = p.max_cable_aspect_ratio; end
@@ -395,6 +407,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
 
                 S_rm_per_layer = zeros(1, n_layers);
                 E_cbl_per_layer = zeros(1, n_layers);
+                sigma_nom = zeros(1, n_layers);
                 xxx = [1.087,1.136,1.190,1.250,1.316,1.389,1.471,1.563,1.667,1.786,1.923,2.083,2.273,2.500,2.778];
                 yyy_LTS = [1.01,1.03,1.06,1.10,1.16,1.22,1.29,1.36,1.43,1.50,1.57,1.64,1.71,1.78,1.85];
                 yyy_HTS = [1.01,1.02,1.02,1.04,1.06,1.07,1.11,1.13,1.16,1.18,1.22,1.27,1.29,1.29,1.31];
@@ -423,6 +436,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                     end
                     S_rm_per_layer(var) = S_rm_var;
                     E_cbl_per_layer(var) = E_cbl_var;
+                    sigma_nom(var) = p_rs*r_steel*dcr_jckt;   % nominal radial stress, no SCF (surrogate input)
                 end
                 [S_rm, worst_var] = max(S_rm_per_layer);
                 E_cbl = E_cbl_per_layer(worst_var);
@@ -440,9 +454,28 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                 ctx.S_amm_VT = p.S_amm_VT; ctx.S_amm_JT = p.S_amm_JT; ctx.safety_membrane = p.safety_membrane;
                 ctx.Ke_cavo_rad = Ke_cavo_rad(1:n_layers); ctx.n_turns = n_turns(1:n_layers);
                 ctx.DTF0 = p.DTF_initial; ctx.DTF_step = p.DTF_step; ctx.max_iter = p.max_sizing_iterations;
+                % with the jacket stress surrogate the jacket is checked
+                % below, layer by layer, and does not drive the nose
+                ctx.jacket_in_loop = scf_model == 0;
 
                 cv = size_case_vault(ctx);
                 Rk_ = cv.Rk_; S_T_VT = cv.S_T_VT; S_T_JT = cv.S_T_JT;
+
+                JT_Pm = NaN; JT_PmPb = NaN;
+                if scf_model == 1
+                    % jacket primary Pm and Pm+Pb per layer from the fast
+                    % surrogate calibrated on the 2D FE (JACKET_STRESS_SURROGATE),
+                    % checked as the FE figure of merit: Pm <= Sm, Pm+Pb <= 1.5 Sm
+                    B_lay = B_size_layer([1:min(n_layers, numel(B_size_layer)), ...
+                        numel(B_size_layer)*ones(1, n_layers - numel(B_size_layer))]);
+                    [Pm_l, PmPb_l] = jacket_stress_surrogate(sigma_nom, n_turns(1:n_layers), B_lay, ...
+                        is_transition, cv.S_z);
+                    JT_Pm = max(Pm_l); JT_PmPb = max(PmPb_l);
+                    S_T_JT = JT_Pm;
+                    if JT_Pm > Sm_jacket || JT_PmPb > 1.5*Sm_jacket
+                        reject = true; break
+                    end
+                end
 
                 if ~(S_T_VT < p.S_amm_VT && S_T_JT < p.S_amm_JT && S_T_JT > 0 && S_T_VT > 0)   % vault vs its own allowable (review C07)
                     reject = true; break
@@ -483,6 +516,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
             E = 0.5*L*Iop^2*1e-6;
             S_T_VT = S_T_VT*1e-6;
             S_T_JT = S_T_JT*1e-6;
+            JT_Pm = JT_Pm*1e-6; JT_PmPb = JT_PmPb*1e-6;   % [MPa], surrogate jacket stresses (NaN with scf_model = 0)
             Nose = Rj_-Rk_;
             R_0 = p.R0;
             radial_build = Ri_-Rk_;
@@ -502,11 +536,11 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
             field_iter = field_it;
             row = table(S_T_VT,S_T_JT,R_0,g.B_PHI_0,B_TF,Iop,JENG,L,E,Ri_,Rj_,Rk_,radial_build,Nose,WP_h,WP_w,...
                 lateral_w,n_cond,n_layers,n_turns,type_cable,Cond_w,Cond_h,JT,r_cable,N_Sc,N_Cu,S_Cable,S_REBCO,S_Cu_HTS,THS,B_grade,Tau_discharge, ...
-                shape_cable, B_peak, B_peak_layers, field_iter, B_cal, ...
+                shape_cable, B_peak, B_peak_layers, field_iter, B_cal, JT_Pm, JT_PmPb, ...
                 'VariableNames', {'S_T_VT','S_T_JT','R_0','B_PHI_0','B_TF','Iop','JENG','L','E','Ri_','Rj_','Rk_', ...
                 'radial_build','Nose','WP_h','WP_w','lateral_w','n_cond','n_layers','n_turns','type_cable','Cond_w', ...
                 'Cond_h','JT','r_cable','N_Sc','N_Cu','S_Cable','S_REBCO','S_Cu_HTS','THS','B_grade','Tau_discharge', ...
-                'shape_cable','B_peak','B_peak_layers','field_iter','B_cal'});
+                'shape_cable','B_peak','B_peak_layers','field_iter','B_cal','JT_Pm','JT_PmPb'});
             DATA(counter,:) = row;
         end
     end

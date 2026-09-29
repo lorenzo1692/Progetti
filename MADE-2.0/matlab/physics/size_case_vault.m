@@ -17,9 +17,12 @@ function out = size_case_vault(in)
 %     n_spire1, Iop, Mu_0, dr_plasma_side, S_amm_VT, S_amm_JT,
 %     safety_membrane, DTF0, DTF_step, max_iter
 %     Ke_cavo_rad, n_turns : vectors over 1:n_layers
+%     jacket_in_loop (optional, default true): false = grow the nose for
+%       the vault criteria only (used with the jacket stress surrogate,
+%       scf_model = 1, whose jacket check is done by the scan)
 %
 %   out fields:
-%     Rk_, DTF, S_T_VT, S_T_JT, A_CASE, iterations
+%     Rk_, DTF, S_T_VT, S_T_JT, A_CASE, S_z (axial stress), iterations
 
 DTF = in.DTF0;
 S_T_JT = Inf;
@@ -28,8 +31,9 @@ S_c_VT = Inf;
 S_rm_JT = Inf;
 it = 0;
 
+jacket_in_loop = ~isfield(in, 'jacket_in_loop') || in.jacket_in_loop;
 while S_T_VT > in.S_amm_VT || S_c_VT > in.S_amm_VT/in.safety_membrane || ...
-        S_T_JT > in.S_amm_JT || S_rm_JT > in.S_amm_JT/in.safety_membrane
+        (jacket_in_loop && (S_T_JT > in.S_amm_JT || S_rm_JT > in.S_amm_JT/in.safety_membrane))
     it = it + 1;
     if it > in.max_iter
         error('size_case_vault:not_converged', ...
@@ -73,5 +77,6 @@ out.DTF = DTF;
 out.S_T_VT = S_T_VT;
 out.S_T_JT = S_T_JT;
 out.A_CASE = A_CASE;
+out.S_z = S_z;
 out.iterations = it;
 end
