@@ -31,22 +31,26 @@ function [Pm, PmPb] = jacket_stress_surrogate(sigma_nom, p_rs, n_turns, B_layer,
 %
 %   CALIBRATION (docs/RIS_E_RESIDUO_FEM.md, validation/tools/
 %   fit_jacket_surrogate.py, data validation/results/
-%   jacket_surrogate_calibration.csv): least squares on 229 layers of 12
+%   jacket_surrogate_calibration.csv): least squares on 242 layers of 13
 %   rectangular-cable designs computed with WP_MECH_SURROGATE (validated
 %   against ANSYS within +-5-7% on the linearized stresses): design 7,
-%   TF_FEM_benchmark_2026 and 10 designs of the calibrated-field scan of
+%   TF_FEM_benchmark_2026, scan design 10 (29-Sep-2026) and 10 designs of the calibrated-field scan of
 %   the template machine (W 304-344 mm, 14-29 layers, 21-66 kA).
-%   Leave-one-design-out error on the design maximum: Pm+Pb -25..+12 %
+%   Leave-one-design-out error on the design maximum: Pm+Pb -25..+13 %
 %   (layer rms 12 %), Pm -16..+12 % (layer rms 7 %); the analytic formula
-%   with the SCF table and SCF_transition_provisional: Pm+Pb -62..-2 %.
+%   with the SCF table and SCF_transition_provisional: Pm+Pb -62..+6 %.
 %   Largest under-prediction on narrow WPs whose deep layers are narrowed
 %   (local bending peaks at the width steps). A grade-transition term was
-%   not significant (coefficient ~0.03) and is not used. Not calibrated for
+%   not significant (coefficient ~0.03) and is not used; a width-step term
+%   (turns lost to the next layer) did not reduce the error either.
+%   Design 10 (not in the fit when first checked): Pm+Pb 964 vs FE 1075 MPa
+%   (-10 %), peak at the edge turn of the last 14-turn layer over the
+%   10-turn one. Not calibrated for
 %   RIS cables. A PRELIMINARY screening model: the chosen design must be
 %   verified with WP_MECH_SURROGATE.
 
-a_m = 0.697; b_m = 0.249;          % Pm
-a_b = 1.274; b_b = 0.606;          % Pm + Pb
+a_m = 0.711; b_m = 0.244;          % Pm
+a_b = 1.285; b_b = 0.601;          % Pm + Pb
 F = n_turns(:)'.*Iop.*B_layer(:)';
 q = (cumsum(F) - 0.5*F)/W1;
 sigma_acc = q/p_rs.*sigma_nom(:)';

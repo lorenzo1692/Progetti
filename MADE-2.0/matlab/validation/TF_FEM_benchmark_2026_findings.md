@@ -340,3 +340,29 @@ Per layer the scan (`B_peak_layers`) is within 0.011 T of ANSYS
 (13.341 ... 2.373 T). Field each grade was sized at vs ANSYS peak on the
 grade: 13.336 / 8.967 / 6.078 T vs 13.341 / 8.956 / 6.056 T. ANSYS Lorentz
 force on the coil: −46.78 MN/m (radial).
+
+## Design 10 - 2D FE prediction (before the ANSYS structural run)
+
+`wp_mech_surrogate` on design 10 (T_bf from the tool, 37.55 MN; 175 532
+nodes, all checks passed, 20 min). Blind prediction for the ANSYS 2D GPS
+structural run:
+
+| Layer | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Jacket Pm+Pb total [MPa] | 524 | 544 | 545 | 625 | 583 | 647 | 710 | 760 | 810 | 721 | **953** | 660 | 740 |
+| Jacket Pm+Pb primary [MPa] | 620 | 718 | 804 | 902 | 933 | 957 | 982 | 992 | 985 | 933 | **1075** | 826 | 915 |
+| Surrogate Pm+Pb (scan) | - | - | - | - | - | - | - | - | - | 937 | 948 | 956 | 960 |
+| Jacket peak total [MPa] | 567 | 626 | 621 | 698 | 646 | 730 | 808 | 869 | 923 | 809 | **1145** | 730 | 852 |
+
+Case SCLs (total / primary Pm): nose centreline 642 / 631, vault diagonal
+632 / 622 (Pm+Pb 703 / 692), side walls 398-410, plasma-side plate 537.
+
+Figure of merit (Sm 667 MPa): jacket Pm 631 (0.95), jacket Pm+Pb primary
+**1075 > 1.5 Sm = 1000 (1.07)** at layer 11 col 1, P+Q 953 (0.48); case Pm
+631 (0.95), Pm+Pb 692 (0.69). The scan (surrogate) had Pm 586, Pm+Pb 964 at
+layer 13: design max -7 % / -10 %. The critical turn is the edge turn of the
+last 14-turn layer (11), which overhangs the 10-turn layer 12 by two turns
+per side. Design 10 added to the surrogate calibration set (13 designs, 242
+layers); coefficients refitted (Pm 0.711 / 0.244, Pm+Pb 1.285 / 0.601).
+A width-step term (turns lost to the next layer) was tried and did not
+reduce the leave-one-out error.
