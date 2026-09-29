@@ -167,7 +167,7 @@ variazione di 2 volte tra design con tensioni FE simili.
 primari del jacket come nel FE:
 
     stress_k = S_z + a*sigma_nom_k + b*sigma_acc_k
-    Pm:    a = 0.697, b = 0.249      Pm+Pb: a = 1.274, b = 0.606
+    Pm:    a = 0.711, b = 0.244      Pm+Pb: a = 1.285, b = 0.601
 
 con sigma_nom = p_rs*r_steel*dcr_jckt (la formula attuale senza SCF) e
 sigma_acc dalla pressione radiale accumulata vera (somma di n*Iop*B dei
@@ -176,11 +176,11 @@ la figura di merito del FE (Pm ≤ Sm_jacket, Pm+Pb ≤ 1.5 Sm_jacket) e, in
 questa modalità, il nose è dimensionato solo dai criteri del vault. Nuove
 colonne `JT_Pm`, `JT_PmPb` [MPa].
 
-Taratura: 229 layer di 12 design a cavo rettangolare calcolati con il FE
-(design 7, benchmark, 10 soluzioni della scansione tarata, W 304–344 mm,
+Taratura: 242 layer di 13 design a cavo rettangolare calcolati con il FE
+(design 7, benchmark, design 10, 10 soluzioni della scansione tarata, W 304–344 mm,
 14–29 layer, 21–66 kA). Verifica leave-one-design-out, errore sul massimo del
-design: Pm+Pb −25…+12% (rms per layer 12%), Pm −16…+12% (rms 7%); formula
-attuale: Pm+Pb −62…−2%. Il termine di transizione tra grade non è
+design: Pm+Pb −25…+13% (rms per layer 12%), Pm −16…+12% (rms 7%); formula
+attuale: Pm+Pb −62…+6%. Il termine di transizione tra grade non è
 significativo (il FE non mostra il salto che il 3.15 assume). L'errore
 peggiore è sui WP stretti con gli ultimi layer ristretti (picchi locali di
 flessione ai gradini di larghezza). Non tarato per RIS: con `scf_model` = 1

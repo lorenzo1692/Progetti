@@ -410,18 +410,18 @@ flowchart LR
   <p>La formula della scansione (<code>scf_model</code> = 0) stima la tensione radiale del jacket come σ<sub>nom</sub> × SCF di tabella (su Cond<sub>w</sub>/SC<sub>w</sub>) × 3.15 vicino ai cambi di grade × <code>dcr_WP_rad</code>, con σ<sub>nom</sub> = p<sub>rs</sub>·r<sub>steel</sub>·dcr<sub>jckt</sub>. Contro il FE (§8), validato su ANSYS, sottostima il Pm+Pb primario massimo del design fino al 62%. Il motivo è che non vede la crescita della tensione con la profondità: nel FE è circa +70% dal layer lato plasma a quelli profondi, per il carico radiale che si accumula verso il nose.</p>
   <p>Con <code>scf_model</code> = 1, <code>jacket_stress_surrogate</code> stima per ogni layer i Pm e Pm+Pb primari del jacket del FE:</p>
   <div class="math-block">\[ \sigma_k = S_z + a\,\sigma_{nom,k} + b\,\sigma_{acc,k},\qquad \sigma_{acc,k}=\frac{q_k}{p_{rs}}\,\sigma_{nom,k},\qquad q_k=\frac{\sum_{j<k} n_j I_{op} B_j+\tfrac12 n_k I_{op}B_k}{W_1} \]</div>
-  <p>con a = 0.697, b = 0.249 per P<sub>m</sub> e a = 1.274, b = 0.606 per P<sub>m</sub>+P<sub>b</sub>, S<sub>z</sub> la tensione assiale e q<sub>k</sub> la pressione radiale accumulata vera. La scansione li verifica come la figura di merito del FE (P<sub>m</sub> ≤ S<sub>m</sub>, P<sub>m</sub>+P<sub>b</sub> ≤ 1.5 S<sub>m</sub>). In questa modalità il nose è dimensionato solo dai criteri del vault. Le nuove colonne <code>JT_Pm</code> e <code>JT_PmPb</code> riportano i valori.</p>
+  <p>con a = 0.711, b = 0.244 per P<sub>m</sub> e a = 1.285, b = 0.601 per P<sub>m</sub>+P<sub>b</sub>, S<sub>z</sub> la tensione assiale e q<sub>k</sub> la pressione radiale accumulata vera. La scansione li verifica come la figura di merito del FE (P<sub>m</sub> ≤ S<sub>m</sub>, P<sub>m</sub>+P<sub>b</sub> ≤ 1.5 S<sub>m</sub>). In questa modalità il nose è dimensionato solo dai criteri del vault. Le nuove colonne <code>JT_Pm</code> e <code>JT_PmPb</code> riportano i valori.</p>
   <div class="table-wrap"><table>
-    <thead><tr><th>Errore sul massimo del design (leave-one-design-out, 12 design, 229 layer)</th><th class="num">P<sub>m</sub></th><th class="num">P<sub>m</sub>+P<sub>b</sub></th></tr></thead>
+    <thead><tr><th>Errore sul massimo del design (leave-one-design-out, 13 design, 242 layer)</th><th class="num">P<sub>m</sub></th><th class="num">P<sub>m</sub>+P<sub>b</sub></th></tr></thead>
     <tbody>
-      <tr><td>Formula analitica attuale (tabella × 3.15 × dcr_WP_rad)</td><td class="num">−26 … +64%</td><td class="num">−62 … −2%</td></tr>
-      <tr><td>Surrogato</td><td class="num">−16 … +12%</td><td class="num">−25 … +12%</td></tr>
+      <tr><td>Formula analitica attuale (tabella × 3.15 × dcr_WP_rad)</td><td class="num">−26 … +80%</td><td class="num">−62 … +6%</td></tr>
+      <tr><td>Surrogato</td><td class="num">−16 … +12%</td><td class="num">−25 … +13%</td></tr>
     </tbody>
   </table></div>
   <ul>
-    <li><strong>Dati:</strong> design 7, benchmark e 10 soluzioni della scansione tarata (W 304–344 mm, 14–29 layer, 21–66 kA), tutti calcolati col FE.</li>
+    <li><strong>Dati:</strong> design 7, benchmark, design 10 e 10 soluzioni della scansione tarata (W 304–344 mm, 14–29 layer, 21–66 kA), tutti calcolati col FE.</li>
     <li><strong>Transizione tra grade:</strong> un termine dedicato non è risultato significativo; il FE non mostra il salto che il 3.15 assume.</li>
-    <li><strong>Errore peggiore:</strong> sui WP stretti con gli ultimi layer ristretti, dove ci sono picchi locali di flessione ai gradini di larghezza.</li>
+    <li><strong>Errore peggiore:</strong> sui WP stretti con gli ultimi layer ristretti, dove ci sono picchi locali di flessione ai gradini di larghezza. Esempio: design 10, verificato col FE prima di entrare nella taratura: P<sub>m</sub>+P<sub>b</sub> 964 contro 1075 MPa (−10%), picco nel turn di bordo dell'ultimo layer da 14 turn, che sporge di due turn per lato sul layer da 10. Un termine per il gradino di larghezza non ha ridotto l'errore.</li>
     <li><strong>Limiti:</strong> il surrogato non è tarato per RIS (la scansione si ferma con un errore). È un modello di screening preliminare: la soluzione scelta va verificata col FE.</li>
     <li><strong>Riproducibilità:</strong> <code>validation/jacket_surrogate_fe_data.m</code>, <code>validation/results/jacket_surrogate_calibration.csv</code>, <code>validation/tools/fit_jacket_surrogate.py</code>.</li>
   </ul>
@@ -934,6 +934,18 @@ flowchart LR
     </tbody>
   </table></div>
   <p>Il campo calibrato coincide con ANSYS. Sul massimo totale del jacket il FE 2D sta 7–8% sotto ANSYS. Il surrogato segue il FE primario entro −5/+11%, ma i due design fanno parte del suo insieme di taratura. Manca un risultato ANSYS <strong>primario</strong>: un run senza raffreddamento (TUNIF = TREF, o un caso di carico EM + assiale separato) con lo stesso export chiuderebbe il confronto direttamente sulla grandezza che la scansione verifica.</p>
+
+  <h3>Design 10: previsione prima del run strutturale ANSYS</h3>
+  <p>Terzo design, uscito dalla scansione con campo tarato e surrogato del jacket (13 layer da 18×4, 16×5, 14×2 e 10×2 turn, JT 2.1 mm, 33.6 kA). ANSYS ha risolto finora il modello EM (PLANE233, solo conduttori); il parser <code>validation/tools/em_layer_peaks.py</code> ne estrae il picco per turn e per layer.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Grandezza</th><th class="num">ANSYS</th><th class="num">MADE</th></tr></thead>
+    <tbody>
+      <tr><td>Picco di campo sul conduttore</td><td class="num">13.341 T</td><td class="num">13.340 T (verifica discreta), 13.319 T (tarato)</td></tr>
+      <tr><td>Picco per layer, L1 … L13</td><td class="num">13.341 … 2.373 T</td><td class="num">scarto ≤ 0.011 T</td></tr>
+      <tr><td>Campo di dimensionamento dei tre grade</td><td class="num">13.341 / 8.956 / 6.056 T</td><td class="num">13.336 / 8.967 / 6.078 T</td></tr>
+    </tbody>
+  </table></div>
+  <p>Previsione del FE 2D (tutti i controlli superati), da confrontare col run strutturale ANSYS: jacket P<sub>m</sub>+P<sub>b</sub> totale massimo 953 MPa, primario <strong>1075 MPa &gt; 1.5 S<sub>m</sub> = 1000 MPa</strong> (layer 11, turn di bordo); P<sub>m</sub> 631 MPa; case P<sub>m</sub> 631 MPa al nose, P<sub>m</sub>+P<sub>b</sub> 692 MPa. La scansione aveva 964 MPa (surrogato), quindi il design passava lo screening ma non la verifica FE. Il dettaglio per layer è in <code>TF_FEM_benchmark_2026_findings.md</code>.</p>
 
   <h3>Modello globale a travi (STR_360)</h3>
   <p>Il modello ANSYS STR_360 è un sistema TF semplificato: BEAM188 lungo la linea media, shell tra le bobine alla gamba interna (lo shell cilindrico rappresenta il nose del case) e nella zona OIS, supporto gravitazionale. Serve soprattutto a verificare i carichi fuori piano, a valle del dimensionamento 2D. <code>tf3d_beam_inplane</code> ricostruisce la parte nel piano: telaio di Timoshenko della bobina 1 con strisce di collegamento in simmetria ciclica, stessi carichi (riga j di FL_TF_1 sul nodo j) e stesso supporto.</p>
