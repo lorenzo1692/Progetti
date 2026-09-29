@@ -468,8 +468,8 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                     % checked as the FE figure of merit: Pm <= Sm, Pm+Pb <= 1.5 Sm
                     B_lay = B_size_layer([1:min(n_layers, numel(B_size_layer)), ...
                         numel(B_size_layer)*ones(1, n_layers - numel(B_size_layer))]);
-                    [Pm_l, PmPb_l] = jacket_stress_surrogate(sigma_nom, n_turns(1:n_layers), B_lay, ...
-                        is_transition, cv.S_z);
+                    [Pm_l, PmPb_l] = jacket_stress_surrogate(sigma_nom, p_rs, n_turns(1:n_layers), B_lay, ...
+                        Iop, Cond_w(1)*n_turns(1), cv.S_z);
                     JT_Pm = max(Pm_l); JT_PmPb = max(PmPb_l);
                     S_T_JT = JT_Pm;
                     if JT_Pm > Sm_jacket || JT_PmPb > 1.5*Sm_jacket
