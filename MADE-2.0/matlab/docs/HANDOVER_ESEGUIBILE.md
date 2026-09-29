@@ -26,7 +26,7 @@ stesso lavoro di `main_WP_TF_design.m`:
 
 ## 1. Versione di partenza
 
-- Repository `lorenzo1692/progetti`, branch `claude/code-improvement-3cmng0`, commit `b68732e` (oppure lo ZIP `MADE-2.0-matlab.zip` di questa versione).
+- Repository `lorenzo1692/progetti`, branch `claude/code-improvement-3cmng0`, commit `b68732e` o successivi, che aggiungono solo documentazione (oppure lo ZIP `MADE-2.0-matlab.zip` di questa versione).
 - Cartella del tool: `MADE-2.0/matlab/`. Mappa delle cartelle in `README.md`; manuale completo (teoria, funzioni, validazione) in `docs/manuale_web.html`.
 
 ```
