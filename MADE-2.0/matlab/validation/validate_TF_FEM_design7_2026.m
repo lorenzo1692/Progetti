@@ -30,7 +30,7 @@ B_grade_scan = [13.483 9.334 6.223];      % field each grade was sized at
 grade_first = [1 5 8];
 
 p = struct('n_TF',12,'dr_plasma_side',0.02,'GoundIns',0.005,'INS_grades',0.0005, ...
-    'turn_insulation_nominal',0.001,'Increm',1);
+    'turn_insulation_nominal',0.001,'Increm',1,'shape_cable',201);   % Rect cable
 
 %% FEM reference (TFBM_*.txt nodal-averaged, EM_2D002.png)
 FEM_B_peak = 14.482;                      % [T] BSUM max on conductor

@@ -280,3 +280,43 @@ expected well under a minute in MATLAB; used on the chosen design point
 ## Modulo 3D — aggiornamento 25 settembre 2026
 
 Il nuovo modulo a valle è descritto in `../docs/TF3D_IMPLEMENTAZIONE.md`. Le prove di questa consegna sono eseguite in Python e salvate in `results/tf3d_*`; **non sono nuove corse MATLAB, Octave o ANSYS**. La regressione 2D precedente non è stata rieseguita e i suoi sorgenti e riferimenti sono invariati. Il nuovo test nativo è `validate_tf3d(false/true)`. Il controllo geometrico del fit a tre archi sul Design 7 fallisce il limite iniziale di 10 mm (circa 22 mm); il default usa la forma analitica. Non sono ancora validati picchi sulle curve, iterazione della forma, separazione delle forze assiali tra le due gambe e induttanza equivalente.
+
+## MADE scan chain vs ANSYS 2D GPS (29-Sep-2026)
+
+Script: `validation/verify_made_vs_gps2d.m` (scan quantities evaluated at the
+FEM geometry, T_bf from each FEM run). The two ANSYS runs apply cool-down,
+Lorentz and axial force in one step, so their linearized stresses are
+**total** (P+Q); the scan criteria and the jacket surrogate are **primary**
+(Lorentz + axial). The chain is checked in links, with the 2D FE
+(`wp_mech_surrogate`) in the middle:
+
+| | benchmark | design 7 |
+|---|---:|---:|
+| Peak B: ANSYS / discrete (= calibrated field) / smeared | 13.489 / 13.487 / 12.945 T | 14.482 / 14.476 / 13.068 T |
+| Jacket Pm+Pb total, design max: ANSYS / 2D FE | 863 / 805 (−6.8 %) | 963 / 889 (−7.7 %) |
+| Jacket Pm total, design max: ANSYS / 2D FE | 581 / 567 (−2.3 %) | 581 / 556 (−4.4 %) |
+| Jacket Pm+Pb primary, design max: 2D FE / surrogate (scf_model 1) | 991 / 946 (−4.5 %) | 1114 / 1241 (+11.4 %) |
+| Jacket Pm primary, design max: 2D FE / surrogate | 596 / 573 (−3.9 %) | 625 / 690 (+10.5 %) |
+| Analytic formula + SCF_transition (scf_model 0) vs 2D FE primary | 979 (−1.2 %) | 717 (−35.6 %) |
+| Cool-down effect on max Pm+Pb in the 2D FE (total/primary − 1) | −18.8 % | −20.2 % |
+| Case: vault formula S_z + S_c_VT vs ANSYS nose/vault SCL Pm max | 672 vs 697 (−3.6 %) | 743 vs 647 (+14.8 %) |
+
+Reading: the field (calibrated) matches; the 2D FE is 7-8 % below ANSYS on
+the total jacket Pm+Pb maximum (the deepest / fillet layers); the surrogate
+follows the 2D FE primary within −5/+11 % (these two designs are in its
+calibration set). Open point: no ANSYS **primary** result exists - a run
+without cool-down (TUNIF = TREF, or a separate EM + axial load case) with the
+same section export would close the loop directly on the quantity the scan
+checks.
+
+## Global beam model STR_360 vs MATLAB in-plane beam (29-Sep-2026)
+
+Script: `validation/verify_tf3d_ansys_beam.m` (`coil3d/tf3d_beam_inplane.m`:
+2D Timoshenko frame of coil 1 + cyclic-symmetric intercoil strips, same loads
+FL_TF_1 row j on node j, same GS support). Axial force 7.7-52.4 vs 8.9-52.6 MN
+(max diff 3 %), u_R −5.02/+0.39 vs −4.90/+0.56 mm, u_z up to 10.59 vs
+10.96 mm, vault hoop N −109/−87 vs −108/−88 MN/m, GS reaction 1.838 MN per
+coil in both; in-plane moment peak 3.0 vs 2.0 MN m (local, OIS closure
+strips). The STR_360 model is a simplified TF system (the inner cylindrical
+shell stands for the case nose): it is kept for the out-of-plane load check
+downstream of the 2D sizing.
