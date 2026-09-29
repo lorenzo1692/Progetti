@@ -48,6 +48,9 @@ end
 if isempty(field_model) || ~isscalar(field_model) || ~any(field_model == [0 1 2])
     error('scan_wp_designs:field_model', 'p.field_model must be 0 (smeared), 1 (calibrated) or 2 (discrete).');
 end
+% maximum cell aspect ratio Cond_w/Cond_h (input files without it: 2)
+max_cable_aspect_ratio = 2;
+if isfield(p, 'max_cable_aspect_ratio') && ~isempty(p.max_cable_aspect_ratio), max_cable_aspect_ratio = p.max_cable_aspect_ratio; end
 field_verify = 1; if isfield(p, 'field_verify') && ~isempty(p.field_verify), field_verify = p.field_verify; end
 use_discrete_field = field_model == 2 || (field_model == 1 && field_verify);
 cal = [];                 % returned: the start-of-scan field calibration (field_model = 1)
@@ -215,7 +218,13 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                 WP_w0(1) = 2*Re(1)*tan(theta_TF/2) - lateral_w*2 - p.GoundIns*2; % maximum toroidal WP envelope
                 S_z_JT = T_bf/(WP_w0(1)^2)/2;
                 n_turns_add = 0;
-                p_rs = B_TF^2/(2*Mu_0); % Magnetic pressure, thin WP
+                % Magnetic pressure of the thin-WP formulas (jacket sizing,
+                % jacket radial stress, vault): from the field grade 1 is
+                % sized for, i.e. the plasma-side J x B field of the chosen
+                % field model - the calibrated or discrete peak when
+                % available (field_model 1/2), Ampere x corr_B_WP otherwise
+                % (field_model 0: B_grade(1) = B_TF, as before)
+                p_rs = B_grade(1)^2/(2*Mu_0);
 
                 for var = 1:n_layers
                     Cond_w(var) = WP_w0(1)/n_turns(1);
@@ -338,7 +347,8 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
 
                 % Geometric check on the obtained cable dimensions
                 r_cable(1:n_layers) = Cond_w(1:n_layers)./Cond_h(1:n_layers);
-                if min(SC_w) <= p.min_SC_w || min(r_cable(1:n_layers)) < p.min_cable_aspect_ratio || min(JT(1:n_layers)) < p.min_JT
+                if min(SC_w) <= p.min_SC_w || min(r_cable(1:n_layers)) < p.min_cable_aspect_ratio || ...
+                        max(r_cable(1:n_layers)) > max_cable_aspect_ratio || min(JT(1:n_layers)) < p.min_JT
                     reject = true; break
                 end
 
@@ -376,7 +386,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                 % physics-based local-bending correction still to be developed,
                 % not a validated general law. Revisit once more FEM points are
                 % available.
-                p_rs = B_TF^2/(2*Mu_0);
+                p_rs = B_grade(1)^2/(2*Mu_0);     % as above
                 is_transition = false(1, n_layers);
                 for k = 2:numel(jump_grade)
                     is_transition(max(jump_grade(k)-1, 1)) = true;

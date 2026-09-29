@@ -66,7 +66,7 @@ for j = 1:nI
     [~, ~, ~, ~, S_cab(j)] = cicc(1.1*B_amp, Iop(j), tau, p.WP_SC_type, p.THS_max_LTS, p.THS_max_HTS);
 end
 
-p_rs = g.B_PHI_TF^2/(2*Mu_0);
+p_rs = (1.1*B_amp)^2/(2*Mu_0);           % as the scan: pressure from the (calibrated) plasma-side field
 for i = 1:nW
     for j = 1:nI
         N = ceil(g.NI/Iop(j));
@@ -86,7 +86,8 @@ for i = 1:nW
                 continue
             end
             ch = sz.Cond_h;
-            if sz.SC_w <= p.min_SC_w || cw/ch < p.min_cable_aspect_ratio || ...
+            ar_max = 2; if isfield(p, 'max_cable_aspect_ratio') && ~isempty(p.max_cable_aspect_ratio), ar_max = p.max_cable_aspect_ratio; end
+            if sz.SC_w <= p.min_SC_w || cw/ch < p.min_cable_aspect_ratio || cw/ch > ar_max || ...
                     cw < p.min_size_CICC || cw > p.max_size_CICC
                 continue
             end
