@@ -63,7 +63,7 @@ if scf_model == 1 && p.shape_cable == 200
         'rectangular cables only; use scf_model = 0 for RIS (shape_cable = 200).']);
 end
 Sm_jacket = p.S_amm_JT; if isfield(p, 'Sm_jacket') && ~isempty(p.Sm_jacket), Sm_jacket = p.Sm_jacket; end
-jacket_margin = 1.0;   % default set from the recalibration (docs/DIMENSIONAMENTO_JACKET.md), in progress if isfield(p, 'jacket_margin') && ~isempty(p.jacket_margin), jacket_margin = p.jacket_margin; end
+jacket_margin = 1.10; if isfield(p, 'jacket_margin') && ~isempty(p.jacket_margin), jacket_margin = p.jacket_margin; end   % docs/DIMENSIONAMENTO_JACKET.md
 JT_max = 0.010; if isfield(p, 'JT_max') && ~isempty(p.JT_max), JT_max = p.JT_max; end
 jacket_max_passes = 4; if isfield(p, 'jacket_max_passes') && ~isempty(p.jacket_max_passes), jacket_max_passes = p.jacket_max_passes; end
 n_jacket_rejected = 0;
@@ -253,7 +253,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
 
                     sized = size_grade_cable(Cond_w(var), S_Cable(var), p.r_SC_min, p.r_SC_max, tins_const, ...
                         p.E_jckt, E_cbl, p.E_ins, p.shape_cable, p_rs, S_z_JT, ...
-                        p.S_amm_JT, p.safety_membrane, max(p.min_JT, JT_req(var) - p.JT_step), p.JT_step, p.max_sizing_iterations);
+                        p.S_amm_JT, p.safety_membrane, max(p.min_JT, JT_req(min(var, end)) - p.JT_step), p.JT_step, p.max_sizing_iterations);
                     tins(var) = tins_const;
                     Cond_h(var) = sized.Cond_h; JT(var) = sized.JT;
                     SC_w(var) = sized.SC_w;     SC_h(var) = sized.SC_h; R_J(var) = sized.R_J;
@@ -278,7 +278,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
 
                         sized = size_grade_cable(Cond_w(var), S_Cable(var), p.r_SC_min, p.r_SC_max, tins_const, ...
                             p.E_jckt, E_cbl, p.E_ins, p.shape_cable, p_rs, S_z_JT, ...
-                            p.S_amm_JT, p.safety_membrane, max(p.min_JT, JT_req(var) - p.JT_step), p.JT_step, p.max_sizing_iterations);
+                            p.S_amm_JT, p.safety_membrane, max(p.min_JT, JT_req(min(var, end)) - p.JT_step), p.JT_step, p.max_sizing_iterations);
                         Cond_h(var) = sized.Cond_h; JT(var) = sized.JT;
                         SC_w(var) = sized.SC_w;     SC_h(var) = sized.SC_h; R_J(var) = sized.R_J;
                         Ke_cavo_rad(var) = sized.Ke_rad; Ke_cavo_tor(var) = sized.Ke_tor;
@@ -321,7 +321,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
 
                         sized = size_grade_cable(Cond_w(var), S_Cable(var), p.r_SC_min, p.r_SC_max, tins_const, ...
                             p.E_jckt, E_cbl, p.E_ins, p.shape_cable, p_rs, S_z_JT, ...
-                            p.S_amm_JT, p.safety_membrane, max(p.min_JT, JT_req(var) - p.JT_step), p.JT_step, p.max_sizing_iterations);
+                            p.S_amm_JT, p.safety_membrane, max(p.min_JT, JT_req(min(var, end)) - p.JT_step), p.JT_step, p.max_sizing_iterations);
                         tins(var) = tins_const;
                         Cond_h(var) = sized.Cond_h; JT(var) = sized.JT;
                         SC_w(var) = sized.SC_w;     SC_h(var) = sized.SC_h; R_J(var) = sized.R_J;

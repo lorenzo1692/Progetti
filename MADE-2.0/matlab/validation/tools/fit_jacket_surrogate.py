@@ -23,7 +23,14 @@ import os
 import numpy as np
 
 here = os.path.dirname(os.path.abspath(__file__))
-R = list(csv.DictReader(open(os.path.join(here, '..', 'results', 'jacket_surrogate_calibration.csv'))))
+# Jacket-thickness variants whose WP no longer fits the sector (smallest
+# lateral gap WP - case flank below 5 mm; the scan requires toroidal_gap =
+# 15 mm and would have removed turns): the side wall becomes a thin
+# ligament and the FE stress rises with JT instead of falling. Kept in the
+# CSV, excluded from the fit (gap from jacket_jt_variant.m).
+EXCLUDE = {'s1_1@jt+1.0': 'gap 2.0 mm', 's2_4@jt+1.0': 'gap -0.6 mm'}
+R = [r for r in csv.DictReader(open(os.path.join(here, '..', 'results', 'jacket_surrogate_calibration.csv')))
+     if r['name'] not in EXCLUDE]
 f = lambda key: np.array([float(r[key]) for r in R])
 name = np.array([r['name'] for r in R])
 base = np.array([n.split('@')[0] for n in name])

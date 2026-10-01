@@ -104,4 +104,89 @@ Nel fit le varianti di uno stesso design (nome `<base>@jt+…`) vengono
 escluse insieme nella verifica leave-one-design-out, altrimenti il test
 vedrebbe il design che deve prevedere.
 
-Risultati: vedi §6 (da completare a fine run).
+Esito dei run (01/10/2026): 12 su 13 completati.
+
+- `s1_13@jt+1.0` non è calcolabile: con il jacket a +1 mm i layer profondi
+  escono dal settore (gap toroidale −5.6 mm) e la mesh non si chiude (in
+  Octave, che non ha la triangolazione vincolata, l'errore compare prima).
+- `s1_1@jt+1.0` (gap 2.0 mm) e `s2_4@jt+1.0` (gap −0.6 mm) sono completi ma
+  fuori dal settore: lo scan, che chiede `toroidal_gap` = 15 mm, avrebbe
+  tolto dei turn. La parete laterale del case diventa un legamento sottile
+  e lo sforzo FE **cresce** con JT (s2_4: 1165 → 1493 MPa). Restano nel CSV
+  ma sono esclusi dal fit (soglia 5 mm). `jacket_jt_variant` ora restituisce
+  il gap minimo (`min_toroidal_gap`).
+- Correzione al FE trovata strada facendo: una linea di classificazione del
+  case che non attraversa la mesh mandava in errore `trapz`; ora è segnata
+  non valida dal controllo di copertura.
+
+## 6. Nuova forma del surrogato
+
+Dati: 392 layer, 23 run, 13 design base. Verifica leave-one-design-out (le
+varianti di un design escluse insieme). Forme provate: esponente su JT
+(0 … 1), termine per il gradino di larghezza, larghezza relativa del
+layer, gradino del layer sopra, Cw/JT, Ch/Cw, numero di turn. Scelta:
+
+    σ_k = S_z + (JT_k/3 mm)^0.2 · (a·σ_nom,k + b·σ_acc,k + c·σ_acc,k·s_k)
+    s_k = (n_k − n_k+1)/n_k     (gradino di larghezza sotto il layer k)
+
+| | a | b | c |
+|---|---:|---:|---:|
+| P<sub>m</sub> | 0.7532 | 0.2151 | 0.1983 |
+| P<sub>m</sub>+P<sub>b</sub> | 1.3436 | 0.5489 | 0.5011 |
+
+Le altre variabili non riducono l'errore in modo apprezzabile (rms per
+layer da 10.2% a 9.4% nel caso migliore, margine richiesto quasi
+invariato): lo scarto residuo dipende dal layout in un modo che le
+grandezze algebriche dello scan non descrivono.
+
+**Risposta a JT** (massimo Pm+Pb del design, rapporto con il design base):
+
+| Design | JT | FE | Surrogato nuovo | Surrogato vecchio |
+|---|---:|---:|---:|---:|
+| bench +0.5 / +1.0 | 4.0 / 4.5 mm | 0.936 / 0.879 | 0.938 / 0.886 | 0.920 / 0.853 |
+| d7 +0.5 / +1.0 | 3.5 / 4.0 mm | 0.917 / 0.850 | 0.924 / 0.861 | 0.900 / 0.820 |
+| d10 +0.5 / +1.0 | 2.6 / 3.1 mm | 0.925 / 0.861 | 0.909 / 0.837 | 0.879 / 0.789 |
+| s1_1 +0.5 | 4.0 mm | 0.934 | 0.936 | 0.916 |
+| s1_13 +0.5 | 2.7 mm | 0.937 | 0.910 | 0.879 |
+| s2_4 +0.5 | 4.2 mm | 0.908 | 0.941 | 0.921 |
+
+Il surrogato nuovo segue l'effetto del jacket entro circa 3%; il vecchio
+lo sovrastimava fino a 7 punti.
+
+**Errore sul massimo del design** (FE/surrogato, 23 run):
+
+| | mediana | 80° percentile | 90° percentile | max | rms per layer |
+|---|---:|---:|---:|---:|---:|
+| P<sub>m</sub> | 1.03 | 1.09 | 1.13 | 1.15 | 7.1% |
+| P<sub>m</sub>+P<sub>b</sub> | 1.03 | 1.13 | 1.17 | 1.23 | 10.2% |
+
+Per design base (P<sub>m</sub>+P<sub>b</sub>): sovrastimati quelli a layer
+tutti uguali (d7 0.90, s1_1 0.91, s1_4 0.81, s1_7 0.80), sottostimati
+quelli con gradini larghi (d10 1.19, s2_2 1.23, s2_4 1.12, s1_13 1.10).
+
+## 7. Margine e dimensionamento nello scan
+
+`jacket_margin` = 1.10 (default, nel file di input): copre 17 dei 23 run su
+Pm+Pb e 20 su 23 su Pm. Un margine sul caso peggiore (1.23) farebbe
+sovradimensionare quasi tutti i design di 10–20%, e la risposta debole di
+Pm+Pb a JT (−14% con +50% di acciaio) lo trasformerebbe in molto acciaio e
+ingombro radiale in più. La scelta è quindi: margine moderato nello scan
+(classifica corretta, ingombro realistico) e verifica FE 2D della soluzione
+scelta. Se la verifica non passa, la correzione si fa sul design stesso:
+il rapporto FE/surrogato di quel design diventa il suo margine, si
+ridimensiona JT con le formule e si conferma con un secondo run FE.
+
+Nello scan (`scf_model` = 1, `search/scan_wp_designs.m`):
+
+1. il candidato è dimensionato come prima (campo, cavo, JT minimo, nose);
+2. `size_jacket_surrogate` trova per ogni layer il JT minimo con
+   margin·Pm ≤ Sm e margin·(Pm+Pb) ≤ 1.5·Sm e assegna a ogni grade il
+   massimo dei suoi layer (un conduttore per grade);
+3. se il JT cresce, il candidato viene ridimensionato con quel JT come
+   minimo (altezza del WP, gap toroidale, eventuale riduzione dei turn,
+   nose, S_z) e il controllo si ripete, al massimo `jacket_max_passes`
+   volte; poi la verifica del campo prosegue come prima;
+4. se serve un JT oltre `JT_max` il candidato è scartato;
+5. le soluzioni sono ordinate per ingombro radiale crescente (Ri_ − Rk_):
+   la #1 è il punto di partenza.
+

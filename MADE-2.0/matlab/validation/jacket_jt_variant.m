@@ -13,6 +13,11 @@ function v = jacket_jt_variant(row, p, dJT)
 %   The cable height and the cell height follow from the area:
 %     SC_w = Cond_w - 2 JT - 2 t_ins, r_SC = clamp(JT, r_SC_min, r_SC_max),
 %     SC_h = (A_cable + (4 - pi) r_SC^2)/SC_w, Cond_h = SC_h + 2 JT + 2 t_ins.
+%   v.min_toroidal_gap is the smallest lateral distance between the
+%   grounded WP and the case flank over the layers (the quantity the scan
+%   requires to be >= p.toroidal_gap): the variant does not shrink the turns
+%   as the scan would, so a thick jacket can push the deep layers out of
+%   the sector (gap < 0).
 %   Rectangular cables only. Used to build the jacket-thickness variants of
 %   the calibration set of JACKET_STRESS_SURROGATE
 %   (validation/run_jacket_jt_calibration.m).
@@ -40,6 +45,13 @@ v.JT(1:nl) = JT;
 v.Cond_h(1:nl) = Ch;
 v.Rk_ = row.Rk_ - (Rj_old - Rj_new);
 if isfield(v, 'S_Cable'), v.S_Cable(1:nl) = A; end
+Re = row.Ri_ - dps - git; gap = zeros(1, nl);
+for k = 1:nl
+    Ri = Re - Ch(k);
+    gap(k) = (2*Ri*tan(pi/getf(p, 'n_TF', 12)) - (Cw(k)*row.n_turns(k) + 2*git))/2;
+    Re = Ri - ins;
+end
+v.min_toroidal_gap = min(gap);
 end
 
 function x = getf(s, f, d)
