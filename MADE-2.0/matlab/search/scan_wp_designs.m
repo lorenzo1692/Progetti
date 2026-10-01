@@ -50,7 +50,10 @@ if isempty(field_model) || ~isscalar(field_model) || ~any(field_model == [0 1 2]
 end
 % jacket stress model: 0 = analytic formula with the SCF table and
 % SCF_transition_provisional (default); 1 = fast surrogate calibrated on
-% the 2D FE (JACKET_STRESS_SURROGATE), checked as the FE figure of merit
+% the 2D FE (JACKET_STRESS_SURROGATE): the jacket thickness of every grade
+% is SIZED with it (SIZE_JACKET_SURROGATE: smallest JT with
+% jacket_margin x Pm <= Sm and jacket_margin x (Pm+Pb) <= 1.5 Sm), iterated
+% with the case nose (docs/DIMENSIONAMENTO_JACKET.md)
 scf_model = 0; if isfield(p, 'scf_model') && ~isempty(p.scf_model), scf_model = p.scf_model; end
 if ~any(scf_model == [0 1])
     error('scan_wp_designs:scf_model', 'p.scf_model must be 0 (SCF table) or 1 (surrogate).');
@@ -60,6 +63,10 @@ if scf_model == 1 && p.shape_cable == 200
         'rectangular cables only; use scf_model = 0 for RIS (shape_cable = 200).']);
 end
 Sm_jacket = p.S_amm_JT; if isfield(p, 'Sm_jacket') && ~isempty(p.Sm_jacket), Sm_jacket = p.Sm_jacket; end
+jacket_margin = 1.0;   % default set from the recalibration (docs/DIMENSIONAMENTO_JACKET.md), in progress if isfield(p, 'jacket_margin') && ~isempty(p.jacket_margin), jacket_margin = p.jacket_margin; end
+JT_max = 0.010; if isfield(p, 'JT_max') && ~isempty(p.JT_max), JT_max = p.JT_max; end
+jacket_max_passes = 4; if isfield(p, 'jacket_max_passes') && ~isempty(p.jacket_max_passes), jacket_max_passes = p.jacket_max_passes; end
+n_jacket_rejected = 0;
 % maximum cell aspect ratio Cond_w/Cond_h (input files without it: 2)
 max_cable_aspect_ratio = 2;
 if isfield(p, 'max_cable_aspect_ratio') && ~isempty(p.max_cable_aspect_ratio), max_cable_aspect_ratio = p.max_cable_aspect_ratio; end
@@ -150,7 +157,9 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
             n_layers_start = n_layers; n_turns_start = n_turns;
             n_spire_start = n_spire_; Iop_start = Iop;
             B_field_layer = []; reject = false; field_ok = false;
-            for field_it = 1:field_max_iter
+            JT_req = zeros(1, maxdim);   % jacket thickness required by the surrogate (scf_model = 1), per layer
+            jacket_passes = 0;
+            for field_it = 1:field_max_iter + (scf_model == 1)*jacket_max_passes
                 n_layers = n_layers_start; n_turns = n_turns_start;
                 n_spire_ = n_spire_start; Iop = Iop_start; WP_w0 = [];
                 % Preallocations (maxdim-sized arrays are large enough for any
@@ -244,7 +253,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
 
                     sized = size_grade_cable(Cond_w(var), S_Cable(var), p.r_SC_min, p.r_SC_max, tins_const, ...
                         p.E_jckt, E_cbl, p.E_ins, p.shape_cable, p_rs, S_z_JT, ...
-                        p.S_amm_JT, p.safety_membrane, p.min_JT, p.JT_step, p.max_sizing_iterations);
+                        p.S_amm_JT, p.safety_membrane, max(p.min_JT, JT_req(var) - p.JT_step), p.JT_step, p.max_sizing_iterations);
                     tins(var) = tins_const;
                     Cond_h(var) = sized.Cond_h; JT(var) = sized.JT;
                     SC_w(var) = sized.SC_w;     SC_h(var) = sized.SC_h; R_J(var) = sized.R_J;
@@ -269,7 +278,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
 
                         sized = size_grade_cable(Cond_w(var), S_Cable(var), p.r_SC_min, p.r_SC_max, tins_const, ...
                             p.E_jckt, E_cbl, p.E_ins, p.shape_cable, p_rs, S_z_JT, ...
-                            p.S_amm_JT, p.safety_membrane, p.min_JT, p.JT_step, p.max_sizing_iterations);
+                            p.S_amm_JT, p.safety_membrane, max(p.min_JT, JT_req(var) - p.JT_step), p.JT_step, p.max_sizing_iterations);
                         Cond_h(var) = sized.Cond_h; JT(var) = sized.JT;
                         SC_w(var) = sized.SC_w;     SC_h(var) = sized.SC_h; R_J(var) = sized.R_J;
                         Ke_cavo_rad(var) = sized.Ke_rad; Ke_cavo_tor(var) = sized.Ke_tor;
@@ -312,7 +321,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
 
                         sized = size_grade_cable(Cond_w(var), S_Cable(var), p.r_SC_min, p.r_SC_max, tins_const, ...
                             p.E_jckt, E_cbl, p.E_ins, p.shape_cable, p_rs, S_z_JT, ...
-                            p.S_amm_JT, p.safety_membrane, p.min_JT, p.JT_step, p.max_sizing_iterations);
+                            p.S_amm_JT, p.safety_membrane, max(p.min_JT, JT_req(var) - p.JT_step), p.JT_step, p.max_sizing_iterations);
                         tins(var) = tins_const;
                         Cond_h(var) = sized.Cond_h; JT(var) = sized.JT;
                         SC_w(var) = sized.SC_w;     SC_h(var) = sized.SC_h; R_J(var) = sized.R_J;
@@ -464,18 +473,42 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                 JT_Pm = NaN; JT_PmPb = NaN;
                 JT_crit_layer = worst_var;      % critical jacket layer (analytic formula)
                 if scf_model == 1
-                    % jacket primary Pm and Pm+Pb per layer from the fast
-                    % surrogate calibrated on the 2D FE (JACKET_STRESS_SURROGATE),
-                    % checked as the FE figure of merit: Pm <= Sm, Pm+Pb <= 1.5 Sm
+                    % jacket thickness of every grade sized with the fast
+                    % surrogate calibrated on the 2D FE (SIZE_JACKET_SURROGATE,
+                    % JACKET_STRESS_SURROGATE): smallest JT per grade with
+                    % jacket_margin x Pm <= Sm and jacket_margin x (Pm+Pb) <= 1.5 Sm.
+                    % A thicker jacket changes the WP height, its stiffness and
+                    % the axial stress S_z, so the candidate is sized again with
+                    % the new JT (next pass of this loop) until the jacket
+                    % no longer grows; then the field check below runs as usual.
                     B_lay = B_size_layer([1:min(n_layers, numel(B_size_layer)), ...
                         numel(B_size_layer)*ones(1, n_layers - numel(B_size_layer))]);
-                    [Pm_l, PmPb_l] = jacket_stress_surrogate(sigma_nom, p_rs, n_turns(1:n_layers), B_lay, ...
-                        Iop, Cond_w(1)*n_turns(1), cv.S_z);
-                    JT_Pm = max(Pm_l); [JT_PmPb, JT_crit_layer] = max(PmPb_l);   % critical jacket layer (surrogate)
-                    S_T_JT = JT_Pm;
-                    if JT_Pm > Sm_jacket || JT_PmPb > 1.5*Sm_jacket
+                    gidx = numel(jump_grade)*ones(1, n_layers);
+                    for ig = numel(jump_grade):-1:1
+                        gidx(jump_grade(ig):min(grade_end(ig), n_layers)) = ig;
+                    end
+                    E_cbl_l = zeros(1, n_layers);
+                    for var = 1:n_layers
+                        E_cbl_l(var) = pick_E_cbl(type_cable{var}, p.E_cbl_HTS, p.E_cbl_LTS);
+                    end
+                    js = size_jacket_surrogate(struct('A_cable', S_Cable(1:n_layers), 'Cond_w', Cond_w(1:n_layers), ...
+                        'tins', tins_const, 'E_cbl', E_cbl_l, 'n_turns', n_turns(1:n_layers), 'B_layer', B_lay, ...
+                        'grade', gidx, 'JT0', JT(1:n_layers), 'E_jckt', p.E_jckt, 'E_ins', p.E_ins, ...
+                        'r_SC_min', p.r_SC_min, 'r_SC_max', p.r_SC_max, 'p_rs', p_rs, 'Iop', Iop, 'S_z', cv.S_z, ...
+                        'Sm', Sm_jacket, 'margin', jacket_margin, 'JT_step', p.JT_step, 'JT_max', JT_max));
+                    if ~js.ok
+                        n_jacket_rejected = n_jacket_rejected + 1;
                         reject = true; break
                     end
+                    if any(js.JT > JT(1:n_layers) + 1e-9)
+                        % thicker jacket needed: size the candidate again with it
+                        JT_req(1:n_layers) = max(JT_req(1:n_layers), js.JT);
+                        JT_req(n_layers+1:end) = JT_req(n_layers);
+                        jacket_passes = jacket_passes + 1;
+                        continue
+                    end
+                    JT_Pm = max(js.Pm); JT_PmPb = max(js.PmPb); JT_crit_layer = js.crit_layer;
+                    S_T_JT = JT_Pm;
                 end
 
                 if ~(S_T_VT < p.S_amm_VT && S_T_JT < p.S_amm_JT && S_T_JT > 0 && S_T_VT > 0)   % vault vs its own allowable (review C07)
@@ -555,8 +588,17 @@ if use_discrete_field && n_field_rejected > 0
     fprintf(['%d candidate(s) passed every check but their grade fields did not converge to the ' ...
         'discrete peak within %.3g T in %d passes: rejected.\n'], n_field_rejected, field_tol, field_max_iter);
 end
+if scf_model == 1 && n_jacket_rejected > 0
+    fprintf('%d candidate(s) rejected: no jacket thickness up to JT_max = %.1f mm satisfies the surrogate criteria.\n', ...
+        n_jacket_rejected, 1e3*JT_max);
+end
 if counter == 0
     DATA = table();
+else
+    % ranking: smallest radial build of the inner leg (Ri_ - Rk_) first, so
+    % design #1 is the best starting point
+    [~, order] = sort(DATA.radial_build);
+    DATA = DATA(order, :);
 end
 end
 

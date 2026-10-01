@@ -1,8 +1,8 @@
-function [Pm, PmPb] = jacket_stress_surrogate(sigma_nom, p_rs, n_turns, B_layer, Iop, W1, S_z)
+function [Pm, PmPb] = jacket_stress_surrogate(sigma_nom, p_rs, n_turns, B_layer, Iop, W1, S_z, JT) %#ok<INUSD>
 %JACKET_STRESS_SURROGATE Fast jacket primary Pm and Pm+Pb per layer (scf_model = 1).
 %
 %   [Pm, PmPb] = JACKET_STRESS_SURROGATE(sigma_nom, p_rs, n_turns, B_layer,
-%   Iop, W1, S_z) estimates, for every layer k of a winding pack, the
+%   Iop, W1, S_z, JT) estimates, for every layer k of a winding pack, the
 %   primary (Lorentz + axial, no cool-down) linearized Tresca stresses of
 %   the jacket that the 2D FE model WP_MECH_SURROGATE computes (maximum
 %   over the turns of the layer), from quantities the scan already has:

@@ -35,7 +35,7 @@ function run_jacket_jt_calibration(p, out_dir, worker, n_workers, csv_file)
 if nargin < 3 || isempty(worker), worker = 1; end
 if nargin < 4 || isempty(n_workers), n_workers = 1; end
 this_dir = fileparts(mfilename('fullpath'));
-if ~exist(out_dir, 'dir'), mkdir(out_dir); end
+if ~exist(out_dir, 'dir'), [~] = mkdir(out_dir); end   % no error if a parallel worker made it first
 B = load(fullfile(this_dir, 'results', 'jacket_calibration_base_rows.mat'));
 jobs = job_list(B.base);
 
