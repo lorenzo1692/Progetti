@@ -29,16 +29,14 @@ function [S_hoop, S_rad, S_ver, S_T] = eqv_stress_coil_ring_cicc(FZ, Re_grades, 
 %
 %   opts (optional struct) overrides the legacy hardcoded constants:
 %     E_jckt, E_cbl_LTS, E_cbl_HTS, E_ins [GPa], ni (Poisson ratio) and
-%     Fz_area_fix (0 = legacy, 1 = corrected, see below). Defaults are the
-%     legacy values (205, 0.1, 120, 20 GPa, 1/3, 0).
+%     Fz_area_fix (1 = corrected, default; 0 = legacy, see below). Other
+%     defaults are the legacy values (205, 0.1, 120, 20 GPa, 1/3).
 %
-%   FIDELITY NOTE (legacy behavior kept as default, see manuale PFC,
-%   "revisione modelli"): the legacy vertical stress is
-%   FZ/(Re^2-Ri^2)*pi, i.e. the force divided by (Re^2-Ri^2) and
-%   MULTIPLIED by pi; the sibling formula in CS (eqv_stress_coil_cicc.m)
-%   and in the unported LASSO variant divide by pi*(Re^2-Ri^2), the
-%   annulus area. With Fz_area_fix=1 the annulus-area form is used; the
-%   legacy form overestimates S_ver by pi^2 = 9.87.
+%   VERTICAL STRESS: S_ver = FZ/(pi*(Re^2-Ri^2)) * K_rv, the axial force over
+%   the annulus area. The legacy driver computed FZ/(Re^2-Ri^2)*pi (the
+%   factor pi multiplying instead of dividing), which overestimates S_ver by
+%   pi^2 = 9.87; it is still available with Fz_area_fix = 0 to reproduce
+%   legacy results.
 %
 %   Relocated unchanged from the PF legacy archive
 %   (eqv_stress_coil_ring_cicc.m, part of MADE_PF.7z), the formula
@@ -55,7 +53,7 @@ E_cbl_HTS = get_opt(opts, 'E_cbl_HTS', 120);
 E_cbl_LTS = get_opt(opts, 'E_cbl_LTS', 0.1);
 E_ins = get_opt(opts, 'E_ins', 20);
 ni = get_opt(opts, 'ni', 1/3);
-Fz_area_fix = get_opt(opts, 'Fz_area_fix', 0);
+Fz_area_fix = get_opt(opts, 'Fz_area_fix', 1);
 J = Iop/(Cond_h*Cond_w);
 
 %% Hoop stress

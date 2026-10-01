@@ -8,6 +8,7 @@ WP_h_min 0.2
 WP_h_max 0.6
 WP_h_step 0.025
 B_background 0
+system_sizing 0
 grins_w 0.004
 grins_h 0.004
 tins 0.001
@@ -33,7 +34,7 @@ E_cbl_LTS 0.1
 E_cbl_HTS 120
 E_ins 20
 ring_nu 0.3333333
-ring_Fz_area_fix 0
+ring_Fz_area_fix 1
 fz_source 0
 fcgr_mode 1
 plasma_cycles_min 30

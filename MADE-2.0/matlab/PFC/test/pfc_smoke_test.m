@@ -53,7 +53,11 @@ g = compute_operating_params(p);
 row = p.cs_modules + n_PF;
 L_factor = sum(L(:, row))/L(row, row);
 env = generate_combinations(p, g, WP_h);
-DATA = scan_wp_designs(p, g, env, WP_h, geom.R(row), geom.MAt(row), FZ_max(row), L_factor, n_PF);
+sys = [];
+if p.system_sizing == 1
+    sys = system_field_setup(geom, row, Fz);
+end
+DATA = scan_wp_designs(p, g, env, WP_h, geom.R(row), geom.MAt(row), FZ_max(row), L_factor, n_PF, sys);
 fprintf('PF%d, WP_h = %.3f m: %d feasible design point(s)\n', n_PF, WP_h, height(DATA));
 
 out.DATA = DATA; out.fem = [];
