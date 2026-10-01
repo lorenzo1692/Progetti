@@ -1511,6 +1511,14 @@ for q = 1:numel(scl)
     end
     ok = ~any(isnan(S), 2);
     L = norm(P1 - P0); z = (s - 0.5)*L;
+    if sum(ok) < 2
+        % the line does not cross the case mesh (geometry outside the
+        % range the line definition assumes): no result, flagged by the
+        % SCL coverage check instead of a crash
+        scl(q).Pm = NaN; scl(q).PmPb = NaN; scl(q).S_membrane = nan(1, 4);
+        scl(q).valid_fraction = mean(ok);
+        continue
+    end
     m = trapz(s(ok)*L, S(ok,:))/(L*(s(find(ok,1,'last')) - s(find(ok,1))));
     b = 6/L^2*trapz(s(ok)*L, S(ok,:).*z(ok));
     scl(q).Pm = tresca(m);

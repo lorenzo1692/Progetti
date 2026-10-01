@@ -1,4 +1,4 @@
-function [Pm, PmPb] = jacket_stress_surrogate(sigma_nom, p_rs, n_turns, B_layer, Iop, W1, S_z, JT) %#ok<INUSD>
+function [Pm, PmPb] = jacket_stress_surrogate(sigma_nom, p_rs, n_turns, B_layer, Iop, W1, S_z, JT)
 %JACKET_STRESS_SURROGATE Fast jacket primary Pm and Pm+Pb per layer (scf_model = 1).
 %
 %   [Pm, PmPb] = JACKET_STRESS_SURROGATE(sigma_nom, p_rs, n_turns, B_layer,
@@ -49,11 +49,19 @@ function [Pm, PmPb] = jacket_stress_surrogate(sigma_nom, p_rs, n_turns, B_layer,
 %   RIS cables. A PRELIMINARY screening model: the chosen design must be
 %   verified with WP_MECH_SURROGATE.
 
-a_m = 0.711; b_m = 0.244;          % Pm
-a_b = 1.285; b_b = 0.601;          % Pm + Pb
-F = n_turns(:)'.*Iop.*B_layer(:)';
+% coefficients (fit_jacket_surrogate.py; see the calibration note above)
+JT_REF = 3e-3; BETA = 0.2;
+A_M = 0.762; B_M = 0.208; C_M = 0.202;      % Pm
+A_B = 1.359; B_B = 0.540; C_B = 0.493;      % Pm + Pb
+if nargin < 8 || isempty(JT)
+    JT = JT_REF*ones(size(sigma_nom));   % no JT given: no thickness correction (beta term = 1)
+end
+nt = n_turns(:)';
+F = nt.*Iop.*B_layer(:)';
 q = (cumsum(F) - 0.5*F)/W1;
 sigma_acc = q/p_rs.*sigma_nom(:)';
-Pm   = S_z + a_m*sigma_nom(:)' + b_m*sigma_acc;
-PmPb = S_z + a_b*sigma_nom(:)' + b_b*sigma_acc;
+step = max(0, nt - [nt(2:end) nt(end)])./nt;      % width step under each layer
+gJ = (JT(:)'/JT_REF).^BETA;
+Pm   = S_z + gJ.*(A_M*sigma_nom(:)' + B_M*sigma_acc + C_M*sigma_acc.*step);
+PmPb = S_z + gJ.*(A_B*sigma_nom(:)' + B_B*sigma_acc + C_B*sigma_acc.*step);
 end
