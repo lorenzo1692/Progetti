@@ -27,19 +27,31 @@ function out = size_jacket_surrogate(in)
 %     each layer), JT0 (starting thickness)
 %     scalars: E_jckt, E_ins, r_SC_min, r_SC_max, p_rs, Iop, S_z, Sm,
 %     margin, JT_step, JT_max
+%     optional: margin_PmPb (margin on Pm+Pb, default = margin); margin and
+%     margin_PmPb may also be one value per layer (REFINE_JACKET_FE uses
+%     the FE/surrogate ratio of each layer); evaluate_only = true returns
+%     the stresses at JT0 without sizing
 %
 %   out: JT (per layer, constant within each grade), Pm, PmPb (surrogate
 %   stresses at that JT, without the margin), ok (all layers within the
 %   criteria at JT <= JT_max), crit_layer (layer with the highest Pm+Pb
 %   utilization), Cond_h (cell height at that JT).
 
-nl = numel(in.A_cable);
 JT = in.JT0(:)';
 W1 = in.Cond_w(1)*in.n_turns(1);
+mP = in.margin(:)'; mB = mP;
+if isfield(in, 'margin_PmPb') && ~isempty(in.margin_PmPb), mB = in.margin_PmPb(:)'; end
+if isfield(in, 'evaluate_only') && in.evaluate_only
+    [Pm, PmPb, Ch] = stresses(JT, in, W1);
+    [~, crit] = max(max(Pm/in.Sm, PmPb/(1.5*in.Sm)));
+    out = struct('JT', JT, 'Pm', Pm, 'PmPb', PmPb, 'ok', all(mP.*Pm <= in.Sm & mB.*PmPb <= 1.5*in.Sm), ...
+        'crit_layer', crit, 'Cond_h', Ch);
+    return
+end
 ok = false;
 for it = 1:ceil((in.JT_max - min(JT))/in.JT_step) + 2
     [Pm, PmPb, Ch] = stresses(JT, in, W1);
-    bad = in.margin*Pm > in.Sm | in.margin*PmPb > 1.5*in.Sm;
+    bad = mP.*Pm > in.Sm | mB.*PmPb > 1.5*in.Sm;
     if ~any(bad)
         ok = true; break
     end
@@ -54,7 +66,7 @@ for g = unique(in.grade(:)')
     JT(m) = max(JT(m));
 end
 [Pm, PmPb, Ch] = stresses(JT, in, W1);
-ok = ok && all(in.margin*Pm <= in.Sm & in.margin*PmPb <= 1.5*in.Sm);
+ok = ok && all(mP.*Pm <= in.Sm & mB.*PmPb <= 1.5*in.Sm);
 [~, crit] = max(max(Pm/in.Sm, PmPb/(1.5*in.Sm)));
 out = struct('JT', JT, 'Pm', Pm, 'PmPb', PmPb, 'ok', ok, 'crit_layer', crit, 'Cond_h', Ch);
 end
