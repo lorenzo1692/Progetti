@@ -115,9 +115,31 @@ while keep_growing
             FZ_used = in.FZ;
     end
 
-    [S_hoop, S_rad, S_ver, S_T] = eqv_stress_coil_ring_cicc(FZ_used, Re_grade, Ri_grade, ...
-        in.Cond_h, Cond_w, JT, SC_h, SC_w, in.tins, in.type_cable, S_CICC, S_JT, in.var, ...
-        in.Iop, Bmin, Bmax, in.WP_h, in.n_layers_var, ring_opts);
+    sys = [];
+    if isfield(in, 'sys'), sys = in.sys; end
+    if isempty(sys)
+        [S_hoop, S_rad, S_ver, S_T] = eqv_stress_coil_ring_cicc(FZ_used, Re_grade, Ri_grade, ...
+            in.Cond_h, Cond_w, JT, SC_h, SC_w, in.tins, in.type_cable, S_CICC, S_JT, in.var, ...
+            in.Iop, Bmin, Bmax, in.WP_h, in.n_layers_var, ring_opts);
+    else
+        % System-based sizing: envelope over the plasma scenarios, each with the
+        % coil current of that scenario and the background field of the machine.
+        [Bin, Bout] = system_field_eval(sys, Ri_grade, Re_grade, in.WP_h);
+        N_turns = in.n_t*in.n_l;
+        S_hoop = 0; S_T = 0; S_ver = 0; S_rad = 0;
+        for k = 1:numel(sys.MAt_row)
+            rho = abs(sys.MAt_row(k))/(N_turns*in.Iop);
+            if rho < 1e-6, continue, end
+            sk = sign(sys.MAt_row(k));
+            FZ_k = FZ_used;
+            if fz_source == 0 && ~isempty(sys.Fz_row), FZ_k = abs(sys.Fz_row(k))*1e6; end
+            [Sh, Sr, Sv, St] = eqv_stress_coil_ring_cicc(FZ_k, Re_grade, Ri_grade, ...
+                in.Cond_h, Cond_w, JT, SC_h, SC_w, in.tins, in.type_cable, S_CICC, S_JT, in.var, ...
+                rho*in.Iop, rho*Bmin + sk*Bout(k), rho*Bmax + sk*Bin(k), in.WP_h, in.n_layers_var, ring_opts);
+            S_hoop = max(abs(S_hoop), abs(Sh)); % magnitude envelope
+            S_T = max(S_T, St); S_ver = max(S_ver, Sv); S_rad = max(S_rad, abs(Sr));
+        end
+    end
 
     stress_ok = max(abs(S_hoop)) <= in.S_hoop_allow && max(abs(S_T)) <= in.S_hoop_allow*in.Tresca_factor;
     if ~stress_ok

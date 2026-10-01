@@ -28,7 +28,7 @@ sceglierne uno, salvarlo e verificarlo con il FEM.
 
 ## Struttura
 
-- `input/` — template Excel con i 58 parametri (geometria, punto di design,
+- `input/` — template Excel con i 59 parametri (geometria, punto di design,
   numerica, materiali, **fatica FCGR**, **FEM**, check geometrici).
 - `io/` — lettura dell'input (`read_machine_input`), geometria/scenario
   (`read_coil_geometry`), forze assiali (`read_axial_force`).
@@ -54,11 +54,22 @@ crescere finché `plasma_cycles >= plasma_cycles_min`. Le costanti del materiale
 (`fcgr_C0`, `fcgr_m`, ...) sono nel file di input (316LN e JK2LB indicati nelle
 descrizioni).
 
-Opzioni correlate del carico verticale (default = comportamento legacy):
-`fz_source` (`0` forza netta esterna da file/scenari, `1` compressione al piano
-medio `FZmax` calcolata da `emag` per ogni candidato, `2` il massimo dei due) e
-`ring_Fz_area_fix` (`1` usa `FZ/(pi*(Re^2-Ri^2))` invece di `FZ/(Re^2-Ri^2)*pi`).
-Vedi la revisione modelli PFC per l'effetto sui design.
+Carico verticale: `ring_Fz_area_fix` (default `1`) usa `FZ/(pi*(Re^2-Ri^2))`,
+la forza assiale sull'area dell'anello; `0` riproduce il legacy
+`FZ/(Re^2-Ri^2)*pi`, che sovrastima di pi^2. `fz_source` sceglie la forza:
+`0` forza netta esterna (file o scenari, default), `1` compressione al piano
+medio `FZmax` calcolata da `emag` per ogni candidato, `2` il massimo dei due.
+
+## Dimensionamento di sistema (`system_sizing`)
+
+`system_sizing = 0` (default): ogni bobina è dimensionata sul proprio campo e
+sulla forza assiale data, non serve alcuno scenario. `system_sizing = 1`: oltre
+all'autocampo si considera il campo di CS, altre PF e plasma in ogni scenario
+del file di geometria (`physics/system_field_setup`, `system_field_eval`):
+per ogni scenario la corrente della bobina è quella dello scenario, Bmin/Bmax
+dello sforzo ad anello e il campo per Ic includono il campo di fondo e la
+forza assiale è quella dello scenario; il design deve reggere l'inviluppo di
+tutti gli scenari. Richiede il file di geometria con le colonne di scenario.
 
 ## Verifica FEM (`fem/`)
 

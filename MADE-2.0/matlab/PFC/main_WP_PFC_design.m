@@ -95,6 +95,9 @@ else
     FZ_max = read_axial_force(force_file);
 end
 L_matrix = compute_coupling_matrix(geom);
+if isempty(force_file) || p.system_sizing == 1
+    Fz_scen_sys = compute_scenario_forces(geom);
+end
 
 %% 3. Scan every PF coil (PF1..PF6) across the WP_h sweep
 n_pf_coils = 6;
@@ -106,6 +109,10 @@ for n_PF_idx = 1:n_pf_coils
     R_center = geom.R(row);
     MAt_target = geom.MAt(row);
     FZ = FZ_max(row);
+    sys = [];
+    if p.system_sizing == 1
+        sys = system_field_setup(geom, row, Fz_scen_sys);
+    end
 
     fprintf('\nScanning PF%d (row %d, R=%.3f m, MAt target=%.3g A-turns)...\n', ...
         n_PF_idx, row, R_center, MAt_target);
@@ -113,7 +120,7 @@ for n_PF_idx = 1:n_pf_coils
     DATA_coil = table();
     for WP_h = p.WP_h_min:p.WP_h_step:p.WP_h_max
         env = generate_combinations(p, g, WP_h);
-        DATA_h = scan_wp_designs(p, g, env, WP_h, R_center, MAt_target, FZ, L_factor, n_PF_idx);
+        DATA_h = scan_wp_designs(p, g, env, WP_h, R_center, MAt_target, FZ, L_factor, n_PF_idx, sys);
         DATA_coil = [DATA_coil; DATA_h]; %#ok<AGROW>
     end
     all_results{n_PF_idx} = DATA_coil;

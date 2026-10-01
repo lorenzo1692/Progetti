@@ -1,4 +1,4 @@
-function DATA = scan_wp_designs(p, g, env, WP_h, R_center, MAt_target, FZ, L_factor, n_PF_label)
+function DATA = scan_wp_designs(p, g, env, WP_h, R_center, MAt_target, FZ, L_factor, n_PF_label, sys)
 %SCAN_WP_DESIGNS Explore every turns/layers/Iop candidate design for one PFC coil at one WP_h.
 %
 %   DATA = SCAN_WP_DESIGNS(p, g, env, WP_h, R_center, MAt_target, FZ,
@@ -40,6 +40,8 @@ function DATA = scan_wp_designs(p, g, env, WP_h, R_center, MAt_target, FZ, L_fac
 %   verbatim, including its case-2/case-3 asymmetry (never exercised by
 %   the n_grades=1 VNS baseline).
 
+if nargin < 10, sys = []; end % system_sizing off: coil sized on its own field
+if p.system_sizing == 0, sys = []; end
 n_grades = p.n_grades;
 Mu_0 = g.Mu_0;
 
@@ -154,6 +156,11 @@ for comb = 1:size(valid_comb,1)
     while ~check_B
         for var = 1:n_grades
             B_local = coil.B_grades(var) + p.B_background;
+            if ~isempty(sys)
+                % system sizing: add the worst background field of the machine, at the nominal inner radius
+                Bin_sys = system_field_eval(sys, coil.Ri, coil.Re, WP_h);
+                B_local = B_local + max(0, max(sign(sys.MAt_row).*Bin_sys));
+            end
             [type, N_Cu, N_Sc, N_tot, S_Cable, S_REBCO, S_Cu_HTS, THS, mat_code] = ...
                 size_conductor_cicc(B_local, coil.Iop, coil.Tau_discharge, p.WP_SC_type);
 
@@ -194,6 +201,7 @@ for comb = 1:size(valid_comb,1)
             sizing_in.plasma_cycles_min = p.plasma_cycles_min;
             sizing_in.fp = fp;
             sizing_in.fz_source = p.fz_source;
+            sizing_in.sys = sys;
 
             sized = size_cicc_cable(sizing_in);
             if ~sized.feasible
