@@ -135,7 +135,9 @@ for c = 1:ncase
 
     layer_hoop = zeros(1, wp.n_l);
     for l = 1:wp.n_l
-        layer_hoop(l) = max(s_th(tc_layer == l));
+        sl = s_th(tc_layer == l);
+        [~, im] = max(abs(sl));
+        layer_hoop(l) = sl(im);   % signed value of largest magnitude (tension +, compression -)
     end
 
     % global equilibrium check: hoop tension of the FE section vs the radial load
@@ -149,7 +151,8 @@ for c = 1:ncase
     cases(c).Fr_MN = sol.Fnet(1)*1e-6;
     cases(c).Fz_net_MN = sol.Fnet(2)*1e-6;
     cases(c).react_MN = sol.react*1e-6;
-    cases(c).hoop_max_MPa = max(s_th)*1e-6;
+    [~, ih] = max(abs(s_th));
+    cases(c).hoop_max_MPa = s_th(ih)*1e-6;      % signed hoop stress of largest magnitude (compression < 0)
     cases(c).hoop_layer_MPa = layer_hoop*1e-6;
     cases(c).vert_max_MPa = max(abs(s_z))*1e-6;
     cases(c).radial_avg_max_MPa = max(abs(s_r))*1e-6;
@@ -178,6 +181,13 @@ WP_h_coil = wp.H + 2*p.grins_h;
     wp.SC_h, wp.SC_w, wp.tins, tc, wp.S_CICC, wp.S_JT, 1, wp.Iop, Bmin, Bmax, WP_h_coil, wp.n_l, ring_leg);
 [~, ~, Sv_fix, ST_fix] = eqv_stress_coil_ring_cicc(wp.FZ_ext, wp.Re, wp.Ri, wp.Cond_h, wp.Cond_w, wp.JT, ...
     wp.SC_h, wp.SC_w, wp.tins, tc, wp.S_CICC, wp.S_JT, 1, wp.Iop, Bmin, Bmax, WP_h_coil, wp.n_l, ring_fix);
+
+% vertical load = the self-field squeeze computed by EMAG_FIELD_FORCES (fz_source = 1), annulus-area form
+ring_sq = ring_fix;
+[~, ~, Sv_sq, ST_sq] = eqv_stress_coil_ring_cicc(abs(FZmax)*1e6, wp.Re, wp.Ri, wp.Cond_h, wp.Cond_w, wp.JT, ...
+    wp.SC_h, wp.SC_w, wp.tins, tc, wp.S_CICC, wp.S_JT, 1, wp.Iop, Bmin, Bmax, WP_h_coil, wp.n_l, ring_sq);
+analytic.S_ver_squeeze_MPa = max(Sv_sq)*1e-6;
+analytic.S_T_squeeze_MPa = max(ST_sq)*1e-6;
 
 analytic.Bsum = Bsum; analytic.Bmin = Bmin; analytic.Bmax = Bmax;
 analytic.FRmax_MN = FRmax; analytic.FZmax_half_MN = FZmax;
@@ -225,9 +235,12 @@ fprintf('\nFEM verification - PF%d, %d layers x %d turns, Iop = %.1f kA, JT = %.
     wp.n_PF, wp.n_l, wp.n_t, wp.Iop*1e-3, wp.JT*1e3, wp.Re-wp.Ri, wp.H);
 fprintf('  Mesh %d x %d elements, homogenized WP: Eth=%.1f GPa  Er=%.1f GPa  Ez=%.1f GPa, jacket factors f_hoop=%.2f f_z=%.2f\n', ...
     res.mesh.nr, res.mesh.nz, res.mat.Eth*1e-9, res.mat.Er*1e-9, res.mat.Ez*1e-9, res.mat.f_hoop, res.mat.f_z);
-fprintf('  Design model: Bpeak %.2f T (Bz %.2f..%.2f), hoop max %.0f MPa, S_ver %.0f MPa (legacy) / %.0f MPa (area fix), S_T %.0f / %.0f MPa, FZ ext %.2f MN\n', ...
-    an.Bsum, an.Bmin, an.Bmax, an.hoop_max_MPa, an.S_ver_legacy_MPa, an.S_ver_fixed_MPa, an.S_T_legacy_MPa, an.S_T_fixed_MPa, an.FZ_ext_MN);
+fprintf('  Design model: Bpeak %.2f T (Bz %.2f..%.2f), hoop max %.0f MPa, FZ ext %.2f MN, emag half-stack FZ %.1f MN\n', ...
+    an.Bsum, an.Bmin, an.Bmax, an.hoop_max_MPa, an.FZ_ext_MN, an.FZmax_half_MN);
+fprintf('  Design-model vertical stress / Tresca [MPa]: legacy (fz_source 0) %.0f / %.0f, area fix %.0f / %.0f, emag squeeze (fz_source 1) %.0f / %.0f\n', ...
+    an.S_ver_legacy_MPa, an.S_T_legacy_MPa, an.S_ver_fixed_MPa, an.S_T_fixed_MPa, an.S_ver_squeeze_MPa, an.S_T_squeeze_MPa);
 fprintf('  %-22s %8s %9s %9s %9s %9s %9s %9s %9s\n', 'load case', 'I [kA]', 'Bpk [T]', 'Fr [MN]', 'Fz [MN]', 'hoop MPa', 'vert MPa', 'Tresca', 'vonMises');
+    fprintf('  (hoop = signed value of largest magnitude: negative = compression, i.e. net inward radial force)\n');
 for c = 1:numel(cs)
     fprintf('  %-22s %8.1f %9.2f %9.2f %9.2f %9.0f %9.0f %9.0f %9.0f\n', cs(c).name, cs(c).I_turn*1e-3, cs(c).B_peak, ...
         cs(c).Fr_MN, cs(c).Fz_net_MN, cs(c).hoop_max_MPa, cs(c).vert_max_MPa, cs(c).S_T_tresca_MPa, cs(c).S_vm_MPa);

@@ -28,7 +28,7 @@ sceglierne uno, salvarlo e verificarlo con il FEM.
 
 ## Struttura
 
-- `input/` — template Excel con i 57 parametri (geometria, punto di design,
+- `input/` — template Excel con i 58 parametri (geometria, punto di design,
   numerica, materiali, **fatica FCGR**, **FEM**, check geometrici).
 - `io/` — lettura dell'input (`read_machine_input`), geometria/scenario
   (`read_coil_geometry`), forze assiali (`read_axial_force`).
@@ -53,6 +53,12 @@ Dipendenze condivise nella cartella superiore (`MADE-2.0/matlab/`): `xbr.m`,
 crescere finché `plasma_cycles >= plasma_cycles_min`. Le costanti del materiale
 (`fcgr_C0`, `fcgr_m`, ...) sono nel file di input (316LN e JK2LB indicati nelle
 descrizioni).
+
+Opzioni correlate del carico verticale (default = comportamento legacy):
+`fz_source` (`0` forza netta esterna da file/scenari, `1` compressione al piano
+medio `FZmax` calcolata da `emag` per ogni candidato, `2` il massimo dei due) e
+`ring_Fz_area_fix` (`1` usa `FZ/(pi*(Re^2-Ri^2))` invece di `FZ/(Re^2-Ri^2)*pi`).
+Vedi la revisione modelli PFC per l'effetto sui design.
 
 ## Verifica FEM (`fem/`)
 

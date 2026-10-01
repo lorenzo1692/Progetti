@@ -193,6 +193,7 @@ for comb = 1:size(valid_comb,1)
             sizing_in.fcgr_mode = fcgr_mode;
             sizing_in.plasma_cycles_min = p.plasma_cycles_min;
             sizing_in.fp = fp;
+            sizing_in.fz_source = p.fz_source;
 
             sized = size_cicc_cable(sizing_in);
             if ~sized.feasible

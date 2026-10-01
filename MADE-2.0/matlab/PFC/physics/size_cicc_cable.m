@@ -32,7 +32,13 @@ function out = size_cicc_cable(in)
 %     n_layers_var, R_center, dy, n_t, n_l, n_g, Iop, FZ, WP_h, var,
 %     JT_min, JT_step, S_hoop_allow, Tresca_factor, max_iter
 %   optional fields: ring_opts (struct for EQV_STRESS_COIL_RING_CICC),
-%     fcgr_mode, plasma_cycles_min, fp (struct for FCGR)
+%     fcgr_mode, plasma_cycles_min, fp (struct for FCGR), fz_source
+%
+%   Axial force used by the ring stress (in.fz_source, input parameter
+%   fz_source): 0 = the external scenario value in.FZ (legacy), 1 = the
+%   FZmax that EMAG_FIELD_FORCES computes for the candidate itself (axial
+%   force carried across the coil mid-plane, dominated by the self-field
+%   squeeze), 2 = the larger of the two. See manuale PFC, revisione modelli.
 %
 %   out fields:
 %     feasible, JT, SC_h, SC_w, R_J, Cond_w, S_CICC, S_JT, Ri_grade,
@@ -54,6 +60,8 @@ fcgr_mode = 0;
 if isfield(in, 'fcgr_mode'), fcgr_mode = in.fcgr_mode; end
 fp = [];
 if isfield(in, 'fp'), fp = in.fp; end
+fz_source = 0;
+if isfield(in, 'fz_source'), fz_source = in.fz_source; end
 
 JT = in.JT_min;
 S_hoop = Inf;
@@ -98,7 +106,16 @@ while keep_growing
     [Bsum, Bmin, Bmax, FRmax, FZmax, BR, BZ, FR, FZ, ~, ~] = emag_field_forces( ...
         in.dy, Cond_w, Ri_grade, in.n_t, in.n_l, in.n_g, in.Iop);
 
-    [S_hoop, S_rad, S_ver, S_T] = eqv_stress_coil_ring_cicc(in.FZ, Re_grade, Ri_grade, ...
+    switch fz_source
+        case 1
+            FZ_used = abs(FZmax)*1e6;
+        case 2
+            FZ_used = max(in.FZ, abs(FZmax)*1e6);
+        otherwise
+            FZ_used = in.FZ;
+    end
+
+    [S_hoop, S_rad, S_ver, S_T] = eqv_stress_coil_ring_cicc(FZ_used, Re_grade, Ri_grade, ...
         in.Cond_h, Cond_w, JT, SC_h, SC_w, in.tins, in.type_cable, S_CICC, S_JT, in.var, ...
         in.Iop, Bmin, Bmax, in.WP_h, in.n_layers_var, ring_opts);
 

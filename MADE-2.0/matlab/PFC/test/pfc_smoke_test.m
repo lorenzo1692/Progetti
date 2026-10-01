@@ -1,14 +1,15 @@
-function out = pfc_smoke_test(n_PF, WP_h, run_fem)
+function out = pfc_smoke_test(n_PF, WP_h, run_fem, overrides)
 %PFC_SMOKE_TEST Run the whole PFC chain without any dialog, on one coil at one WP_h.
 %
-%   out = PFC_SMOKE_TEST(n_PF, WP_h, run_fem) reads the machine geometry
+%   out = PFC_SMOKE_TEST(n_PF, WP_h, run_fem, overrides) reads the machine geometry
 %   shipped in this folder (baseline_VNS_07_2026_V4_LG.csv, 13 rows: 6 CS,
 %   PF1..PF6, plasma; 7 scenarios), computes the scenario forces and the
 %   coupling matrix, scans the PF coil n_PF (default 6) at winding-pack
 %   height WP_h (default 0.30 m), and, with run_fem=true (default), verifies
 %   the first feasible design point with FEM_PFC_VERIFY. Returns the
 %   results table (struct array in Octave) in out.DATA and the FEM result
-%   in out.fem. Takes about a minute.
+%   in out.fem. overrides (optional struct) replaces input parameters, e.g.
+%   struct('fz_source', 1). Takes about a minute.
 %
 %   Works in MATLAB (parameters from the input workbook) and in GNU Octave
 %   (parameters from params_template.txt, a text copy of the template -
@@ -19,6 +20,7 @@ function out = pfc_smoke_test(n_PF, WP_h, run_fem)
 if nargin < 1, n_PF = 6; end
 if nargin < 2, WP_h = 0.30; end
 if nargin < 3, run_fem = true; end
+if nargin < 4, overrides = struct(); end
 
 here = fileparts(mfilename('fullpath'));
 pfc = fileparts(here);
@@ -32,6 +34,11 @@ if is_octave
 else
     p = read_machine_input(fullfile(pfc, 'input', 'WP_PFC_input_template.xlsx'));
     d = readmatrix(fullfile(here, 'baseline_VNS_07_2026_V4_LG.csv'));
+end
+
+ov = fieldnames(overrides);
+for k = 1:numel(ov)
+    p.(ov{k}) = overrides.(ov{k});
 end
 
 geom.R = d(:, 1); geom.Z = d(:, 2); geom.dr = d(:, 3); geom.dz = d(:, 4);
