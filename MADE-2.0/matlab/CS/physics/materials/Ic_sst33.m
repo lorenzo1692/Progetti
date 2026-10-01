@@ -7,13 +7,9 @@ function [Ic, FA] = Ic_sst33(B, T, theta, opt)
 %
 %   Relocated unchanged from the CS legacy archive (Ic_sst33.m).
 %
-%   CALLER NOTE (open question, see manuale CS - decisione aperta): in the
-%   legacy cicc.m the call was Ic_sst33(T_dim, B_local, theta, [3,4]) with
-%   T_dim=20 and B_local the actual field - i.e. B and T are swapped
-%   relative to this signature. size_conductor_cicc.m (the CS/physics port
-%   of cicc.m) reproduces that same call exactly, unchanged, pending
-%   confirmation - it is NOT exercised by the WP_SC_type=100 (full LTS)
-%   default path used by CS_opt_VNS.m.
+%   CALLER NOTE: the legacy cicc.m called this as Ic_sst33(T_dim, B_local,
+%   ...), swapping B and T. Fixed in size_conductor_cicc.m (01/10/2026):
+%   always call as Ic_sst33(B, T, theta, opt).
 
 if nargin < 4
     opt = [3, 4];

@@ -12,7 +12,9 @@
 %      that satisfies the geometric and Tresca stress checks
 %      (search/scan_wp_designs.m).
 %   5. Save the full results table, then let you browse every feasible
-%      design point and choose one to plot and save (postprocess/*.m).
+%      design point and choose one to plot and save: scan scatter
+%      (plot_solution.m) and module / full-CS section colored by |B|
+%      (plot_cs_section.m).
 %
 % This is a direct port of CS_opt_VNS.m into the TF-style modular
 % pipeline (see the manuale CS artifact for the full analysis and the
@@ -84,3 +86,4 @@ fprintf('\n%d feasible design point(s) saved to %s\n', height(DATA), results_fil
 
 sel_idx = browse_solutions(DATA);
 plot_solution(DATA, sel_idx, tag);
+plot_cs_section(DATA, sel_idx, tag, p, g);
