@@ -1,4 +1,4 @@
-function [S_hoop, S_rad, S_ver, S_T] = eqv_stress_coil_ring_cicc(FZ, Re_grades, Ri_grades, Cond_h, Cond_w, JT, SC_h, SC_w, tins, type_cable, S_CICC, S_JT, var, Iop, Bmin, Bmax, WP_h, n_l)
+function [S_hoop, S_rad, S_ver, S_T] = eqv_stress_coil_ring_cicc(FZ, Re_grades, Ri_grades, Cond_h, Cond_w, JT, SC_h, SC_w, tins, type_cable, S_CICC, S_JT, var, Iop, Bmin, Bmax, WP_h, n_l, opts)
 %EQV_STRESS_COIL_RING_CICC Thick-ring hoop/radial/vertical stress on a PFC jacket.
 %
 %   [S_hoop, S_rad, S_ver, S_T] = EQV_STRESS_COIL_RING_CICC(FZ, Re_grades,
@@ -13,8 +13,12 @@ function [S_hoop, S_rad, S_ver, S_T] = eqv_stress_coil_ring_cicc(FZ, Re_grades, 
 %   outer radius (Bmin, Bmax) and switches model depending on the coil's
 %   aspect ratio:
 %     - WP_h <= WP_w (a "flat" ring, wider than it is tall) or a nonzero
-%       Bmin: linear field gradient (Bmax at Re, Bmin at Ri) via the Kk/Mm
-%       terms below;
+%       Bmin: linear field gradient (Bmax at Ri, Bmin at Re) via the Kk/Mm
+%       terms below. This matches a coil dominated by its own field (peak
+%       Bz on the inner radius, return flux on the outer one); the formula
+%       assumes it, it does not check where Bmax/Bmin actually are (swapping
+%       them raises the hoop stress of a typical PF design by ~25%, see
+%       manuale PFC, revisione modelli);
 %     - otherwise (a "tall" ring, closer to a solenoid): the same
 %       thin-walled, uniform-PB formula as EQV_STRESS_COIL_CICC.
 %   FZ (the coil's axial/vertical force, [N]) is an external input here -
@@ -23,6 +27,19 @@ function [S_hoop, S_rad, S_ver, S_T] = eqv_stress_coil_ring_cicc(FZ, Re_grades, 
 %   EMAG_FIELD_FORCES would compute - see manuale PFC, "fidelity note:
 %   axial force").
 %
+%   opts (optional struct) overrides the legacy hardcoded constants:
+%     E_jckt, E_cbl_LTS, E_cbl_HTS, E_ins [GPa], ni (Poisson ratio) and
+%     Fz_area_fix (0 = legacy, 1 = corrected, see below). Defaults are the
+%     legacy values (205, 0.1, 120, 20 GPa, 1/3, 0).
+%
+%   FIDELITY NOTE (legacy behavior kept as default, see manuale PFC,
+%   "revisione modelli"): the legacy vertical stress is
+%   FZ/(Re^2-Ri^2)*pi, i.e. the force divided by (Re^2-Ri^2) and
+%   MULTIPLIED by pi; the sibling formula in CS (eqv_stress_coil_cicc.m)
+%   and in the unported LASSO variant divide by pi*(Re^2-Ri^2), the
+%   annulus area. With Fz_area_fix=1 the annulus-area form is used; the
+%   legacy form overestimates S_ver by pi^2 = 9.87.
+%
 %   Relocated unchanged from the PF legacy archive
 %   (eqv_stress_coil_ring_cicc.m, part of MADE_PF.7z), the formula
 %   actually used by PF_opt_VNS.m (as opposed to
@@ -30,11 +47,15 @@ function [S_hoop, S_rad, S_ver, S_T] = eqv_stress_coil_ring_cicc(FZ, Re_grades, 
 %   "LASSO" winding variant - see manuale PFC).
 
 %% Materials [GPa]
-E_jckt = 205;
-E_cbl_HTS = 120;
-E_cbl_LTS = 0.1;
-E_ins = 20;
-ni = 1/3;
+if nargin < 19 || isempty(opts)
+    opts = struct();
+end
+E_jckt = get_opt(opts, 'E_jckt', 205);
+E_cbl_HTS = get_opt(opts, 'E_cbl_HTS', 120);
+E_cbl_LTS = get_opt(opts, 'E_cbl_LTS', 0.1);
+E_ins = get_opt(opts, 'E_ins', 20);
+ni = get_opt(opts, 'ni', 1/3);
+Fz_area_fix = get_opt(opts, 'Fz_area_fix', 0);
 J = Iop/(Cond_h*Cond_w);
 
 %% Hoop stress
@@ -97,8 +118,20 @@ dcr_jckt = K_jckt/Ke_cavo;
 r_steel = (Cond_w-2*tins)/(2*JT);
 K_rv = r_steel*dcr_jckt;
 
-S_ver = ones(size(S_hoop))*(FZ/((Re_grades^2 - Ri_grades^2))*pi)*max(K_rv);
+if Fz_area_fix
+    S_ver = ones(size(S_hoop))*(FZ/((Re_grades^2 - Ri_grades^2)*pi))*max(K_rv);
+else
+    S_ver = ones(size(S_hoop))*(FZ/((Re_grades^2 - Ri_grades^2))*pi)*max(K_rv);
+end
 
 %% Tresca stress
 S_T = abs(S_hoop + S_ver);
+end
+
+function v = get_opt(opts, name, default)
+if isfield(opts, name) && ~isempty(opts.(name))
+    v = opts.(name);
+else
+    v = default;
+end
 end
