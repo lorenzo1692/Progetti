@@ -17,13 +17,14 @@ function DATA = scan_wp_designs(p, g, env)
 %   the same way the TF port restructured its own monolithic script:
 %   duplicated sizing logic delegated to SIZE_CONDUCTOR_CICC/
 %   SIZE_CICC_CABLE, everything else kept as close to the original control
-%   flow as possible. Known fidelity notes (see manuale CS, "decisioni
-%   aperte" and code comments below): k_Bmax is algebraically always 1
-%   given the currently-active (non bmax_check) code path; the final axial
-%   force used in the stress check is a fixed p.F_z_check_MN (the legacy
-%   driver hardcoded FZmax=35 right after computing it from
-%   EMAG_FIELD_FORCES, silently discarding the computed value) rather than
-%   the value EMAG_FIELD_FORCES actually returns.
+%   flow as possible. Known fidelity note (see manuale CS): k_Bmax is
+%   algebraically always 1 given the currently-active (non bmax_check)
+%   code path.
+%
+%   Deliberate deviation from the legacy driver: the axial force in the
+%   final stress check is each candidate's own FZmax from
+%   EMAG_FIELD_FORCES (saved as column Fz_MN), not the fixed 35 MN the
+%   legacy CS_opt_VNS.m overwrote it with.
 
 Mu_0 = g.Mu_0;
 n_moduli = p.n_moduli;
@@ -175,7 +176,7 @@ for comb = 1:size(comb_nli,1)
 
     %% Field/forces (innermost grade) and final stress check
     var = n_grades;
-    [Bsum, ~, ~, ~, ~, ~, ~, ~, ~, ~, ~] = emag_field_forces( ...
+    [Bsum, ~, ~, ~, FZmax, ~, ~, ~, ~, ~, ~] = emag_field_forces( ...
         coil.Cond_h, coil.Cond_w, coil.Ri_grades, coil.n_turns, coil.n_layers, ...
         n_grades, n_moduli, coil.Iop, g.spacer, 0);
 
@@ -185,9 +186,15 @@ for comb = 1:size(comb_nli,1)
 
     coil.PB(var) = Bsum^2 / (2*Mu_0);
 
-    F_z_check = p.F_z_check_MN; % fixed axial force used for the stress check - see fidelity note above
+    % Fz used per candidate, not hardcoded: FZmax is EMAG_FIELD_FORCES' own
+    % computed axial force for this design (already in MN - see
+    % EQV_STRESS_COIL_CICC's unit note). The legacy driver computed this
+    % same FZmax and then silently discarded it in favour of a fixed 35 MN
+    % for every candidate; per user decision (01/10/2026) that override is
+    % removed and each candidate now uses its own computed force.
+    coil.F_z_MN = FZmax;
     [S_hoop, ~, S_ver, S_T] = eqv_stress_coil_cicc( ...
-        F_z_check, coil.Ri, g.Re, coil.Cond_h(var), coil.Cond_w(var), coil.JT(var), ...
+        FZmax, coil.Ri, g.Re, coil.Cond_h(var), coil.Cond_w(var), coil.JT(var), ...
         coil.SC_h(var), coil.SC_w(var), g.tins, coil.type_cable(var), coil.S_CICC(var), coil.S_JT(var), coil.PB(var)); %#ok<ASGLU>
 
     coil.S_hoop_max = max(S_hoop);
@@ -218,7 +225,7 @@ for comb = 1:size(comb_nli,1)
             coil.Cond_w, coil.Cond_h, coil.JT, coil.r_cable, ...
             coil.N_Cu, coil.N_Sc, coil.B_dim, coil.S_REBCO, coil.S_Cu_HTS, ...
             coil.S_Cable, coil.THS, coil.E, ...
-            coil.Jeng, coil.eps_Sc, coil.total_length, ...
+            coil.Jeng, coil.eps_Sc, coil.total_length, coil.F_z_MN, ...
             'VariableNames', { ...
                 'plasma_cycles', 'S_hoop_max', 'S_T_max', ...
                 'Phi', 'Phi_TOT', 'L', 'B_grades', ...
@@ -228,7 +235,7 @@ for comb = 1:size(comb_nli,1)
                 'Cond_w', 'Cond_h', 'JT', 'r_cable', ...
                 'N_Cu', 'N_Sc', 'B_dim', 'S_REBCO', 'S_Cu_HTS', ...
                 'S_Cable', 'THS', 'E', ...
-                'Jeng', 'eps_Sc', 'length_module' ...
+                'Jeng', 'eps_Sc', 'length_module', 'Fz_MN' ...
             });
 
         DATA = [DATA; row]; %#ok<AGROW>
