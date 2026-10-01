@@ -5,6 +5,9 @@ function geom = read_coil_geometry(xlsx_path)
 %   (columns: R, Z, dr, dz, then one column per plasma scenario) such as
 %   Baseline_VNS_07_2026_V3_CREATE.xlsx, and returns a struct geom with:
 %     geom.R, geom.Z, geom.dr, geom.dz  - one value per conductor row
+%     geom.MAt_signed                  - scenario currents with their sign
+%                                         (needed for the field of the other
+%                                         coils), same layout as MAt_scenario
 %     geom.MAt_scenario                - abs(scenario currents), one row
 %                                         per conductor, one column per
 %                                         scenario
@@ -42,6 +45,7 @@ geom.R = raw(:, 1);
 geom.Z = raw(:, 2);
 geom.dr = raw(:, 3);
 geom.dz = raw(:, 4);
-geom.MAt_scenario = abs(raw(:, 5:end));
+geom.MAt_signed = raw(:, 5:end);
+geom.MAt_scenario = abs(geom.MAt_signed);
 geom.MAt = max(geom.MAt_scenario, [], 2);
 end

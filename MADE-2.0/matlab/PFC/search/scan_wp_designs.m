@@ -43,6 +43,14 @@ function DATA = scan_wp_designs(p, g, env, WP_h, R_center, MAt_target, FZ, L_fac
 n_grades = p.n_grades;
 Mu_0 = g.Mu_0;
 
+fcgr_mode = p.fcgr_mode; % 0 = off, 1 = compute plasma_cycles, 2 = size the jacket for plasma_cycles_min
+fp = [];
+if fcgr_mode > 0
+    fp = fcgr_options(p);
+end
+ring_opts = struct('E_jckt', p.E_jckt, 'E_cbl_LTS', p.E_cbl_LTS, 'E_cbl_HTS', p.E_cbl_HTS, ...
+    'E_ins', p.E_ins, 'ni', p.ring_nu, 'Fz_area_fix', p.ring_Fz_area_fix);
+
 %% 1. Pre-filter turns/layers/Iop combinations against the MAt target and the crude B window
 good = 0;
 max_possible = size(env.combT,1)*size(env.combL,1)*numel(env.Iop_range);
@@ -167,7 +175,7 @@ for comb = 1:size(valid_comb,1)
             sizing_in.r_SC = coil.r_SC(var);
             sizing_in.tins = coil.t_ins(var);
             sizing_in.type_cable = coil.type_cable(var);
-            sizing_in.Cond_w1 = coil.Cond_h(1); % Cond_w(1) in the legacy driver - equal to this grade's Cond_h when n_grades=1
+            sizing_in.Cond_w1 = coil.Cond_w(1); % Cond_w(1) in the legacy driver (grade 1's width, already sized when var>1)
             sizing_in.n_layers_var = coil.n_layers(var);
             sizing_in.R_center = R_center;
             sizing_in.dy = coil.Cond_h(var);
@@ -181,15 +189,27 @@ for comb = 1:size(valid_comb,1)
             sizing_in.S_hoop_allow = g.S_hoop_amm;
             sizing_in.Tresca_factor = p.Tresca_factor;
             sizing_in.max_iter = p.max_sizing_iterations;
+            sizing_in.ring_opts = ring_opts;
+            sizing_in.fcgr_mode = fcgr_mode;
+            sizing_in.plasma_cycles_min = p.plasma_cycles_min;
+            sizing_in.fp = fp;
 
             sized = size_cicc_cable(sizing_in);
+            if ~sized.feasible
+                invalid = true;
+                break % the jacket outgrew the conductor cell: reject this candidate
+            end
 
             coil.SC_w(var) = sized.SC_w; coil.SC_h(var) = sized.SC_h;
             coil.JT(var) = sized.JT; coil.Cond_w(var) = sized.Cond_w;
             coil.S_CICC(var) = sized.S_CICC; coil.S_JT(var) = sized.S_JT;
             coil.Ri_grades(var) = sized.Ri_grade; coil.Re_grades(var) = sized.Re_grade;
             coil.Bsum = sized.Bsum; coil.Bmin(var) = sized.Bmin; coil.Bmax(var) = sized.Bmax;
-            coil.S_hoop(var) = sized.S_hoop; coil.S_T(var) = sized.S_T;
+            coil.S_hoop = sized.S_hoop; coil.S_T = sized.S_T; % per-layer vectors; with n_grades>1 the last grade wins, as in the legacy driver
+        end
+
+        if invalid
+            break
         end
 
         if coil.B_grades(var) > coil.Bsum
@@ -197,6 +217,9 @@ for comb = 1:size(valid_comb,1)
         else
             check_B = true;
         end
+    end
+    if invalid
+        continue % the jacket outgrew the conductor cell: reject this candidate
     end
 
     %% Global winding-pack geometry
@@ -231,9 +254,11 @@ for comb = 1:size(valid_comb,1)
     counter = counter + 1;
 
     Jeng = (coil.Iop*1e-3)./(coil.Cond_w.*coil.Cond_h)*1e-3; % [A/mm^2]
-    coil.plasma_cycles = zeros(1, n_grades);
-    for var = 1:n_grades
-        coil.plasma_cycles(var) = fcgr(coil.JT(var), coil.Cond_w(var), coil.S_hoop(var)*1e-6);
+    coil.plasma_cycles = nan(1, n_grades);
+    if fcgr_mode > 0
+        for var = 1:n_grades
+            coil.plasma_cycles(var) = fcgr(coil.JT(var), coil.Cond_w(var), abs(coil.S_hoop)*1e-6, fp);
+        end
     end
 
     S_Cable_mm2 = round(1e6*coil.S_Cable);
@@ -245,12 +270,14 @@ for comb = 1:size(valid_comb,1)
         coil.SC_mat, coil.Cond_w, coil.Cond_h, coil.JT, coil.r_cable, coil.N_Cu, coil.N_sc, ...
         coil.B_grades, S_REBCO_mm2, S_Cu_HTS_mm2, S_Cable_mm2, coil.THS, coil.E, ...
         coil.plasma_cycles, coil.SH*1e-6, coil.ST*1e-6, L_factor, coil.Tau_discharge, coil.V_, ...
+        R_center, coil.S_Cable, coil.S_JT, coil.t_ins(1), coil.r_SC(1), FZ, coil.type_cable, ...
         'VariableNames', { ...
             'n_PF', 'WP_h0', 'L', 'Btot', 'Jeng', 'Iop_kA', 'Itot', ...
             'Ri', 'Re', 'Rp', 'n_layers', 'n_turns', 'N_spire', 'WP_w', 'WP_h', ...
             'SC_mat', 'Cond_w', 'Cond_h', 'JT', 'r_cable', 'N_Cu', 'N_SC', ...
             'B_local', 'S_REBCO_mm2', 'S_Cu_HTS_mm2', 'S_Cable_mm2', 'THS', 'E', ...
-            'plasma_cycles', 'SH_MPa', 'ST_MPa', 'L_tot_factor', 'Tau_discharge', 'V_max'});
+            'plasma_cycles', 'SH_MPa', 'ST_MPa', 'L_tot_factor', 'Tau_discharge', 'V_max', ...
+            'R_center', 'S_Cable_m2', 'S_JT_m2', 'tins_m', 'r_SC_m', 'FZ_N', 'type_cable'});
 
     DATA = [DATA; row]; %#ok<AGROW>
 end

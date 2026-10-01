@@ -10,7 +10,8 @@
 % Pipeline:
 %   1. Ask for (and let you review) the machine parameter Excel file, the
 %      combined CS+PFC+plasma geometry/Ampere-turns file, and the
-%      per-scenario axial-force file.
+%      per-scenario axial-force file (optional: computed from the
+%      scenario currents when not given).
 %   2. Read them into a parameter struct + geometry/force tables (io/*.m)
 %      and compute the single-turn mutual/self inductance matrix of every
 %      conductor (physics/compute_coupling_matrix.m - this replaces the
@@ -23,7 +24,10 @@
 %      stress checks (search/scan_wp_designs.m).
 %   4. Save one results table per PF coil (across its whole WP_h sweep),
 %      then optionally let you browse it and choose a design point to
-%      plot and save (postprocess/*.m).
+%      plot and save (postprocess/*.m), and to verify it with the
+%      axisymmetric FE model (fem/fem_pfc_verify.m: field of the coil and
+%      of the rest of the machine for every plasma scenario, Lorentz
+%      loads, hoop/vertical/Tresca stress against the design models).
 %
 % This is a direct port of PF_opt_VNS.m into a TF/CS-style modular
 % pipeline (see the manuale PFC artifact for the full analysis and the
@@ -70,11 +74,12 @@ if isempty(geometry_file) || ~isfile(geometry_file)
 end
 
 %% 1c. Select the per-scenario axial-force file
-fprintf('\nPer-scenario axial-force file (e.g. FZ_PF.xlsx):\n');
+fprintf(['\nPer-scenario axial-force file (e.g. FZ_PF.xlsx).\n' ...
+    'Press Enter to compute it from the scenario currents instead ' ...
+    '(physics/compute_scenario_forces.m):\n']);
 force_file = strtrim(input('Path: ', 's'));
-if isempty(force_file) || ~isfile(force_file)
-    error('main_WP_PFC_design:force_file_required', ...
-        'A valid axial-force file is required (see io/read_axial_force.m).');
+if ~isempty(force_file) && ~isfile(force_file)
+    error('main_WP_PFC_design:force_file_not_found', 'Axial-force file not found: %s', force_file);
 end
 
 [~, tag] = fileparts(input_file); % used to tag every output file from this run
@@ -83,7 +88,12 @@ end
 p = read_machine_input(input_file);
 g = compute_operating_params(p);
 geom = read_coil_geometry(geometry_file);
-FZ_max = read_axial_force(force_file);
+if isempty(force_file)
+    Fz_scenarios = compute_scenario_forces(geom);       % [MN], rows as in geom
+    FZ_max = max(abs(Fz_scenarios), [], 2)*1e6;          % [N]
+else
+    FZ_max = read_axial_force(force_file);
+end
 L_matrix = compute_coupling_matrix(geom);
 
 %% 3. Scan every PF coil (PF1..PF6) across the WP_h sweep
@@ -134,4 +144,10 @@ for n_PF_idx = 1:n_pf_coils
     end
     sel_idx = browse_solutions(DATA_coil);
     plot_solution(DATA_coil, sel_idx, tag);
+
+    run_fem = strtrim(input('Run the FEM verification of this design point? [y/N]: ', 's'));
+    if strcmpi(run_fem, 'y')
+        fem_res = fem_pfc_verify(DATA_coil(sel_idx, :), p, geom, struct('plot', true)); %#ok<NASGU>
+        save(sprintf('%s_PF%d_design_%d_fem.mat', tag, n_PF_idx, sel_idx), 'fem_res');
+    end
 end
