@@ -22,9 +22,9 @@ function DATA = scan_wp_designs(p, g, env)
 %   code path.
 %
 %   Deliberate deviation from the legacy driver: the axial force in the
-%   final stress check is each candidate's own FZmax from
-%   EMAG_FIELD_FORCES (saved as column Fz_MN), not the fixed 35 MN the
-%   legacy CS_opt_VNS.m overwrote it with.
+%   final stress check is each candidate's own stack compression FZmax
+%   from EMAG_FIELD_FORCES with the full stack evaluated (saved as column
+%   Fz_MN), not the fixed 35 MN the legacy CS_opt_VNS.m overwrote it with.
 
 Mu_0 = g.Mu_0;
 n_moduli = p.n_moduli;
@@ -178,7 +178,7 @@ for comb = 1:size(comb_nli,1)
     var = n_grades;
     [Bsum, ~, ~, ~, FZmax, ~, ~, ~, ~, ~, ~] = emag_field_forces( ...
         coil.Cond_h, coil.Cond_w, coil.Ri_grades, coil.n_turns, coil.n_layers, ...
-        n_grades, n_moduli, coil.Iop, g.spacer, 0);
+        n_grades, n_moduli, coil.Iop, g.spacer, 1);
 
     if Bsum < p.min_B || Bsum > p.max_B
         continue
@@ -186,12 +186,15 @@ for comb = 1:size(comb_nli,1)
 
     coil.PB(var) = Bsum^2 / (2*Mu_0);
 
-    % Fz used per candidate, not hardcoded: FZmax is EMAG_FIELD_FORCES' own
-    % computed axial force for this design (already in MN - see
-    % EQV_STRESS_COIL_CICC's unit note). The legacy driver computed this
-    % same FZmax and then silently discarded it in favour of a fixed 35 MN
-    % for every candidate; per user decision (01/10/2026) that override is
-    % removed and each candidate now uses its own computed force.
+    % Fz per candidate, not hardcoded: FZmax from EMAG_FIELD_FORCES with
+    % the whole stack evaluated (full_stack=1) is the axial compression
+    % through the stack mid-plane (sum of the Fz of the lower half of the
+    % stack), in MN - see EQV_STRESS_COIL_CICC's unit note. With
+    % full_stack=0 only one module is evaluated and FZmax would be the
+    % force on half a module (about 26x too small for the VNS baseline, as
+    % the FEM stack verification showed). The legacy driver overwrote this
+    % value with a fixed 35 MN; per user decision (01/10/2026) each
+    % candidate now uses its own computed compression.
     coil.F_z_MN = FZmax;
     [S_hoop, ~, S_ver, S_T] = eqv_stress_coil_cicc( ...
         FZmax, coil.Ri, g.Re, coil.Cond_h(var), coil.Cond_w(var), coil.JT(var), ...

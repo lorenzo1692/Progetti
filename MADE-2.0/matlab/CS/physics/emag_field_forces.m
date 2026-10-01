@@ -9,7 +9,10 @@ function [Bsum, Bmin, Bmax, FRmax, FZmax, Br, Bz, Fr, Fz, Rc, Zc] = emag_field_f
 %   radial/axial Lorentz forces. FZmax and FRmax are in MN (sum of Fz/Fr
 %   in N, scaled by 1e-6 - see EQV_STRESS_COIL_CICC for why this matters).
 %   full_stack=0 evaluates only the middle module (module 3) for speed;
-%   full_stack=1 evaluates every module.
+%   full_stack=1 evaluates every module. FZmax is the sum of the Fz of the
+%   first half of the evaluated turns: with full_stack=1 it is the axial
+%   compression through the stack mid-plane (use this for the vertical
+%   stress), with full_stack=0 it is only the force on half of one module.
 %
 %   Relocated from the CS legacy archive (emag.m), same algorithm. The
 %   original accepted an extra `input` (scenario currents) argument that

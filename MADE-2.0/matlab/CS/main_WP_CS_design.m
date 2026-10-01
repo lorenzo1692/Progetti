@@ -15,6 +15,8 @@
 %      design point and choose one to plot and save: scan scatter
 %      (plot_solution.m) and module / full-CS section colored by |B|
 %      (plot_cs_section.m).
+%   6. Optionally verify the chosen design with the axisymmetric FEM of the
+%      whole stack (fem/fem_cs_verify.m).
 %
 % This is a direct port of CS_opt_VNS.m into the TF-style modular
 % pipeline (see the manuale CS artifact for the full analysis and the
@@ -87,3 +89,10 @@ fprintf('\n%d feasible design point(s) saved to %s\n', height(DATA), results_fil
 sel_idx = browse_solutions(DATA);
 plot_solution(DATA, sel_idx, tag);
 plot_cs_section(DATA, sel_idx, tag, p, g);
+
+%% 6. Optional FEM verification of the chosen design (whole stack, axisymmetric)
+if strcmpi(strtrim(input('Verify the chosen design with the FEM stack model? [y/N]: ', 's')), 'y')
+    geom = read_coil_geometry(scenario_file);
+    fem_res = fem_cs_verify(DATA(sel_idx, :), p, g, geom, struct('plot', true));
+    save(sprintf('%s_design_%d_fem.mat', tag, sel_idx), 'fem_res');
+end
