@@ -371,3 +371,28 @@ Re-run of `validate_mech_surrogate_2026.m` with the current code (RIS bonded
 side, contact-state tolerance), 29-Sep-2026: **PASSED**, ratios unchanged
 (benchmark Pm 0.99, Pm+Pb 0.98, peak 1.02 mean; design 7 Pm 0.96, Pm+Pb
 0.96, peak 0.99; eps_z +0.3 % / 0.0 %).
+
+## Design 10 - jacket thickness sensitivity (2D FE, 01-Oct-2026)
+
+Same layout, cable areas and nose thickness (DTF 179 mm, Rk_ moves inward
+with the WP); primary load case; all checks passed in every run.
+
+| JT per grade [mm] | WP_h [mm] | Jacket Pm max | Jacket Pm+Pb max (layer) | Surrogate Pm+Pb | Surr/FE | Case nose Pm |
+|---|---:|---:|---:|---:|---:|---:|
+| 2.1 / 2.1 / 2.1 (scan) | 326 | 631 | 1075 (L11) | 962 (L13) | 0.89 | 631 |
+| 2.6 / 2.6 / 2.6 | 351 | 596 | 995 (L11) | 846 (L13) | 0.85 | 613 |
+| 3.1 / 3.1 / 3.1 | 377 | 562 | 925 (L11) | 759 (L13) | 0.82 | 597 |
+| 2.1 / 2.6 / 3.1 (graded) | 350 | 581 | 948 (L11) | 833 (L5) | 0.88 | 611 |
+
+- +50 % jacket steel (2.1 -> 3.1 mm) lowers the FE jacket Pm+Pb by only 14 %
+  (Pm -11 %): the critical stress is the local bending of the edge turn of
+  layer 11 (14 turns) over layer 12 (10 turns), weakly dependent on JT.
+- The surrogate drops 21 % for the same change: its JT sensitivity (through
+  sigma_nom ~ 1/JT) is about 1.5x too strong, so a fixed margin on the
+  surrogate is not robust in JT. The calibration set has one JT per design;
+  variants of the same design at several JT are needed to separate JT from
+  the layout.
+- In all 31 designs of the scan JT = 2.1 mm everywhere (min_JT + one
+  JT_step): the thin-membrane JT formula of size_cicc_cable (S_rm 413 vs
+  limit 513 MPa here) never governs, so the jacket is not sized in the scan,
+  only checked (scf_model 1) or used in the nose loop (scf_model 0).
