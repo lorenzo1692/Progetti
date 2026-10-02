@@ -1,10 +1,15 @@
-function [THS, t, TF] = heat_balance_cicc_ode(N_Sc,N_Cu,d_fili,CunonCu,Iop0,B0,Tau_discharge,mat,d_cc,VF,costheta,S_tapes,Tau_delay)
+function [THS, t, TF] = heat_balance_cicc_ode(N_Sc,N_Cu,d_fili,CunonCu,Iop0,B0,Tau_discharge,mat,d_cc,VF,costheta,S_tapes,Tau_delay,T_stop)
 %HEAT_BALANCE_CICC_ODE Adiabatic hot-spot transient of a CICC after a quench.
 %
 %   THS = HEAT_BALANCE_CICC_ODE(...) returns the peak hot-spot temperature [K].
 %   [THS, t, TF] = HEAT_BALANCE_CICC_ODE(...) also returns the full
 %   temperature history TF(t), used by postprocess/plot_hotspot_transient.m.
 %   Tau_delay [s] is optional (default 1 s, see cicc_params.m).
+%   T_stop [K] is optional: the integration stops as soon as the hot spot
+%   exceeds it (THS >= T_stop is returned). CICC uses it in the copper
+%   search, where a runaway transient only needs to be recognized as above
+%   the limit: without it, ode45 crawls with tiny steps through the runaway
+%   (minutes per call at low field and low copper).
 
     if nargin < 13 || isempty(Tau_delay)
         Tau_delay = 1;
@@ -20,6 +25,9 @@ function [THS, t, TF] = heat_balance_cicc_ode(N_Sc,N_Cu,d_fili,CunonCu,Iop0,B0,T
 
     % ODE solver
     options = odeset('RelTol', 1e-6);
+    if nargin >= 14 && ~isempty(T_stop) && isfinite(T_stop)
+        options = odeset(options, 'Events', @(t, T) deal(T - T_stop, 1, 1));
+    end
     [t, TF] = ode45(@temperatureODE, tspan, T0, options);
 
     % Results

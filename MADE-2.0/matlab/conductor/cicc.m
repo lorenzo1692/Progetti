@@ -124,7 +124,7 @@ end
 % transient solutions instead of the 30-40 of the former 10-point grid
 % refinement, which also stopped on the coarse grid (up to ~1100 strands of
 % extra copper) once the bracket passed 980 strands.
-ths = @(n) heat_balance_cicc_ode(N_Sc,n,d_fili,CunonCu,Iop,B,Tau_discharge,mat,d_cc,VF,cos_theta,S_tapes,cp.Tau_delay);
+ths = @(n) heat_balance_cicc_ode(N_Sc,n,d_fili,CunonCu,Iop,B,Tau_discharge,mat,d_cc,VF,cos_theta,S_tapes,cp.Tau_delay,2*Tlim);
 N_Cu_max = 10000;
 hi = N_Cu_max; T_hi = ths(hi);
 if T_hi > Tlim
