@@ -44,6 +44,14 @@ for i = 1:numel(runs)
 end
 say('ALL: %d layers, ratio mean %.3f, rms error %.1f %%, min %.3f, max %.3f | design max ratio: min %.3f, max %.3f\n', ...
     numel(allr), mean(allr), 100*sqrt(mean((allr - 1).^2)), min(allr), max(allr), min(dmax), max(dmax));
+% without the two FE runs excluded from the surrogate fit as well
+% (validation/tools/fit_jacket_surrogate.py: anomalous FE results)
+ex = ismember({R.name}, {'s1_1@jt+1.0', 's2_4@jt+1.0'});
+r2 = cell2mat(arrayfun(@(q) q.Pm_LC./q.Pm_FE, R(~ex), 'UniformOutput', false));
+d2 = dmax(~ex);
+say(['WITHOUT s1_1@jt+1.0, s2_4@jt+1.0: %d layers, ratio mean %.3f, rms error %.1f %%, 90th pct |ratio-1| %.3f | ' ...
+    'design max ratio: min %.3f, max %.3f, rms error %.1f %%\n'], numel(r2), mean(r2), 100*sqrt(mean((r2 - 1).^2)), ...
+    prctile(abs(r2 - 1), 90), min(d2), max(d2), 100*sqrt(mean((d2 - 1).^2)));
 
 % ---- case: reference FE runs ----------------------------------------------
 ref_file = fullfile(this_dir, 'results', 'mech_reference_fe.csv');
