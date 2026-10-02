@@ -49,18 +49,19 @@ if isempty(field_model) || ~isscalar(field_model) || ~any(field_model == [0 1 2]
     error('scan_wp_designs:field_model', 'p.field_model must be 0 (smeared), 1 (calibrated) or 2 (discrete).');
 end
 % jacket stress model: 0 = analytic formula with the SCF table and
-% SCF_transition_provisional (default); 1 = fast surrogate calibrated on
+% SCF_transition_provisional; 1 = fast surrogate calibrated on
 % the 2D FE (JACKET_STRESS_SURROGATE): the jacket thickness of every grade
 % is SIZED with it (SIZE_JACKET_SURROGATE: smallest JT with
 % jacket_margin x Pm <= Sm and jacket_margin x (Pm+Pb) <= 1.5 Sm), iterated
 % with the case nose (docs/DIMENSIONAMENTO_JACKET.md)
-scf_model = 0; if isfield(p, 'scf_model') && ~isempty(p.scf_model), scf_model = p.scf_model; end
+scf_model = 1; if isfield(p, 'scf_model') && ~isempty(p.scf_model), scf_model = p.scf_model; end
 if ~any(scf_model == [0 1])
     error('scan_wp_designs:scf_model', 'p.scf_model must be 0 (SCF table) or 1 (surrogate).');
 end
 if scf_model == 1 && p.shape_cable == 200
-    error('scan_wp_designs:scf_model_ris', ['scf_model = 1: the jacket stress surrogate is calibrated on ' ...
-        'rectangular cables only; use scf_model = 0 for RIS (shape_cable = 200).']);
+    warning('scan_wp_designs:scf_model_ris', ['scf_model = 1: the jacket stress surrogate is calibrated on ' ...
+        'rectangular cables only; RIS (shape_cable = 200) uses the analytic formula (scf_model = 0).']);
+    scf_model = 0;
 end
 Sm_jacket = p.S_amm_JT; if isfield(p, 'Sm_jacket') && ~isempty(p.Sm_jacket), Sm_jacket = p.Sm_jacket; end
 jacket_margin = 1.10; if isfield(p, 'jacket_margin') && ~isempty(p.jacket_margin), jacket_margin = p.jacket_margin; end   % docs/DIMENSIONAMENTO_JACKET.md
