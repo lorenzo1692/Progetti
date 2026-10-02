@@ -26,7 +26,7 @@ function [THS, t, TF] = heat_balance_cicc_ode(N_Sc,N_Cu,d_fili,CunonCu,Iop0,B0,T
     % ODE solver
     options = odeset('RelTol', 1e-6);
     if nargin >= 14 && ~isempty(T_stop) && isfinite(T_stop)
-        options = odeset(options, 'Events', @(t, T) deal(T - T_stop, 1, 1));
+        options = odeset(options, 'Events', @runawayEvent);
     end
     [t, TF] = ode45(@temperatureODE, tspan, T0, options);
 
@@ -52,6 +52,15 @@ function [THS, t, TF] = heat_balance_cicc_ode(N_Sc,N_Cu,d_fili,CunonCu,Iop0,B0,T
     % 
     %     text(t(10),(max(TF)/1.55),keyt,'HorizontalAlignment','left','FontSize',10);
     % end
+
+    function [value, isterminal, direction] = runawayEvent(~, T)
+        % stop the integration when the hot spot crosses T_stop (upwards);
+        % a nested function with the three outputs ode45 expects (MATLAB
+        % calls it first with one output only, so deal() cannot be used)
+        value = T - T_stop;
+        isterminal = 1;
+        direction = 1;
+    end
 
     function dTdt = temperatureODE(t, T)
         % ODE for temperature evolution
