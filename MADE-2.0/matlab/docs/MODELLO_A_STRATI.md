@@ -280,6 +280,8 @@ la ripartizione locale.
 | | d7 | 606 / 533 (−12%) | 534 / 437 (−18%) | 357 / 328 |
 | + cella 'wrapped' (default) | bench | 655 / 601 (−8%) | 545 / 514 (−6%) | 402 / 366 (−9%) |
 | | d7 | 606 / 553 (−9%) | 534 / 452 (−15%) | 357 / 324 (−9%) |
+| | d10 | 631 / 599 (−5%) | 526 / 522 (−1%) | 403 / 436 (+8%) |
+| | s1_1 | 577 / 505 (−13%) | 448 / 390 (−13%) | 321 / 269 (−16%) |
 
 Spessore del nose al centro: R_j − R_k contro il FE R_j − R_k/cos(π/n_TF).
 
@@ -310,8 +312,8 @@ Le altre run FE di riferimento (`run_mech_reference_fe`) sono in corso.
 - **Jacket.** Con un solo parametro tarato (μ efficace = 0.1) il modello è
   vicino al surrogato: rms 8.3% contro 7%, massimo del design 0.85 … 1.09.
   Però sovrastima il beneficio di un jacket più spesso (§8.1).
-- **Case.** Nose e piastra sono sottostimati del 6–15% sui due design
-  disponibili. Criterio concordato ±5%: non ancora rispettato.
+- **Case.** Sui quattro design disponibili il nose è sottostimato del 5–13%,
+  la piastra dell'1–15% e la parete laterale tra −16% e +8%. Criterio concordato ±5%: non ancora rispettato.
 - **Prossimo passo.** Una cella elementare risolta numericamente una volta
   per grade: un turn con raccordi, cavo, jacket e isolante, con le tre
   deformazioni medie unitarie. Dà le rigidezze equivalenti esatte e le
