@@ -406,3 +406,14 @@ ranked by radial build; `search/refine_jacket_fe.m` corrects the chosen
 design with the FE. On the design-10 machine, scan #1 (design 10 layout,
 JT 2.1/2.1/2.4 mm): FE Pm+Pb 1047 MPa -> refined JT 2.1/2.2/2.9 mm, FE Pm
 601, Pm+Pb 985 MPa (criteria met), radial build 542.4 -> 552.6 mm.
+
+## Global 3D beam + shell model vs STR_360 (02-Oct-2026)
+
+`coil3d/tf3d_global_model.m`, `coil3d/tf3d_global_solve.m`,
+`validation/verify_tf3d_ansys_global.m`; details in
+`docs/MODELLO_GLOBALE_3D.md`. Full 12-coil 6-DOF model (11 664 DOF, 13 s):
+beam axial force within 1%, in-plane moment 2.92 vs 3.00 MN m, max fibre
+stress 500 vs 504 MPa, displacements within 0.3 mm, vault shell N11/N22
+within 0.5-0.7% and moments within 6%, vault SINT 880 vs 883 MPa. Found:
+STR_360_improved applies the toroidal force with the opposite sign on
+coil 1 (FY in nodal cylindrical axes = -x global at theta = 90 deg).
