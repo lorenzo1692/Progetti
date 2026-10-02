@@ -115,38 +115,45 @@ end
 %     N_Sc = min(z_);  
 % end
 
-%% Heat Balance    
-div = 10;
-N_Cu0 = linspace(1,10000,div); 
-while true
-    THS = zeros(size(N_Cu0,2),1);
-    for j=1:size(N_Cu0,2)         
-        THS(j) = heat_balance_cicc_ode(N_Sc,N_Cu0(j),d_fili,CunonCu,Iop,B,Tau_discharge,mat,d_cc,VF,cos_theta,S_tapes,cp.Tau_delay);           
-    end    
-    [~,indx] = min(abs(THS-Tlim)); 
-    %
-    if THS(indx) > Tlim
-        b = round(N_Cu0(min(max(1,indx+1),div))); a = round(N_Cu0(indx));
-    else
-        a = round(N_Cu0(max(1,indx-1))); b = round(N_Cu0(indx));
-    end          
-    %
-    if abs(Tlim-THS(indx)) <= 5 || b-a <= 1 || a > 980
-        % keep the safe side: among the evaluated copper counts, the one
-        % whose hot spot is closest to the limit FROM BELOW (THS falls with
-        % N_Cu). The closest in absolute value could be up to 5 K above the
-        % limit, and the scan's THS check then rejected the candidate for a
-        % tolerance round-off, not for physics.
-        ok = find(THS <= Tlim);
-        if ~isempty(ok)
-            [~, m] = max(THS(ok)); indx = ok(m);
+%% Heat Balance
+% Smallest copper strand count N_Cu with the hot spot THS(N_Cu) <= Tlim,
+% within 5 K below the limit (THS falls monotonically with N_Cu). Bracketed
+% search on log(N_Cu) in [1, N_Cu_max]: geometric bisection until both ends
+% are known, then regula falsi (Illinois) on log(N_Cu); stops when the safe
+% end is within 5 K of the limit or the bracket is one strand. About 5-8
+% transient solutions instead of the 30-40 of the former 10-point grid
+% refinement, which also stopped on the coarse grid (up to ~1100 strands of
+% extra copper) once the bracket passed 980 strands.
+ths = @(n) heat_balance_cicc_ode(N_Sc,n,d_fili,CunonCu,Iop,B,Tau_discharge,mat,d_cc,VF,cos_theta,S_tapes,cp.Tau_delay);
+N_Cu_max = 10000;
+hi = N_Cu_max; T_hi = ths(hi);
+if T_hi > Tlim
+    % not even the largest copper keeps the hot spot below the limit: the
+    % scan rejects the candidate on THS
+    N_Cu = hi; THS = T_hi;
+else
+    lo = 1; T_lo = Inf;              % N_Cu = 1: runaway, above the limit
+    side = 0;
+    while hi - lo > 1 && T_hi < Tlim - 5
+        if isfinite(T_lo)
+            % regula falsi on log(N) with the Illinois correction
+            w_lo = T_lo - Tlim; w_hi = T_hi - Tlim;
+            if side == 1, w_lo = w_lo/2; elseif side == -1, w_hi = w_hi/2; end
+            x = log(lo) + (log(hi) - log(lo))*w_lo/(w_lo - w_hi);
+            n = round(exp(x));
+        else
+            n = round(sqrt(lo*hi));
         end
-        N_Cu = ceil(N_Cu0(indx));
-        THS = THS(indx);
-        break
+        n = min(max(n, lo + 1), hi - 1);
+        T_n = ths(n);
+        if T_n <= Tlim
+            hi = n; T_hi = T_n; side = 1;
+        else
+            lo = n; T_lo = T_n; side = -1;
+        end
     end
-    N_Cu0 = linspace(a,b,div);
-end    
+    N_Cu = hi; THS = T_hi;
+end
 %%
 N_tot = N_Sc+N_Cu;
 

@@ -80,6 +80,7 @@ end
 field_tol = 0.05;     if isfield(p, 'field_tol') && ~isempty(p.field_tol), field_tol = p.field_tol; end           % [T]
 field_max_iter = 6;   if isfield(p, 'field_max_iter') && ~isempty(p.field_max_iter), field_max_iter = p.field_max_iter; end
 n_field_rejected = 0;
+cicc_cache = containers.Map('KeyType', 'char', 'ValueType', 'any');
 % rejection statistics per reason and per lateral case width (printed at the
 % end): which check removes which candidates
 rej_names = {'Iop range', 'turns to zero', 'too many layers', 'toroidal gap', 'cell geometry', ...
@@ -228,9 +229,19 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                 for ig = 1:numel(jump_grade)
                     var = jump_grade(ig);
                     B = max(B_size_layer(var:grade_end(ig)));
+                    % conductor sizing (hot-spot ODE, the slowest step) cached on
+                    % (B, Iop, Tau_discharge): the field and jacket passes of a
+                    % candidate, and many candidates, ask for the same cable
+                    ckey = sprintf('%.12g|%.12g|%.12g', B, Iop, Tau_discharge);
+                    if isKey(cicc_cache, ckey)
+                        cc = cicc_cache(ckey);
+                    else
+                        cc = cell(1, 8);
+                        [cc{:}] = cicc(B, Iop, Tau_discharge, p.WP_SC_type, p.THS_max_LTS, p.THS_max_HTS);
+                        cicc_cache(ckey) = cc;
+                    end
                     [type_cable(var), N_Cu(var), N_Sc(var), N_tot(var), S_Cable(var), ...
-                        S_REBCO(var), S_Cu_HTS(var), THS(var)] = cicc(B, Iop, Tau_discharge, p.WP_SC_type, ...
-                        p.THS_max_LTS, p.THS_max_HTS);
+                        S_REBCO(var), S_Cu_HTS(var), THS(var)] = cc{:};
                     B_grade(var:n_layers) = B;
 
                     type_cable(var:n_layers) = type_cable(var);
