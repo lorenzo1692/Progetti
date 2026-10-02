@@ -20,7 +20,7 @@ richiesta, lo verifica con il FEM dello stack.
 
 ## Struttura
 
-- `input/` — template Excel (48 parametri, incluse le opzioni FEM).
+- `input/` — template Excel (52 parametri, incluse le opzioni FEM).
 - `io/` — `read_machine_input`, `read_scenario_currents` (bound Ampere-turns),
   `read_coil_geometry` (per il FEM).
 - `physics/` — `size_conductor_cicc`, `size_cicc_cable`, `eqv_stress_coil_cicc`,
@@ -53,5 +53,14 @@ stampa, per modulo, forze, hoop, verticale e Tresca contro `eqv_stress_coil_cicc
 o base fissa con precarico in testa (`fem_bc=2`, `fem_preload_MN`).
 `fem_cs_selftest(p, g)` controlla equilibri e coerenza con `emag_field_forces`.
 
-Stato: v1, tutti i moduli omogenei. Un modulo dettagliato turn per turn (jacket,
-isolamento, cavo) con gli altri omogenei è il passo successivo.
+Modulo dettagliato: con `fem_detail_module = m` il modulo `m` è modellato turn per turn
+(isolamento di turn, parete del jacket, cavo; cella rettangolare, raggio d'angolo del
+jacket trascurato) mentre gli altri restano omogenei. Le sue tensioni di hoop,
+verticale e Tresca sono lette direttamente dagli elementi del jacket. Sul design di
+prova (modulo 3, caso di progetto) il hoop del jacket è circa il 2-3% sotto il recupero
+omogeneo, il Tresca circa il 9% sotto: la versione omogenea è prudente.
+
+Esportazione per il modello ANSYS (`CS_model_2`): `export_apdl_params(riga, p, g, dir, tag)`
+scrive `<tag>_Parametri_CS_design.lgw` (override del blocco CS di `Parametri_TCM_*.lgw`) e
+`<tag>_DESIGN.csv` (scenario di progetto, formato di `STR/input/SN.csv`: tutti i moduli a
+`Iop`, niente PF né plasma). Non ancora provato in ANSYS.

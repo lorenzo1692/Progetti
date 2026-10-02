@@ -31,6 +31,10 @@ function res = fem_cs_verify(row, p, g, geom, opts)
 %   Ampere-turns of geom row m (rows 1..n_moduli are the CS modules, the
 %   same convention as the scenario file) divided by its turns.
 %
+%   Module m = p.fem_detail_module > 0 is modeled turn by turn (insulation,
+%   jacket wall, cable of every conductor cell); the others stay homogenized.
+%   Its hoop / vertical / Tresca are then read from the jacket elements.
+%
 %   opts (optional struct): .plot (default false); .scenarios subset of
 %   scenario columns (default all); .zc axial center of the stack (default
 %   the mean Z of the CS rows of geom, or 0).
@@ -59,19 +63,14 @@ end
 st = fem_cs_stack(wp, p, zc);
 mesh = st.mesh; mat = st.mat;
 ne = size(mesh.elems, 1);
-ew = find(st.matid == 1);            % winding-pack elements (loaded)
+ew = find(st.matid == 1 | st.matid == 4);   % loaded elements: homogenized winding pack, cable of the detailed module
 nw = numel(ew);
+is_cable = (st.matid(ew) == 4);
 
-%% Gauss point coordinates of the winding-pack elements
-gp = [-1 -1; 1 -1; 1 1; -1 1]/sqrt(3);
+%% Field points: centroid of every loaded element (the load is uniform in the element)
 Rn = mesh.nodes(:, 1); Zn = mesh.nodes(:, 2);
-rg = zeros(nw, 4); zg = zeros(nw, 4);
-for q = 1:4
-    xi = gp(q,1); eta = gp(q,2);
-    N = 0.25*[(1-xi)*(1-eta); (1+xi)*(1-eta); (1+xi)*(1+eta); (1-xi)*(1+eta)];
-    rg(:, q) = Rn(mesh.elems(ew, :))*N;
-    zg(:, q) = Zn(mesh.elems(ew, :))*N;
-end
+rg = mean(reshape(Rn(mesh.elems(ew, :)), nw, 4), 2);
+zg = mean(reshape(Zn(mesh.elems(ew, :)), nw, 4), 2);
 
 %% Filaments: self (sub-filaments of every turn of every module) + background
 ns = p.fem_subfil; n_per_turn = ns*ns;
@@ -110,7 +109,7 @@ for c = 1:numel(scen)
     case_name{c+1} = sprintf('scenario %d', s);
 end
 
-[BRg, BZg] = fem_field_cases(rg(:), zg(:), [Rf_s; Rf_b], [Zf_s; Zf_b], Ifil);
+[BRg, BZg] = fem_field_cases(rg, zg, [Rf_s; Rf_b], [Zf_s; Zf_b], Ifil);
 
 %% Boundary conditions
 if p.fem_bc == 1
@@ -133,20 +132,27 @@ end
 %% Solve every load case
 cases = struct([]);
 for c = 1:ncase
-    Jw = I_mod(st.modid(ew), c)/wp.A_cell;                 % [A/m^2], per winding-pack element
+    A_cond = wp.A_cell*ones(nw, 1);                         % current area: whole cell (homogenized) or the cable rectangle
+    A_cond(is_cable) = wp.SC_w*wp.SC_h;
+    Jw = I_mod(st.modid(ew), c)./A_cond;                    % [A/m^2], per loaded element
     fgp = zeros(ne, 4, 2);
-    BRc = reshape(BRg(:, c), nw, 4); BZc = reshape(BZg(:, c), nw, 4);
+    BRc = repmat(BRg(:, c), 1, 4); BZc = repmat(BZg(:, c), 1, 4);
     fgp(ew, :, 1) = repmat(Jw, 1, 4).*BZc;
     fgp(ew, :, 2) = -repmat(Jw, 1, 4).*BRc;
     sol = fem_axisym_solve(mesh.nodes, mesh.elems, st.D, fgp, bc);
 
     sel = sol.sel;
-    s_th = sel(ew, 3)*mat.f_hoop;                          % jacket hoop stress
-    s_z = sel(ew, 2)*mat.f_z;                              % jacket-wall vertical stress
-    s_r = sel(ew, 1);
+    % stress in the steel: homogenized elements are recovered from the smeared stress,
+    % the jacket elements of a detailed module are read directly
+    ej = find(st.matid == 1 | st.matid == 5);
+    hom = (st.matid(ej) == 1);
+    s_th = sel(ej, 3); s_z = sel(ej, 2); s_r = sel(ej, 1);
+    s_th(hom) = s_th(hom)*mat.f_hoop;
+    s_z(hom) = s_z(hom)*mat.f_z;
     S_T_sum = abs(s_th + s_z);
     S_T_tresca = max([s_th, s_z, s_r], [], 2) - min([s_th, s_z, s_r], [], 2);
-    mid = st.modid(ew);
+    mid = st.modid(ej);
+    s_th_all = nan(ne, 1); s_th_all(ej) = s_th;
 
     mods = struct([]);
     for m = 1:nm
@@ -157,7 +163,8 @@ for c = 1:ncase
         mods(m).I_turn = I_mod(m, c);
         mods(m).Fr_MN = sum(vm.*mean(fgp(fm, :, 1), 2))*1e-6;
         mods(m).Fz_MN = sum(vm.*mean(fgp(fm, :, 2), 2))*1e-6;
-        mods(m).B_peak = max(sqrt(mean(BRc(im, :), 2).^2 + mean(BZc(im, :), 2).^2));
+        ml = (st.modid(ew) == m);
+        mods(m).B_peak = max(sqrt(BRc(ml, 1).^2 + BZc(ml, 1).^2));
         mods(m).hoop_max_MPa = sh(ih)*1e-6;                % signed value of largest magnitude
         mods(m).vert_max_MPa = max(abs(s_z(im)))*1e-6;
         mods(m).S_T_sum_MPa = max(S_T_sum(im))*1e-6;
@@ -186,7 +193,11 @@ for c = 1:ncase
     cases(c).S_T_tresca_MPa = max([mods.S_T_tresca_MPa]);
     cases(c).u_max_mm = max(abs(sol.u))*1e3;
     cases(c).T_check = T_fe/T_load;
-    cases(c).sol = sol; cases(c).s_th = s_th; cases(c).s_z = s_z; cases(c).s_r = s_r;
+    % ANSYS model (STR/emag_loads/Load_import.lgw) preload variables: cumulative module Fz from the top / from the bottom
+    Fzm = [mods.Fz_MN];
+    cases(c).check_F_pos = max(cumsum(Fzm(end:-1:1)));
+    cases(c).check_F_neg = min(cumsum(Fzm));
+    cases(c).sol = sol; cases(c).s_th = s_th_all; cases(c).ej = ej;
 end
 
 %% Design-model results for the same geometry
@@ -250,6 +261,9 @@ function print_summary(res)
 wp = res.wp; an = res.analytic; cs = res.cases; nm = wp.n_mod;
 fprintf('\nFEM verification - CS stack of %d modules, %d layers x %d turns, Iop = %.1f kA, JT = %.2f mm, turns %.3f x %.3f m per module\n', ...
     nm, wp.n_l, wp.n_t, wp.Iop*1e-3, wp.JT*1e3, wp.Re-wp.Ri, wp.H);
+if res.stack.detail > 0
+    fprintf('  Module %d modeled turn by turn (jacket stress read directly); the other modules are homogenized.\n', res.stack.detail);
+end
 fprintf('  Mesh %d x %d elements, homogenized WP: Eth=%.1f GPa  Er=%.1f GPa  Ez=%.1f GPa, jacket factors f_hoop=%.2f f_z=%.2f\n', ...
     res.stack.mesh.nr, res.stack.mesh.nz, res.stack.mat.Eth*1e-9, res.stack.mat.Er*1e-9, res.stack.mat.Ez*1e-9, res.stack.mat.f_hoop, res.stack.mat.f_z);
 fprintf('  Design model: hoop %.0f MPa, vertical %.0f MPa (Fz = %.2f MN), Tresca %.0f MPa, B peak %.2f T; emag full stack: B %.2f T\n', ...
@@ -264,6 +278,7 @@ for c = 1:numel(cs)
             md.hoop_max_MPa, md.vert_max_MPa, md.S_T_tresca_MPa);
     end
     fprintf('  Compression through the plates (bottom to top) [MN]: %s\n', sprintf('%.2f ', cs(c).F_plate_MN));
+    fprintf('  ANSYS CHECK_F definitions (cumulative module Fz from top, max / from bottom, min) [MN]: %.2f / %.2f\n', cs(c).check_F_pos, cs(c).check_F_neg);
 end
 fprintf('\n  (module Fr/Fz: Lorentz load on the module; hoop: signed value of largest magnitude, negative = compression;\n');
 fprintf('   hoop/vertical: jacket stress recovered from the smeared FE stress; plates: axial force through each spacer, positive = compression)\n');

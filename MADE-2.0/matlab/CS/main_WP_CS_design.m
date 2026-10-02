@@ -16,7 +16,9 @@
 %      (plot_solution.m) and module / full-CS section colored by |B|
 %      (plot_cs_section.m).
 %   6. Optionally verify the chosen design with the axisymmetric FEM of the
-%      whole stack (fem/fem_cs_verify.m).
+%      whole stack (fem/fem_cs_verify.m; fem_detail_module models one
+%      module turn by turn), and export it for the ANSYS model
+%      (fem/export_apdl_params.m).
 %
 % This is a direct port of CS_opt_VNS.m into the TF-style modular
 % pipeline (see the manuale CS artifact for the full analysis and the
@@ -95,4 +97,7 @@ if strcmpi(strtrim(input('Verify the chosen design with the FEM stack model? [y/
     geom = read_coil_geometry(scenario_file);
     fem_res = fem_cs_verify(DATA(sel_idx, :), p, g, geom, struct('plot', true));
     save(sprintf('%s_design_%d_fem.mat', tag, sel_idx), 'fem_res');
+end
+if strcmpi(strtrim(input('Export the design as input for the ANSYS CS model? [y/N]: ', 's')), 'y')
+    export_apdl_params(DATA(sel_idx, :), p, g, pwd, sprintf('%s_design_%d', tag, sel_idx));
 end

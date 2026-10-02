@@ -14,7 +14,10 @@ function ok = fem_cs_selftest(p, g)
 %     4. the compression through the mid plate equals EMAG_FIELD_FORCES'
 %        FZmax (full stack) within 3%,
 %     5. with the bottom face fixed and a 10 MN preload on the top face,
-%        every plate carries 10 MN more than without preload.
+%        every plate carries 10 MN more than without preload,
+%     6. module 3 modeled turn by turn: same loads and plate force as the
+%        homogenized stack, jacket hoop stress within 0.7..1.1 of the
+%        homogenized recovery.
 %   p, g: parameter struct and COMPUTE_OPERATING_PARAMS output of the CS
 %   template (cs_smoke_test loads them for Octave).
 
@@ -40,6 +43,15 @@ res2 = fem_cs_verify(row, p, g, [], struct());
 dF = res2.cases(1).F_plate_MN - c.F_plate_MN;
 ok = check('preload 10 MN adds to every plate (MN)', mean(dF), 10, 0.3) && ok;
 ok = check('preload spread over plates (max-min, MN)', max(dF) - min(dF), 0, 0.3) && ok;
+% detailed module (turn by turn) against the homogenized stack, design case
+p.fem_bc = 1; p.fem_preload_MN = 0; p.fem_detail_module = 3;
+res3 = fem_cs_verify(row, p, g, [], struct());
+c3 = res3.cases(1);
+ok = check('detailed: hoop equilibrium ratio', c3.T_check, 1, 0.01) && ok;
+ok = check('detailed: module 3 Fz vs homogenized (MN)', c3.modules(3).Fz_MN, c.modules(3).Fz_MN, 0.02*abs(c.modules(1).Fz_MN)) && ok;
+ok = check('detailed: module 3 Fr vs homogenized (MN)', c3.modules(3).Fr_MN, c.modules(3).Fr_MN, 0.02*abs(c.modules(3).Fr_MN)) && ok;
+ok = check('detailed: mid-plate compression (MN)', c3.F_plate_MN(3), c.F_plate_MN(3), 0.02*abs(c.F_plate_MN(3))) && ok;
+ok = check('detailed/homogenized jacket hoop, module 3', c3.modules(3).hoop_max_MPa/c.modules(3).hoop_max_MPa, 0.9, 0.2) && ok;
 fprintf('FEM_CS_SELFTEST: %s\n', ternary(ok, 'all checks passed', 'FAILED'));
 end
 

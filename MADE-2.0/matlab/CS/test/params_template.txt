@@ -46,3 +46,7 @@ fem_nu_wp 0.3
 fem_nu_ins 0.3
 fem_nu_steel 0.3
 fem_preload_MN 0
+fem_detail_module 0
+fem_detail_cable_r 2
+fem_detail_cable_z 4
+fem_nu_cable 0.3

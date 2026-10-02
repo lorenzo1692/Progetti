@@ -7,12 +7,12 @@ function fem_cs_plot(res, c)
 
 if nargin < 2, c = 1; end
 st = res.stack; cs = res.cases(c);
-ew = find(st.matid == 1);
+ew = find(~isnan(cs.s_th));
 figure('units', 'normalized', 'outerposition', [0.1 0.1 0.8 0.85]);
 subplot(1, 2, 1);
 mesh = st.mesh;
 patch('Faces', mesh.elems, 'Vertices', mesh.nodes, 'FaceColor', [0.85 0.85 0.85], 'EdgeColor', 'none'); hold on
-patch('Faces', mesh.elems(ew, :), 'Vertices', mesh.nodes, 'FaceVertexCData', cs.s_th*1e-6, ...
+patch('Faces', mesh.elems(ew, :), 'Vertices', mesh.nodes, 'FaceVertexCData', cs.s_th(ew)*1e-6, ...
     'FaceColor', 'flat', 'EdgeColor', 'none');
 colormap(jet); cb = colorbar; cb.Label.String = 'jacket hoop stress [MPa]';
 axis equal; xlabel('r [m]'); ylabel('z [m]');
