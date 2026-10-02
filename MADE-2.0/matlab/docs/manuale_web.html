@@ -213,6 +213,7 @@ details[open] summary { margin-bottom: 10px; }
       <tr><td>Coerenza dello stato di contatto</td><td>Nuovo controllo: le coppie che cambierebbero stato sulla soluzione restituita devono portare meno del 2% della forza normale. L'iterazione di contatto converge solo se è soddisfatto.</td><td>§8.7, §8.9</td></tr>
       <tr><td>FEM non valido</td><td>I plot restano, ma con un banner rosso “NOT VALIDATED” e l'avviso di non usare la figura di merito.</td><td>§8.9</td></tr>
       <tr><td>Verifica riproducibile RIS/Rect</td><td><code>verify_ris_rect_fem(p, cartella)</code>: selezione della forma, geometria, aree, materiali, Jacobiani, contatti, risultanti, residui e figure (sezione, GPS, zoom sul conduttore).</td><td>§2, §9</td></tr>
+      <tr><td>Modello a strati (in sviluppo)</td><td>Jacket e case in un unico modello analitico: cilindro di anelli ortotropi con la forza di Lorentz, soluzione in forma chiusa in ogni anello, cella del turn, colonna del WP con attrito. Confronto con il FE: jacket rms 8.3%, case −6…−15%. Non ancora nella scansione. Emerso anche: il nose dello scan (R<sub>j</sub> − R<sub>k</sub>) è più spesso di 17–25 mm di quello del FE e di ANSYS (foro ad arco).</td><td>§5c</td></tr>
     </tbody>
   </table></div>
 </section>
@@ -439,6 +440,169 @@ flowchart LR
   </ul>
   <div class="callout"><p><strong>Prova sulla macchina del design 10</strong> (scan ridotto, 22 layout con 18 turn nel primo layer, 6.5 minuti): la #1 ha il layout del design 10 con JT 2.1 / 2.1 / 2.4 mm, ingombro 542.4 mm. Il FE dà P<sub>m</sub>+P<sub>b</sub> 1047 MPa (surrogato 908: è il layout peggiore per il surrogato). <code>refine_jacket_fe</code> porta il JT a 2.1 / 2.2 / 2.9 mm: al secondo run FE P<sub>m</sub> 601 e P<sub>m</sub>+P<sub>b</sub> 985 MPa, criteri soddisfatti, ingombro 552.6 mm (+10 mm). La #2 (548.4 mm) non è ancora verificata: tra soluzioni vicine conviene verificare col FE le prime 2–3.</p></div>
   <p>La colonna <code>JT_crit_layer</code> indica il layer del jacket critico (massimo P<sub>m</sub>+P<sub>b</sub> del surrogato, o massima tensione della formula analitica con <code>scf_model</code> = 0): è il punto da controllare per primo nel FE o in ANSYS.</p>
+
+  <h3 id="s5c">5c Modello analitico a strati: jacket e case insieme (in sviluppo)</h3>
+  <p>Il surrogato della §5b dimensiona il jacket, e <code>size_case_vault</code> (§7.5) dimensiona il nose con una formula di cilindro spesso. Sono due modelli separati con criteri diversi: si scambiano solo S<sub>z</sub> e l'altezza del WP. Il modello a strati (<code>physics/wp_layered_cylinder.m</code>) è un unico modello fisico, veloce come una formula (meno di 1 ms per design), che vede insieme tre cose:</p>
+  <ul>
+    <li>l'accumulo del carico radiale verso il nose;</li>
+    <li>la ripartizione della compressione circonferenziale (wedging) tra nose, pareti laterali, WP e piastra;</li>
+    <li>l'effetto di un jacket più spesso sul case.</li>
+  </ul>
+  <p>Per ora <strong>non è usato dalla scansione</strong>: è in validazione contro il FE 2D. Il diario completo è in <code>docs/MODELLO_A_STRATI.md</code>.</p>
+
+  <figure>
+    <svg viewBox="0 0 640 250" role="img" aria-label="La gamba interna come cilindro di anelli concentrici: dal foro, nose di acciaio, isolante di terra, layer del WP alternati all'isolante tra layer, isolante di terra, piastra lato plasma. Ogni anello di WP contiene in serie lungo la corda pareti del case, isolante e turn. Condizioni: sigma_r nulla sul foro e sulla faccia lato plasma, u e sigma_r continui alle interfacce.">
+<defs><marker id="arr5c" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-force"/></marker></defs>
+<rect class="f-steel" x="40" y="40" width="90" height="120"/>
+<rect class="f-gins" x="130" y="40" width="10" height="120"/>
+<rect class="f-turn" x="140" y="40" width="70" height="120"/>
+<rect class="f-gins" x="210" y="40" width="8" height="120"/>
+<rect class="f-turn" x="218" y="40" width="70" height="120"/>
+<rect class="f-gins" x="288" y="40" width="8" height="120"/>
+<rect class="f-turn" x="296" y="40" width="60" height="120"/>
+<rect class="f-gins" x="356" y="40" width="8" height="120"/>
+<rect class="f-turn" x="364" y="40" width="60" height="120"/>
+<rect class="f-gins" x="424" y="40" width="10" height="120"/>
+<rect class="f-steel" x="434" y="40" width="60" height="120"/>
+<text class="lbl" x="85" y="30" text-anchor="middle">nose</text>
+<text class="lbl" x="282" y="30" text-anchor="middle">layer del WP (k = n … 1)</text>
+<text class="lbl" x="464" y="30" text-anchor="middle">piastra</text>
+<line class="lead" x1="40" y1="178" x2="494" y2="178"/>
+<text class="lbl" x="40" y="196">R_b = R_k / cos(π/n_TF)</text>
+<text class="lbl" x="494" y="196" text-anchor="end">R_i</text>
+<text class="lbl" x="267" y="196" text-anchor="middle">r →</text>
+<line class="s-force" x1="200" y1="100" x2="150" y2="100" marker-end="url(#arr5c)"/>
+<line class="s-force" x1="278" y1="100" x2="228" y2="100" marker-end="url(#arr5c)"/>
+<line class="s-force" x1="346" y1="100" x2="306" y2="100" marker-end="url(#arr5c)"/>
+<line class="s-force" x1="414" y1="100" x2="374" y2="100" marker-end="url(#arr5c)"/>
+<text class="lbl" x="282" y="125" text-anchor="middle">f(r) = −j B(r)</text>
+<text class="lbl" x="40" y="222">σ_r = 0</text>
+<text class="lbl" x="494" y="222" text-anchor="end">σ_r = 0</text>
+<text class="lbl" x="267" y="222" text-anchor="middle">a ogni interfaccia: u e σ_r continui</text>
+<text class="lbl" x="267" y="242" text-anchor="middle">tutta la sezione: ∫ σ_z dA = n_TF · T_bf</text>
+<line class="lead" x1="494" y1="70" x2="520" y2="70"/>
+<text class="lbl" x="526" y="66">anello di WP,</text>
+<text class="lbl" x="526" y="81">lungo la corda:</text>
+<text class="lbl" x="526" y="100">parete | isol. | turn</text>
+<text class="lbl" x="526" y="115">| isol. | parete</text>
+<text class="lbl" x="526" y="138">radiale: parallelo</text>
+<text class="lbl" x="526" y="153">circonf.: serie</text>
+</svg>
+    <figcaption>La gamba interna come cilindro di anelli concentrici. Ogni settore è rappresentato dalla sua corda 2 r tan(π/n<sub>TF</sub>), perché i case incuneati si toccano sui fianchi e il carico centripeto si chiude come in un anello a 360°. Le frecce sono la forza di Lorentz, centripeta e presente solo negli anelli di WP.</figcaption>
+  </figure>
+
+  <p><strong>Passo 1: la geometria è quella del FE e di ANSYS.</strong></p>
+  <ul>
+    <li><em>Foro ad arco</em> di raggio R<sub>b</sub> = R<sub>k</sub>/cos(π/n<sub>TF</sub>), non piano a R<sub>k</sub>: al centro il nose è più sottile di 17–25 mm (§8.4).</li>
+    <li><em>Isolante di wedge</em> (1.5 mm) sui fianchi, in serie nel percorso circonferenziale di ogni anello.</li>
+    <li><em>Cavità a inviluppo convesso</em>: gli scalini tra layer di larghezza diversa sono isolante, non acciaio.</li>
+  </ul>
+
+  <p><strong>Passo 2: il turn diventa un materiale omogeneo.</strong> L'isolante di turn (spessore t<sub>ins</sub>) avvolge il conduttore incamiciato, di dimensioni a = Cond<sub>w</sub> − 2t<sub>ins</sub> e b = Cond<sub>h</sub> − 2t<sub>ins</sub>.</p>
+  <ul>
+    <li>Dentro il conduttore, per un carico radiale, le due pareti laterali del jacket (spessore JT) lavorano in parallelo con una colonna centrale. Nella colonna le pareti superiore e inferiore e il cavo sono in serie.</li>
+    <li>L'isolante attraversato dal carico (modulo attraverso lo spessore E<sub>ins</sub> = 12 GPa) è in serie con tutto il conduttore.</li>
+    <li>L'isolante parallelo al carico (modulo nel piano E<sub>ins,t</sub> = 20 GPa) è in parallelo.</li>
+  </ul>
+  <p>Le regole sono quelle elementari: in parallelo si sommano le rigidezze pesate sulle larghezze, in serie le cedevolezze pesate sulle lunghezze. Per la direzione radiale:</p>
+  <div class="math-block">\[ E_{mid,r}=\left(\frac{2JT}{b\,E_j}+\frac{SC_h}{b\,E_{cbl}}\right)^{-1},\qquad E_{jc,r}=\frac{2JT\,E_j+SC_w\,E_{mid,r}}{a} \]</div>
+  <div class="math-block">\[ E_{col,r}=\left(\frac{2t_{ins}}{C_h\,E_{ins}}+\frac{b}{C_h\,E_{jc,r}}\right)^{-1},\qquad E_{r,turn}=\frac{2t_{ins}\,E_{ins,t}+a\,E_{col,r}}{C_w} \]</div>
+  <p>La direzione circonferenziale è identica, scambiando larghezze e altezze (SC<sub>w</sub>↔SC<sub>h</sub>, a↔b, C<sub>w</sub>↔C<sub>h</sub>). Quella assiale è la media sulle aree, perché in direzione z tutti i materiali hanno la stessa deformazione:</p>
+  <div class="math-block">\[ E_{z,turn}=\frac{A_j E_j + A_{cbl}E_{cbl}+A_{ins}E_{ins,t}}{C_w\,C_h} \]</div>
+
+  <p><strong>Passo 3: l'anello.</strong> Lungo la corda di un anello di WP ci sono, uno dopo l'altro:</p>
+  <ul>
+    <li>la parete laterale del case;</li>
+    <li>l'isolante (di terra, di riempimento, di wedge);</li>
+    <li>i turn del layer;</li>
+    <li>poi di nuovo isolante e parete.</li>
+  </ul>
+  <p>Con f<sub>k</sub> la frazione della corda occupata da ciascuno:</p>
+  <ul>
+    <li><em>Direzione radiale</em>: i componenti stanno uno accanto all'altro e si deformano insieme, cioè sono in parallelo.</li>
+    <li><em>Direzione circonferenziale</em>: la compressione li attraversa uno dopo l'altro, cioè sono in serie.</li>
+  </ul>
+  <div class="math-block">\[ E_r=\sum_k f_k E_{r,k},\qquad \frac{1}{E_\theta}=\sum_k \frac{f_k}{E_{\theta,k}},\qquad E_z=\sum_k f_k E_{z,k} \]</div>
+  <p>Il nose e la piastra sono acciaio isotropo, con l'accoppiamento di Poisson (ν = 0.29) e con l'isolante di wedge che aggiunge f<sub>w</sub>/E<sub>ins</sub> alla cedevolezza circonferenziale. In ogni anello la legge costitutiva è σ = C ε, con ε = (ε<sub>r</sub>, ε<sub>θ</sub>, ε<sub>z</sub>).</p>
+
+  <p><strong>Passo 4: l'equazione in un anello, e perché ha una soluzione in forma chiusa.</strong> Per la simmetria assiale l'unica incognita è lo spostamento radiale u(r), più una deformazione assiale ε<sub>0</sub> uguale in tutta la sezione (deformazione piana generalizzata). Le deformazioni sono:</p>
+  <div class="math-block">\[ \varepsilon_r=\frac{du}{dr},\qquad \varepsilon_\theta=\frac{u}{r},\qquad \varepsilon_z=\varepsilon_0 \]</div>
+  <p>L'equilibrio radiale di un elementino di anello, con la forza di volume f(r), è:</p>
+  <div class="math-block">\[ \frac{d\sigma_r}{dr}+\frac{\sigma_r-\sigma_\theta}{r}+f(r)=0 \]</div>
+  <p>La forza di Lorentz si ricava così:</p>
+  <ul>
+    <li>In un anello di WP la corrente è spalmata con densità j = n<sub>TF</sub> n<sub>k</sub> I<sub>op</sub> / (π(r<sub>2</sub>² − r<sub>1</sub>²)).</li>
+    <li>Per Ampère il campo è B(r) = μ<sub>0</sub> I<sub>enc</sub>(r) / (2πr), con I<sub>enc</sub>(r) = I<sub>0</sub> + jπ(r² − r<sub>1</sub>²) e I<sub>0</sub> la corrente degli anelli più interni.</li>
+    <li>La forza f = −jB è centripeta e ha solo due termini:</li>
+  </ul>
+  <div class="math-block">\[ f(r)=a_1\,r+\frac{a_{-1}}{r},\qquad a_1=-\frac{\mu_0 j^2}{2},\qquad a_{-1}=-\frac{\mu_0\,j\,(I_0-j\pi r_1^2)}{2\pi} \]</div>
+  <p>Si sostituisce σ = C ε nell'equilibrio. I termini in C<sub>12</sub> si cancellano e resta un'equazione di Eulero, lineare a coefficienti che dipendono solo da r:</p>
+  <div class="math-block">\[ C_{11}\left(u''+\frac{u'}{r}\right)-C_{22}\,\frac{u}{r^2}=-f(r)-\frac{(C_{13}-C_{23})\,\varepsilon_0}{r} \]</div>
+  <ul>
+    <li><em>Omogenea</em>: provando u = r<sup>m</sup> si ottiene m² = C<sub>22</sub>/C<sub>11</sub>, quindi due soluzioni r<sup>k</sup> e r<sup>−k</sup> con k = √(C<sub>22</sub>/C<sub>11</sub>). Per un anello isotropo k = 1 e si ritrova Lamé (A r + B/r).</li>
+    <li><em>Particolare</em>: ogni termine del secondo membro è una potenza di r, quindi la soluzione particolare è una potenza di r (o r ln r se C<sub>11</sub> = C<sub>22</sub>).</li>
+  </ul>
+  <div class="math-block">\[ u(r)=A\,r^{k}+B\,r^{-k}+P\,r^3+Q\,r+\varepsilon_0\,Q_e\,r,\qquad P=-\frac{a_1}{9C_{11}-C_{22}},\quad Q=-\frac{a_{-1}}{C_{11}-C_{22}},\quad Q_e=-\frac{C_{13}-C_{23}}{C_{11}-C_{22}} \]</div>
+  <p>Questa è la "forma chiusa": in ogni anello lo spostamento è una formula esplicita, e restano da trovare solo due costanti A, B per anello.</p>
+
+  <p><strong>Passo 5: il sistema che collega gli anelli.</strong> Con N anelli ci sono 2N + 1 incognite (A<sub>i</sub>, B<sub>i</sub> ed ε<sub>0</sub>) e altrettante equazioni lineari:</p>
+  <ul>
+    <li>σ<sub>r</sub> = 0 sul foro e sulla faccia lato plasma (2 equazioni);</li>
+    <li>a ognuna delle N − 1 interfacce, u e σ<sub>r</sub> continui (2N − 2 equazioni);</li>
+    <li>equilibrio assiale: la risultante di σ<sub>z</sub> sulla sezione uguaglia la forza verticale delle n<sub>TF</sub> gambe (1 equazione).</li>
+  </ul>
+  <div class="math-block">\[ \sum_i\int_{r_{1,i}}^{r_{2,i}}\sigma_z\,2\pi r\,dr=n_{TF}\,T_{bf} \]</div>
+  <p>Con 13–28 layer N vale 30–60: il sistema si risolve in meno di un millisecondo, con residuo ~10<sup>−16</sup>. Come controllo indipendente, con le superfici libere l'integrale di σ<sub>θ</sub> sullo spessore deve uguagliare quello della forza di Lorentz per r (rispettato a 10<sup>−4</sup>).</p>
+
+  <p><strong>Passo 6: dall'anello alle pareti.</strong> La soluzione dà tensioni medie di anello; per la verifica servono le pareti del jacket e del case. A metà altezza di ogni layer:</p>
+  <ol>
+    <li><em>Circonferenziale</em>: in serie la tensione è la stessa in tutti i componenti. Il turn ha quindi ε<sub>θ,turn</sub> = σ<sub>θ</sub>/E<sub>θ,turn</sub>. Si scende allo stesso modo nella cella fino alla deformazione del conduttore incamiciato, ε<sub>jc,θ</sub> = E<sub>band,t</sub> ε<sub>θ,turn</sub> / E<sub>jc,t</sub>.</li>
+    <li><em>Radiale</em>: la deformazione del turn viene dalla colonna del passo 7, si trasforma allo stesso modo in ε<sub>jc,r</sub> e si risale alla tensione della colonna centrale, E<sub>mid,r</sub> ε<sub>jc,r</sub>.</li>
+    <li><em>Ogni parete</em> ha una deformazione imposta nella direzione in cui è in parallelo, una tensione imposta in quella in cui è in serie, e ε<sub>z</sub> = ε<sub>0</sub>. La legge di Hooke 3D dà le altre due tensioni:</li>
+  </ol>
+  <div class="math-block">\[ \varepsilon_{par}=\frac{\sigma_{par}-\nu(\sigma_{ser}+\sigma_z)}{E},\qquad \varepsilon_0=\frac{\sigma_z-\nu(\sigma_{par}+\sigma_{ser})}{E} \]</div>
+  <ul>
+    <li><em>Pareti laterali del jacket</em>: ε<sub>par</sub> = ε<sub>jc,r</sub>, σ<sub>ser</sub> = E<sub>mid,t</sub> ε<sub>jc,θ</sub>.</li>
+    <li><em>Pareti superiore e inferiore</em>: ε<sub>par</sub> = ε<sub>jc,θ</sub>, σ<sub>ser</sub> = E<sub>mid,r</sub> ε<sub>jc,r</sub>.</li>
+    <li><em>Pareti del case</em>: ε<sub>par</sub> = ε<sub>r</sub> dell'anello, σ<sub>ser</sub> = σ<sub>θ</sub>.</li>
+  </ul>
+  <p>Il P<sub>m</sub> del jacket è la Tresca (§8.9) più alta tra parete laterale e superiore. Il nose e la piastra si linearizzano attraverso lo spessore come le SCL del FE. Senza il termine di Poisson su σ<sub>z</sub> il jacket risultava ~100 MPa troppo caricato assialmente.</p>
+
+  <p><strong>Passo 7: il WP come colonna con attrito.</strong> Nel FE il WP non è incollato al case: è a contatto con attrito. Il carico radiale dei layer sopra scende quindi nel WP fino al nose, e una parte passa alle pareti per attrito. La pressione radiale p<sub>k</sub> sul layer k segue una ricorsione dal lato plasma (p = 0) verso il nose, come nella teoria dei silos di Janssen:</p>
+  <ul>
+    <li>F<sub>k</sub> è la forza di Lorentz del layer e W<sub>k</sub> la sua larghezza: dove un layer è più stretto, i turn in sbalzo appoggiano sulla spalla del case.</li>
+    <li>La compressione circonferenziale σ<sub>θ,k</sub> preme il layer, alto h<sub>k</sub>, sulle due pareti e permette di cedere al case fino a 2μ|σ<sub>θ,k</sub>|h<sub>k</sub>.</li>
+  </ul>
+  <div class="math-block">\[ \Delta p_k=\frac{F_k}{W_k}-\frac{2\mu\,|\sigma_{\theta,k}|\,h_k}{W_k},\qquad p_k=\max\!\left(p_{in}+\tfrac{1}{2}\Delta p_k,\,0\right),\qquad p_{in}\leftarrow\max(p_{in}+\Delta p_k,\,0) \]</div>
+  <p>La deformazione radiale del turn è ε<sub>r</sub> = −p<sub>k</sub>/E<sub>r,turn</sub>. μ è l'<strong>unico parametro tarato</strong>: vale 0.1 come coefficiente efficace, mentre il contatto del FE ha 0.2. La pressione sulle pareti non è ovunque |σ<sub>θ</sub>|, per esempio sui raccordi e sugli scalini.</p>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>Confronto con il FE 2D (primario)</th><th class="num">rapporto medio</th><th class="num">rms per layer</th><th>massimo del design, min … max</th></tr></thead>
+    <tbody>
+      <tr><td>Prima versione: anello, foro piano, cella con le pareti in parallelo su tutta la cella</td><td class="num">0.86</td><td class="num">18.3%</td><td>0.62 … 1.08</td></tr>
+      <tr><td>Geometria FE, cella con isolante avvolgente, colonna μ = 0.2</td><td class="num">0.92</td><td class="num">13.1%</td><td>0.71 … 0.93</td></tr>
+      <tr><td><strong>Default: come sopra con μ = 0.1</strong></td><td class="num"><strong>0.98</strong></td><td class="num"><strong>8.3%</strong></td><td><strong>0.85 … 1.09</strong></td></tr>
+      <tr><td>Surrogato del jacket (§5b), per confronto</td><td class="num">1.0</td><td class="num">7.1%</td><td>LOO 0.87 … 1.23</td></tr>
+    </tbody>
+  </table></div>
+  <p>I dati sono le 21 run FE della taratura del jacket, 392 layer; come nel surrogato sono escluse le due varianti anomale. Per il case, sul benchmark e sul design 7:</p>
+  <ul>
+    <li>nose al centro: 601 contro 655 MPa (−8%) e 553 contro 606 (−9%);</li>
+    <li>piastra lato plasma: −6% e −15%;</li>
+    <li>parete laterale: −9%.</li>
+  </ul>
+  <p>Sono il 20–24% sotto prima delle correzioni di geometria e di cella. Le altre run di riferimento sono in corso (<code>validation/run_mech_reference_fe.m</code>).</p>
+  <div class="callout">
+    <p><strong>Stato.</strong></p>
+    <ul>
+      <li><strong>Jacket.</strong> È quasi al livello del surrogato con un solo parametro, ma risponde allo spessore del jacket circa 1.5 volte più del FE. Sul bench, +0.5/+1.0 mm danno −7.3%/−11.8% contro −4.4%/−8.4%, quindi nel loop sarebbe ottimista quando ingrossa il jacket.</li>
+      <li><strong>Case.</strong> È ancora sottostimato del 6–15%.</li>
+      <li><strong>Prossimo passo.</strong> Sostituire la cella in serie e parallelo con una cella elementare risolta numericamente una volta per grade (rigidezze e localizzazione esatte), lasciando analitico l'anello.</li>
+      <li><strong>Criterio per usarlo nella scansione.</strong> Jacket con rms ≤ 10% e 90° percentile ≤ 1.10, case entro ±5%.</li>
+      <li><strong>Da decidere.</strong> <code>size_case_vault</code> dimensiona il nose come R<sub>j</sub> − R<sub>k</sub> (foro piano), mentre FE e ANSYS hanno il foro ad arco: il nose reale al centro è più sottile di 17–25 mm. Va stabilito qual è la geometria di progetto.</li>
+    </ul>
+  </div>
+
 </section>
 
 <section id="s6">
