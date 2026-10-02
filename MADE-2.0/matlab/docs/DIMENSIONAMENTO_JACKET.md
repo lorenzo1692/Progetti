@@ -228,3 +228,37 @@ Nota sulla classifica: la #2 (548.4 mm, 14 layer) è sotto la #1 corretta
 (552.6 mm) ma non è ancora verificata col FE; se anche lei richiedesse una
 correzione l'ordine potrebbe cambiare. Per scegliere con certezza tra
 soluzioni vicine (pochi mm) conviene verificare col FE le prime 2–3.
+
+## 9. Scan diagnostici: metodo del jacket, grading e larghezza del WP (02/10/2026)
+
+Macchina template, campo calibrato con verifica, tutte le larghezze laterali,
+metà dei layout (un quarto per lo scan a 3 grade con il surrogato). Lo scan
+ora stampa a fine run la tabella dei candidati scartati per controllo e per
+larghezza laterale.
+
+| Scan | Soluzioni | Larghezze W1 che passano | #1: ingombro radiale | #1: W1, layer, Iop |
+|---|---:|---|---:|---|
+| `scf_model` = 0 (formula analitica), 3 grade | 13 | 304–344 mm | 655 mm | 344 mm, 15, 56 kA |
+| `scf_model` = 1 (surrogato), 3 grade | 31 | 304–584 mm | **503 mm** | 504 mm, 10, 62 kA |
+| `scf_model` = 1, monograde | 45 | 424–584 mm | 545 mm | 544 mm, 10, 47 kA |
+
+- Con la formula analitica e 3 grade nessun WP più largo di 344 mm passa:
+  lo SCF 3.15 sui layer vicini ai cambi di grade, moltiplicato per una
+  tensione che cresce con la larghezza della cella, li scarta tutti
+  ("vault/jacket allowable"). Era la causa dei WP stretti: `scf_model` = 1 è
+  ora il default.
+- Con il surrogato i WP larghi tornano in testa; il grading conviene
+  (503 contro 545 mm di ingombro).
+- Tutte le soluzioni hanno scalini (le combinazioni iniziali hanno turn
+  uguali per layer; lo scan toglie 2 turn a un layer quando non rispetta il
+  gap toroidale). Alcune hanno un ultimo layer con pochissimi turn (es.
+  12 → 10 → 2), effetto del layer aggiunto per i turn residui.
+- Scarti principali sui WP larghi: geometria della cella (rapporto di
+  aspetto fuori da [min, 2]), gap toroidale, hot spot. Nessuno per il
+  jacket oltre JT_max.
+
+Prestazioni: la ricerca del rame in `cicc` è ora a intervalli su log(N_Cu)
+e il transitorio di hot spot si ferma oltre 2 volte il limite (prima un
+runaway poteva richiedere minuti). Stesso rame entro 1–2 strand su 20 casi
+(B, Iop), in 4 casi la vecchia ricerca metteva 12–14 strand in più; scan
+ridotto del design 10 da 388 a 120 s con le stesse soluzioni.
