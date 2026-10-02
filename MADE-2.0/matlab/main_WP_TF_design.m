@@ -101,6 +101,20 @@ if strcmpi(mech_answer, 'y')
     if ~mech.valid
         fprintf(2, ['The mechanical verification is NOT valid (%s): do not use its figure ' ...
             'of merit; check the mesh/contact settings or run the FEM.\n'], mech.checks.summary);
+    elseif ~mech.fom.ok && isfield(p, 'scf_model') && p.scf_model == 1
+        % jacket sized by the surrogate in the scan: correct it on this
+        % design with the FE (docs/DIMENSIONAMENTO_JACKET.md, section 7)
+        ref_answer = strtrim(input(['The FE criteria are not satisfied. Re-size the jacket of this design ' ...
+            'with the FE (1-2 more FE runs)? [y/N]: '], 's'));
+        if strcmpi(ref_answer, 'y')
+            refined = refine_jacket_fe(DATA(sel_idx,:), p);
+            if refined.ok
+                fprintf('Refined jacket: JT per layer %s mm, radial build %.1f mm.\n', ...
+                    mat2str(refined.row.JT*1e3, 3), 1e3*(refined.row.Ri_ - refined.row.Rk_));
+            end
+            plot_wp_mech_surrogate(refined.mech, p, sprintf('%s - design #%d - refined jacket', tag, sel_idx));
+            save(sprintf('%s_results_%s.mat', tag, run_stamp), 'refined', '-append');   % refined.row: the corrected design
+        end
     end
 end
 
