@@ -19,7 +19,12 @@ if nargin < 1, run_fem = false; end
 if nargin < 2, overrides = struct('min_size_CICC', 0.03, 'Iop_steps', 5000); end
 here = fileparts(mfilename('fullpath'));
 cs = fileparts(here);
-addpath(genpath(cs)); addpath(fileparts(cs));
+% test/ holds Octave-only stand-ins for TABLE/HEIGHT that must never shadow MATLAB's own
+cs_paths = strsplit(genpath(cs), pathsep);
+cs_test = fullfile(cs, 'test');
+cs_paths = cs_paths(~cellfun(@isempty, cs_paths) & ~strncmp(cs_paths, cs_test, numel(cs_test)));
+addpath(strjoin(cs_paths, pathsep));
+addpath(fileparts(cs));
 is_octave = exist('OCTAVE_VERSION', 'builtin') ~= 0;
 
 if is_octave

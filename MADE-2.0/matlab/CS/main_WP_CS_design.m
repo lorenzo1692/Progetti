@@ -34,7 +34,11 @@
 clearvars; close all; clc
 
 this_dir = fileparts(mfilename('fullpath'));
-addpath(genpath(this_dir));
+% test/ holds Octave-only stand-ins for TABLE/HEIGHT that must never shadow MATLAB's own
+cs_paths = strsplit(genpath(this_dir), pathsep);
+cs_test = fullfile(this_dir, 'test');
+cs_paths = cs_paths(~cellfun(@isempty, cs_paths) & ~strncmp(cs_paths, cs_test, numel(cs_test)));
+addpath(strjoin(cs_paths, pathsep));
 addpath(fileparts(this_dir)); % MADE-2.0/matlab/: shared xbr.m, xbz.m, xlm.m (used by TF too)
 
 default_input = fullfile(this_dir, 'input', 'WP_CS_input_template.xlsx');
