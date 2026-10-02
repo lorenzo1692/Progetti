@@ -79,6 +79,13 @@ end
 field_tol = 0.05;     if isfield(p, 'field_tol') && ~isempty(p.field_tol), field_tol = p.field_tol; end           % [T]
 field_max_iter = 6;   if isfield(p, 'field_max_iter') && ~isempty(p.field_max_iter), field_max_iter = p.field_max_iter; end
 n_field_rejected = 0;
+% rejection statistics per reason and per lateral case width (printed at the
+% end): which check removes which candidates
+rej_names = {'Iop range', 'turns to zero', 'too many layers', 'toroidal gap', 'cell geometry', ...
+    'hot spot', 'jacket > JT_max', 'vault/jacket allowable', 'field not converged'};
+lw_list = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max;
+rej_count = zeros(numel(lw_list), numel(rej_names));
+pass_count = zeros(numel(lw_list), 1);
 
 counter = 0;
 % DATA is intentionally left undefined here: like the original script, it
@@ -136,7 +143,9 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
             end
 
             Iop = ceil(g.NI/n_spire_(1));
+            i_lw = find(abs(lw_list - lateral_w) < 1e-9, 1);
             if Iop < p.Iop_min || Iop > p.Iop_max
+                rej_count(i_lw, 1) = rej_count(i_lw, 1) + 1;
                 continue
             end
 
@@ -156,7 +165,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
             % makes cables bigger).
             n_layers_start = n_layers; n_turns_start = n_turns;
             n_spire_start = n_spire_; Iop_start = Iop;
-            B_field_layer = []; reject = false; field_ok = false;
+            B_field_layer = []; reject = false; field_ok = false; rej_why = 0;
             JT_req = zeros(1, maxdim);   % jacket thickness required by the surrogate (scf_model = 1), per layer
             jacket_passes = 0;
             for field_it = 1:field_max_iter + (scf_model == 1)*jacket_max_passes
@@ -293,7 +302,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                 end
 
                 if n_turns(n_layers0) <= 0
-                    reject = true; break
+                    reject = true; rej_why = 2; break
                 end
 
                 if var == n_layers && n_turns_add >= 1
@@ -335,7 +344,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                 end
 
                 if n_layers > maxdim || n_layers < 0
-                    reject = true; break
+                    reject = true; rej_why = 3; break
                 end
 
                 % Recompute B per grade
@@ -363,14 +372,14 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
 
                 check_w_arr = 2*Ri(1:n_layers)*tan(theta_TF/2); % maximum toroidal Case envelope
                 if min((check_w_arr - (WP_w0(1:n_layers)+p.GoundIns*2))/2) < p.toroidal_gap
-                    reject = true; break
+                    reject = true; rej_why = 4; break
                 end
 
                 % Geometric check on the obtained cable dimensions
                 r_cable(1:n_layers) = Cond_w(1:n_layers)./Cond_h(1:n_layers);
                 if min(SC_w) <= p.min_SC_w || min(r_cable(1:n_layers)) < p.min_cable_aspect_ratio || ...
                         max(r_cable(1:n_layers)) > max_cable_aspect_ratio || min(JT(1:n_layers)) < p.min_JT
-                    reject = true; break
+                    reject = true; rej_why = 5; break
                 end
 
                 % Hot-spot temperature check (CICC): the allowable depends on
@@ -389,7 +398,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                     end
                 end
                 if ths_exceeded
-                    reject = true; break
+                    reject = true; rej_why = 6; break
                 end
 
                 % Primary radial stress (Pm+Pb) - evaluated at every layer,
@@ -498,7 +507,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                         'Sm', Sm_jacket, 'margin', jacket_margin, 'JT_step', p.JT_step, 'JT_max', JT_max));
                     if ~js.ok
                         n_jacket_rejected = n_jacket_rejected + 1;
-                        reject = true; break
+                        reject = true; rej_why = 7; break
                     end
                     if any(js.JT > JT(1:n_layers) + 1e-9)
                         % thicker jacket needed: size the candidate again with it
@@ -512,7 +521,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                 end
 
                 if ~(S_T_VT < p.S_amm_VT && S_T_JT < p.S_amm_JT && S_T_JT > 0 && S_T_VT > 0)   % vault vs its own allowable (review C07)
-                    reject = true; break
+                    reject = true; rej_why = 8; break
                 end
 
                 % Real peak field of the sized candidate vs the field each
@@ -541,9 +550,12 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
             end
             if reject || ~field_ok
                 n_field_rejected = n_field_rejected + (~reject);
+                if ~reject, rej_why = 9; end
+                rej_count(i_lw, rej_why) = rej_count(i_lw, rej_why) + 1;
                 continue
             end
             counter = counter + 1;
+            pass_count(i_lw) = pass_count(i_lw) + 1;
             n_cond = n_spire_(1);
             WP_w = WP_w0(1);
             JENG = Iop/(min(Cond_w(1:n_layers))*min(Cond_h(1:n_layers)))*1e-6;
@@ -588,6 +600,18 @@ if use_discrete_field && n_field_rejected > 0
     fprintf(['%d candidate(s) passed every check but their grade fields did not converge to the ' ...
         'discrete peak within %.3g T in %d passes: rejected.\n'], n_field_rejected, field_tol, field_max_iter);
 end
+% which checks removed the candidates, per lateral case width (toroidal WP
+% width W1 = WP envelope at the plasma side)
+Re1 = g.R_TF_Innerleg - p.dr_plasma_side - p.GoundIns;
+fprintf('\nCandidates per lateral case width: passed and rejected by check\n');
+fprintf('%9s %7s %6s', 'lateral_w', 'W1 [mm]', 'pass');
+for k = 1:numel(rej_names), fprintf(' %*s', max(6, numel(rej_names{k})), rej_names{k}); end
+fprintf('\n');
+for i = 1:numel(lw_list)
+    fprintf('%9.4f %7.0f %6d', lw_list(i), 1e3*(2*Re1*tan(theta_TF/2) - 2*lw_list(i) - 2*p.GoundIns), pass_count(i));
+    for k = 1:numel(rej_names), fprintf(' %*d', max(6, numel(rej_names{k})), rej_count(i, k)); end
+    fprintf('\n');
+end
 if scf_model == 1 && n_jacket_rejected > 0
     fprintf('%d candidate(s) rejected: no jacket thickness up to JT_max = %.1f mm satisfies the surrogate criteria.\n', ...
         n_jacket_rejected, 1e3*JT_max);
@@ -612,7 +636,12 @@ end
 
 function jump_grade = pick_jump_grades(n_grades, B_layers, target2, target3)
 %PICK_JUMP_GRADES Grade indices at which the cable type/current design changes.
-if n_grades == 3
+%   n_grades = 1: one cable for the whole WP (sized at the plasma-side peak);
+%   2: second grade from the layer nearest to target3; 3: grades from the
+%   layers nearest to target2 and target3.
+if n_grades == 1
+    jump_grade = 1;
+elseif n_grades == 3
     jump_grade = zeros(1,3);
     [~, jump_grade(1)] = min(abs(B_layers - B_layers(1)));
     [~, jump_grade(2)] = min(abs(B_layers - target2));
@@ -622,7 +651,7 @@ elseif n_grades == 2
     [~, jump_grade(1)] = min(abs(B_layers - B_layers(1)));
     [~, jump_grade(2)] = min(abs(B_layers - target3));
 else
-    error('pick_jump_grades:unsupported_n_grades', 'n_grades must be 2 or 3 (got %g).', n_grades);
+    error('pick_jump_grades:unsupported_n_grades', 'n_grades must be 1, 2 or 3 (got %g).', n_grades);
 end
 end
 
