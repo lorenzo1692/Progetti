@@ -396,3 +396,13 @@ with the WP); primary load case; all checks passed in every run.
   JT_step): the thin-membrane JT formula of size_cicc_cable (S_rm 413 vs
   limit 513 MPa here) never governs, so the jacket is not sized in the scan,
   only checked (scf_model 1) or used in the nose loop (scf_model 0).
+
+## Jacket sizing in the scan - first test (02-Oct-2026)
+
+Details: `docs/DIMENSIONAMENTO_JACKET.md` sections 6-8. Surrogate recalibrated
+with 12 jacket-thickness variants (form (JT/3mm)^0.2 + width-step term);
+`scf_model` = 1 now sizes JT per grade with jacket_margin 1.10; results
+ranked by radial build; `search/refine_jacket_fe.m` corrects the chosen
+design with the FE. On the design-10 machine, scan #1 (design 10 layout,
+JT 2.1/2.1/2.4 mm): FE Pm+Pb 1047 MPa -> refined JT 2.1/2.2/2.9 mm, FE Pm
+601, Pm+Pb 985 MPa (criteria met), radial build 542.4 -> 552.6 mm.

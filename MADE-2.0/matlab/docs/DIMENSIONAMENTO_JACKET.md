@@ -190,3 +190,41 @@ Nello scan (`scf_model` = 1, `search/scan_wp_designs.m`):
 5. le soluzioni sono ordinate per ingombro radiale crescente (Ri_ − Rk_):
    la #1 è il punto di partenza.
 
+
+## 8. Prova sulla macchina del design 10 (02/10/2026)
+
+Scan ridotto con il nuovo dimensionamento (`scf_model` = 1,
+`jacket_margin` = 1.10): layout con 18 turn nel primo layer, larghezza
+laterale 0.0537 m come il design 10. 22 candidati, 6 fattibili, 6.5 minuti
+in Octave. Classifica per ingombro radiale:
+
+| # | Ingombro radiale | Layer | JT per grade [mm] | Surrogato Pm / Pm+Pb [MPa] |
+|---|---:|---:|---|---|
+| 1 | 542.4 mm | 13 (= design 10) | 2.1 / 2.1 / 2.4 | 558 / 908 |
+| 2 | 548.4 mm | 14 | 2.1 / 2.4 / 2.5 | 550 / 891 |
+| 3 | 592.8 mm | 18 | 2.1 / 2.3 / 2.4 | 551 / 896 |
+| 4 | 604.4 mm | 19 | 2.1 / 2.2 | 556 / 898 |
+| 5 | 637.8 mm | 20 | 2.1 / 2.2 | 558 / 899 |
+| 6 | 692.6 mm | 25 | 2.1 | 556 / 899 |
+
+La #1 ha lo stesso layout del design 10 (che con JT 2.1 mm ovunque non
+passava il FE: Pm+Pb 1075 MPa); ora il grade 3 ha 2.4 mm e l'ingombro
+cresce di 1.1 mm.
+
+Verifica FE e correzione (`refine_jacket_fe`) sulla #1:
+
+| Run FE | JT per grade [mm] | FE Pm | FE Pm+Pb | Surrogato Pm+Pb | Ingombro radiale |
+|---|---|---:|---:|---:|---:|
+| 1 | 2.1 / 2.1 / 2.4 | 626 | **1047** (L11) | 908 | 542.4 mm |
+| 2 | 2.1 / 2.2 / 2.9 | 601 | **985** | 840 | 552.6 mm |
+
+Al secondo run tutti i criteri sono soddisfatti (Pm ≤ 667, Pm+Pb ≤ 1000
+MPa). Il design 10 corretto costa 10 mm di ingombro radiale rispetto alla
+#1 dello scan. Questo layout è il caso peggiore della taratura per il
+surrogato (FE/surrogato 1.15–1.19, gradino 14 → 10 turn): la correzione
+FE è proprio il passo che serve per questi casi.
+
+Nota sulla classifica: la #2 (548.4 mm, 14 layer) è sotto la #1 corretta
+(552.6 mm) ma non è ancora verificata col FE; se anche lei richiedesse una
+correzione l'ordine potrebbe cambiare. Per scegliere con certezza tra
+soluzioni vicine (pochi mm) conviene verificare col FE le prime 2–3.
