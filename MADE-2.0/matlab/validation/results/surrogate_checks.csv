@@ -1,0 +1,4 @@
+results,idx,n_TF,Ri,Iop,n_layers,W1,case_x,inside,FE_valid,jacket_Pm_FE,jacket_Pm_sur,jacket_PmPb_FE,jacket_PmPb_sur,case_Pm_FE,case_Pm_sur,case_PmPb_FE,case_PmPb_sur
+WP_TF_input_template_results_20261003_210619,1,12,1.25943,48009,11,0.5440,2.01,0,1,602,574,930,892,636,633,709,695
+WP_TF_input_template_results_20261003_210619,2,12,1.25943,42008,11,0.5440,1.95,0,1,602,571,964,908,637,635,698,695
+WP_TF_input_template_results_20261003_210619,3,12,1.25943,62234,10,0.5040,2.48,1,1,580,569,918,906,632,635,694,708

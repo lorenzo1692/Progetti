@@ -537,3 +537,22 @@ modello a strati.
 - **Jacket**: Pm+Pb supera 1.5 Sm = 1000 MPa dell'1–3%. È il layout del
   design 10, il peggiore per il surrogato del jacket (§5b del manuale): va
   corretto con `refine_jacket_fe`, come previsto dal flusso del main.
+
+**Scan completo sulla macchina del template (MATLAB, 03/10/2026, 95
+soluzioni).** Verifica col FE 2D delle prime tre (carico primario, MPa,
+FE / surrogato; `validation/results/surrogate_checks.csv`).
+
+| # | ingombro | layout | x | case Pm | case Pm+Pb | jacket Pm | jacket Pm+Pb |
+|---|---|---|---|---|---|---|---|
+| 1 | 471 mm | 11 layer, 14…10 turn, 48 kA | 2.01 | 636 / 633 | 709 / 695 | 602 / 574 | 930 / 892 |
+| 2 | 478 mm | 11 layer, 16…10 turn, 42 kA | 1.95 | 637 / 635 | 698 / 695 | 602 / 571 | 964 / 908 |
+| 3 | 487 mm | 10 layer, 12…6 turn, 62 kA | 2.48 | 632 / 635 | 694 / 708 | 580 / 569 | 918 / 906 |
+
+- **Tutte e tre soddisfano tutti i criteri nel FE**: Pm ≤ 667 MPa e
+  Pm+Pb ≤ 1000 MPa per jacket e case, senza correzioni.
+- **Case**: il surrogato ha un errore entro ±0.5% su Pm, anche con x ≈ 2.0,
+  poco sotto il minimo di taratura.
+- **Jacket**: il surrogato sottostima del 2–6%, ed è coperto dal margine
+  `jacket_margin` = 1.10.
+- **Confronto con il run precedente** (formula del vault, foro piano):
+  l'ingombro radiale della #1 passa da 503 a 471 mm.
