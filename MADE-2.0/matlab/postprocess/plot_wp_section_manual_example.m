@@ -27,7 +27,7 @@ row.shape_cable = 201;  % 201 = Rect, 200 = RIS (needs Cond_w = Cond_h; JT = min
 
 row.Ri_ = 1.18;   % [m] Case outer (plasma-side) radius
 row.Rj_ = 0.8354; % [m] WP inner boundary radius
-row.Rk_ = 0.70;   % [m] Case nose tip radius
+row.Rk_ = 0.70;   % [m] flat-bore apothem (ANSYS parameter); bore arc radius = Rk_/cos(pi/n_TF)
 
 % Field on the WP (BSUM peak): needed by plot_wp_diagnostics and to size
 % the cable of each grade below.

@@ -22,7 +22,15 @@ function out = size_case_vault(in)
 %       scf_model = 1, whose jacket check is done by the scan)
 %
 %   out fields:
-%     Rk_, DTF, S_T_VT, S_T_JT, A_CASE, S_z (axial stress), iterations
+%     Rk_, R_bore, DTF, S_T_VT, S_T_JT, A_CASE, S_z (axial stress), iterations
+%
+%   Bore geometry (as the 2D FE and the ANSYS GPS model): the case bore is a
+%   circular arc of radius R_bore centred on the machine axis; DTF is the
+%   nose thickness at the centre plane, R_bore = Rj_ - DTF. Rk_ is the
+%   ANSYS parameter of the flat bore whose corners lie on the arc,
+%   Rk_ = R_bore*cos(theta_TF/2) (WEDGE_INTR_INS = Rk_/cos(pi/n_TF)). Before
+%   this change DTF was Rj_ - Rk_, i.e. the arc nose was thinner than DTF by
+%   Rk_*(1/cos(pi/n_TF) - 1) (17-25 mm with n_TF = 12).
 
 DTF = in.DTF0;
 S_T_JT = Inf;
@@ -41,9 +49,11 @@ while S_T_VT > in.S_amm_VT || S_c_VT > in.S_amm_VT/in.safety_membrane || ...
     end
 
     DTF = DTF + in.DTF_step;                        % If Tresca is exceeded, increase the TF nose thickness
-    Rk_ = in.Rj_ - DTF;                              % Innermost Case radius
-    CASE_w_l = 2*Rk_*tan(in.theta_TF/2);             % Case low part width
-    A_tot = (in.CASE_w + CASE_w_l)*(in.Ri_ - Rk_)/2;
+    R_bore = in.Rj_ - DTF;                           % bore arc radius = innermost case radius
+    Rk_ = R_bore*cos(in.theta_TF/2);                 % flat-bore apothem (ANSYS parameter)
+    CASE_w_l = 2*R_bore*sin(in.theta_TF/2);          % chord of the bore arc (= 2 Rk_ tan)
+    % sector between the flanks, flat plasma side at Ri_, arc bore R_bore
+    A_tot = in.Ri_^2*tan(in.theta_TF/2) - in.theta_TF/2*R_bore^2;
     A_CASE = A_tot - in.A_WP;
 
     Ke_WP_rad = sum(1./(in.Ke_cavo_rad .* in.n_turns))^-1;
@@ -55,13 +65,13 @@ while S_T_VT > in.S_amm_VT || S_c_VT > in.S_amm_VT/in.safety_membrane || ...
     S_rm_JT = in.S_rm*dcr_WP_rad;                    % Radial membrane stress, innermost jacket layer correction
 
     h_unit = 1;
-    k_steel_tor = in.E_case*(h_unit*(in.Ri_-Rk_)*2*pi*(in.Ri_+Rk_)/2);   % full steel casing
+    k_steel_tor = in.E_case*(h_unit*(in.Ri_-R_bore)*2*pi*(in.Ri_+R_bore)/2);   % full steel casing
     k_SC_tor = in.E_cbl*(h_unit*(in.Ri_-in.Rj_)*2*pi*(in.Ri_+in.Rj_)/2)*(1-(in.A_WP-in.A_SC_tot)/in.A_WP);
     k_JT_tor = in.E_jckt*(h_unit*(in.Ri_-in.Rj_)*2*pi*(in.Ri_+in.Rj_)/2)*(1-(in.A_WP-in.A_JT_tot)/in.A_WP);
-    k_vault_tor = in.E_case*(h_unit*(in.Rj_-Rk_)*2*pi*(in.Rj_+Rk_)/2);
+    k_vault_tor = in.E_case*(h_unit*(in.Rj_-R_bore)*2*pi*(in.Rj_+R_bore)/2);
     dcr_vault_tor = k_steel_tor/(k_SC_tor + k_JT_tor + k_vault_tor);
 
-    beta = Rk_/in.Ri_;
+    beta = R_bore/in.Ri_;
     S_c_VT = 2/(1-beta^2)*in.p_rs*dcr_vault_tor;
 
     k_bf = 0.5*log(in.RTFo/in.RTFi);                                     % k bending free
@@ -73,6 +83,7 @@ while S_T_VT > in.S_amm_VT || S_c_VT > in.S_amm_VT/in.safety_membrane || ...
 end
 
 out.Rk_ = Rk_;
+out.R_bore = R_bore;
 out.DTF = DTF;
 out.S_T_VT = S_T_VT;
 out.S_T_JT = S_T_JT;

@@ -489,7 +489,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                 ctx.jacket_in_loop = scf_model == 0;
 
                 cv = size_case_vault(ctx);
-                Rk_ = cv.Rk_; S_T_VT = cv.S_T_VT; S_T_JT = cv.S_T_JT;
+                Rk_ = cv.Rk_; R_bore = cv.R_bore; S_T_VT = cv.S_T_VT; S_T_JT = cv.S_T_JT;
 
                 JT_Pm = NaN; JT_PmPb = NaN;
                 JT_crit_layer = worst_var;      % critical jacket layer (analytic formula)
@@ -575,9 +575,11 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
             S_T_VT = S_T_VT*1e-6;
             S_T_JT = S_T_JT*1e-6;
             JT_Pm = JT_Pm*1e-6; JT_PmPb = JT_PmPb*1e-6;   % [MPa], surrogate jacket stresses (NaN with scf_model = 0)
-            Nose = Rj_-Rk_;
+            % arc bore (as the FE and ANSYS): nose thickness at the centre
+            % plane and radial build from the bore arc R_bore = Rk_/cos(pi/n_TF)
+            Nose = Rj_-R_bore;
             R_0 = p.R0;
-            radial_build = Ri_-Rk_;
+            radial_build = Ri_-R_bore;
 
             % shape_cable is saved with the solution (200 RIS / 201 Rect): every
             % downstream step (section plots, FEM surrogate, ANSYS export)
@@ -592,10 +594,10 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
             % calibrated estimate of the first pass (NaN unless field_model = 1)
             B_cal = max(B_cal_layer);
             field_iter = field_it;
-            row = table(S_T_VT,S_T_JT,R_0,g.B_PHI_0,B_TF,Iop,JENG,L,E,Ri_,Rj_,Rk_,radial_build,Nose,WP_h,WP_w,...
+            row = table(S_T_VT,S_T_JT,R_0,g.B_PHI_0,B_TF,Iop,JENG,L,E,Ri_,Rj_,Rk_,R_bore,radial_build,Nose,WP_h,WP_w,...
                 lateral_w,n_cond,n_layers,n_turns,type_cable,Cond_w,Cond_h,JT,r_cable,N_Sc,N_Cu,S_Cable,S_REBCO,S_Cu_HTS,THS,B_grade,Tau_discharge, ...
                 shape_cable, B_peak, B_peak_layers, field_iter, B_cal, JT_Pm, JT_PmPb, JT_crit_layer, ...
-                'VariableNames', {'S_T_VT','S_T_JT','R_0','B_PHI_0','B_TF','Iop','JENG','L','E','Ri_','Rj_','Rk_', ...
+                'VariableNames', {'S_T_VT','S_T_JT','R_0','B_PHI_0','B_TF','Iop','JENG','L','E','Ri_','Rj_','Rk_','R_bore', ...
                 'radial_build','Nose','WP_h','WP_w','lateral_w','n_cond','n_layers','n_turns','type_cable','Cond_w', ...
                 'Cond_h','JT','r_cable','N_Sc','N_Cu','S_Cable','S_REBCO','S_Cu_HTS','THS','B_grade','Tau_discharge', ...
                 'shape_cable','B_peak','B_peak_layers','field_iter','B_cal','JT_Pm','JT_PmPb','JT_crit_layer'});
@@ -631,7 +633,7 @@ end
 if counter == 0
     DATA = table();
 else
-    % ranking: smallest radial build of the inner leg (Ri_ - Rk_) first, so
+    % ranking: smallest radial build of the inner leg (Ri_ - R_bore) first, so
     % design #1 is the best starting point
     [~, order] = sort([DATA.radial_build]);   % table column (MATLAB) or struct array (Octave test stand-in)
     DATA = DATA(order, :);

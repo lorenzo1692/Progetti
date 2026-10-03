@@ -20,12 +20,10 @@ function plot_wp_section(row, p, fig_title)
 %         fields: n_TF, dr_plasma_side, GoundIns, INS_grades,
 %         turn_insulation_nominal, Increm.
 %
-%   NOTE: this solver assumes a straight-sided trapezoidal case nose; the
-%   real FEM nose is a curved arc (see
-%   validation/TF_FEM_benchmark_2026_findings.md) - the Case outline drawn
-%   here is this solver's own assumption, not a FEM cross-check. The
-%   wedge-side insulation (FEM's CASE_INS) has no equivalent in this
-%   solver's formulas and is not drawn.
+%   The case is drawn as in the FEM and the ANSYS model: flat plasma side,
+%   radial flanks, bore = arc of radius Rk_/cos(pi/n_TF) (the scan sizes the
+%   nose thickness at the centre plane on this arc, SIZE_CASE_VAULT). The
+%   wedge-side insulation (FEM's CASE_INS) is not drawn.
 
 if nargin < 3 || isempty(fig_title)
     fig_title = sprintf('WP section - Iop=%.0f A, n_layers=%d, Rk=%.4f m', row.Iop, row.n_layers, row.Rk_);
@@ -63,11 +61,16 @@ col_tins   = [0.0588 1.0 1.0];   % turn insulation (cyan, matches the original P
 col_LTS    = [0.20 0.45 0.85];
 col_HTS    = [0.85 0.35 0.15];
 
-% Case outline (straight-sided trapezoid - this solver's own assumption)
+% Case outline
 CASE_w_top = 2*row.Ri_*tan(theta_TF/2);
 CASE_w_bot = 2*row.Rk_*tan(theta_TF/2);
-case_x = [-CASE_w_top/2, CASE_w_top/2, CASE_w_bot/2, -CASE_w_bot/2];
-case_y = [row.Ri_, row.Ri_, row.Rk_, row.Rk_];
+% case: flat plasma side at Ri_, radial flanks, bore = arc of radius
+% Rk_/cos(pi/n_TF) through the corners of the flat bore at Rk_ (as the FE
+% and the ANSYS model)
+R_bore_ = row.Rk_/cos(theta_TF/2);
+phi_ = linspace(theta_TF/2, -theta_TF/2, 41);
+case_x = [-CASE_w_top/2, CASE_w_top/2, R_bore_*sin(phi_)];
+case_y = [row.Ri_, row.Ri_, R_bore_*cos(phi_)];
 h_case = patch(case_x, case_y, col_case, 'EdgeColor', [0.3 0.3 0.3], 'DisplayName', 'Case');
 
 % Ground insulation: plasma-side wall to WP outer edge (top), and WP inner

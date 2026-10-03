@@ -8,8 +8,9 @@ function v = jacket_jt_variant(row, p, dJT)
 %     - the superconducting cable area of each layer (A_cable from
 %       WP_TURN_GEOMETRY, i.e. the cable the conductor sizing produced),
 %     - the cell width Cond_w (turns per layer x Cond_w = WP width),
-%     - the case nose thickness DTF = Rj_ - Rk_ (the nose moves radially
-%       inward with the taller WP: Rk_ is recomputed).
+%     - the case nose thickness at the centre plane, DTF = Rj_ - R_bore with
+%       the bore arc R_bore = Rk_/cos(pi/n_TF) (the nose moves radially
+%       inward with the taller WP: Rk_ and R_bore are recomputed).
 %   The cable height and the cell height follow from the area:
 %     SC_w = Cond_w - 2 JT - 2 t_ins, r_SC = clamp(JT, r_SC_min, r_SC_max),
 %     SC_h = (A_cable + (4 - pi) r_SC^2)/SC_w, Cond_h = SC_h + 2 JT + 2 t_ins.
@@ -43,7 +44,11 @@ Rj_new = row.Ri_ - sum(Ch) - (nl-1)*ins - dps - 2*git;
 v = row;
 v.JT(1:nl) = JT;
 v.Cond_h(1:nl) = Ch;
-v.Rk_ = row.Rk_ - (Rj_old - Rj_new);
+cb = cos(pi/getf(p, 'n_TF', 12));
+v.Rk_ = row.Rk_ - (Rj_old - Rj_new)*cb;          % R_bore moves by the same amount as Rj_
+if isfield(v, 'R_bore'), v.R_bore = v.Rk_/cb; end
+if isfield(v, 'Rj_'), v.Rj_ = Rj_new; end
+if isfield(v, 'radial_build'), v.radial_build = row.Ri_ - v.Rk_/cb; end
 if isfield(v, 'S_Cable'), v.S_Cable(1:nl) = A; end
 Re = row.Ri_ - dps - git; gap = zeros(1, nl);
 for k = 1:nl

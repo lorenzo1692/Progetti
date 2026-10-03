@@ -49,8 +49,14 @@ col_tins   = [0.0588 1.0 1.0];
 
 CASE_w_top = 2*row.Ri_*tan(theta_TF/2);
 CASE_w_bot = 2*row.Rk_*tan(theta_TF/2);
-patch([-CASE_w_top/2, CASE_w_top/2, CASE_w_bot/2, -CASE_w_bot/2], ...
-      [row.Ri_, row.Ri_, row.Rk_, row.Rk_], col_case, 'EdgeColor', [0.3 0.3 0.3]);
+% case: flat plasma side at Ri_, radial flanks, bore = arc of radius
+% Rk_/cos(pi/n_TF) through the corners of the flat bore at Rk_ (as the FE
+% and the ANSYS model)
+R_bore_ = row.Rk_/cos(theta_TF/2);
+phi_ = linspace(theta_TF/2, -theta_TF/2, 41);
+case_x = [-CASE_w_top/2, CASE_w_top/2, R_bore_*sin(phi_)];
+case_y = [row.Ri_, row.Ri_, R_bore_*cos(phi_)];
+patch(case_x, case_y, col_case, 'EdgeColor', [0.3 0.3 0.3]);
 
 plasma_wall_y = row.Ri_ - p.dr_plasma_side;
 w_top_out = 2*plasma_wall_y*tan(theta_TF/2);

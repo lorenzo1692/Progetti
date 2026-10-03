@@ -55,10 +55,10 @@ for it = 1:max_iter
     s.evaluate_only = true; s.margin = 1;
     ev = size_jacket_surrogate(s);
     R.history(end+1) = struct('JT', r.JT(1:nl), 'FE_Pm', max(FE_Pm), 'FE_PmPb', max(FE_PmPb), ...
-        'sur_Pm', max(ev.Pm), 'sur_PmPb', max(ev.PmPb), 'Rk_', r.Rk_, 'radial_build', r.Ri_ - r.Rk_);
+        'sur_Pm', max(ev.Pm), 'sur_PmPb', max(ev.PmPb), 'Rk_', r.Rk_, 'radial_build', r.Ri_ - r.Rk_/cos(pi/p.n_TF));
     fprintf('refine_jacket_fe pass %d: JT %s mm | FE Pm %.0f, Pm+Pb %.0f MPa | surrogate Pm %.0f, Pm+Pb %.0f MPa | radial build %.1f mm\n', ...
         it, mat2str(unique(round(r.JT(1:nl)*1e4)/10)), max(FE_Pm)/1e6, max(FE_PmPb)/1e6, max(ev.Pm)/1e6, ...
-        max(ev.PmPb)/1e6, 1e3*(r.Ri_ - r.Rk_));
+        max(ev.PmPb)/1e6, 1e3*(r.Ri_ - r.Rk_/cos(pi/p.n_TF)));
     R.mech = mech; R.row = r;
     if all(FE_Pm <= Sm) && all(FE_PmPb <= 1.5*Sm)
         R.ok = true; return
@@ -102,7 +102,8 @@ g = compute_operating_params(p);
 theta = 2*pi/p.n_TF;
 Ch = r.Cond_h(1:nl); Cw = r.Cond_w(1:nl); nt = r.n_turns(1:nl);
 A_WP = sum(Ch.*Cw.*nt); A_JT_tot = sum(tg.A_jacket.*nt);
-A_CASE = (2*r.Ri_*tan(theta/2) + 2*r.Rk_*tan(theta/2))*(r.Ri_ - r.Rk_)/2 - A_WP;
+R_bore = r.Rk_/cos(theta/2);                               % arc bore, as SIZE_CASE_VAULT
+A_CASE = r.Ri_^2*tan(theta/2) - theta/2*R_bore^2 - A_WP;
 T_bf = 0.5*(g.k_bf*p.n_TF*(sum(nt)*r.Iop)^2*Mu_0/(2*pi));
 s = struct('A_cable', A, 'Cond_w', Cw, 'tins', tg.tins, 'E_cbl', E_cbl, 'n_turns', nt, 'B_layer', Bl, ...
     'grade', grade, 'JT0', r.JT(1:nl), 'E_jckt', p.E_jckt, 'E_ins', p.E_ins, 'r_SC_min', p.r_SC_min, ...
