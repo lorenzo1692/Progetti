@@ -445,3 +445,82 @@ soluzione FE non cambia.
   spessore del nose, forza centripeta e larghezza del WP. Il modello a
   strati resta uno strumento di comprensione.
 - **C.** Verifica del case solo col FE sulle prime soluzioni della scansione.
+
+## 11. Scelta B: surrogato del case nella scansione (03/10/2026)
+
+Decisione: nella scansione si usano il surrogato del jacket (§5b del
+manuale) e un surrogato del case tarato sul FE. Il modello a telaio
+(scelta A) resta uno studio per gli sviluppi futuri: `docs/MODELLO_TELAIO.md`.
+
+### 11.1 Foro ad arco anche nello scan
+
+`size_case_vault` dimensionava il nose come DTF = R_j − R_k, cioè con il
+foro piano. FE e ANSYS hanno invece il foro ad arco di raggio
+R_k/cos(π/n_TF). Ora DTF è lo spessore del nose al centro, sull'arco:
+
+    R_bore = R_j − DTF,     R_k = R_bore cos(π/n_TF)
+
+- R_k resta il parametro ANSYS (`WEDGE_INTR_INS` = R_k/cos(π/n_TF)), con lo
+  stesso significato di prima.
+- Nuova colonna `R_bore`. `Nose` = R_j − R_bore, ingombro radiale
+  R_i − R_bore.
+- L'area del case è quella del settore con il foro ad arco:
+  R_i² tan(θ/2) − (θ/2) R_bore².
+
+### 11.2 Il surrogato
+
+    Pm,case    = (a_m + b_m ln x) · Pm,nose,LC
+    Pm+Pb,case = (a_b + b_b ln x) · Pm,nose,LC,      x = h_WP / t_nose
+
+- **Pm,nose,LC** è l'intensità di membrana del nose del modello a strati
+  (opzioni di default). Porta già carichi, rigidezze e l'accoppiamento con
+  il jacket.
+- **x** è il rapporto tra l'altezza del WP (dalla piastra al nose) e lo
+  spessore del nose al centro. Misura quanto pesa l'effetto telaio che il
+  modello assialsimmetrico non vede: il rapporto FE/modello sale con
+  regolarità da 1.05 (x = 2.2) a 1.37 (x = 21).
+- **Bersaglio**: il massimo sulle SCL del case del FE (nose al centro, a
+  metà, diagonale del vault, pareti, piastra), carico primario.
+
+| | a | b | leave-one-design-out, modello/FE | rms |
+|---|---:|---:|---|---:|
+| Pm | 0.95802 | 0.13123 | 0.967 … 1.040 | 2.1% |
+| Pm+Pb | 0.99183 | 0.23057 | 0.864 … 1.121 | 7.1% |
+
+- **Dati**: le 19 run FE di riferimento (`mech_reference_rows.mat`,
+  `mech_reference_fe.csv`), con x da 2.2 a 21. La validità è limitata a
+  n_TF = 12 e ai cavi rettangolari; `extrapolated` segnala x fuori
+  intervallo.
+- **Altre forme provate** per Pm+Pb: con la larghezza del WP come secondo
+  predittore il rms in leave-one-design-out non migliora (7.7%), e con
+  W/corda del foro migliora poco (5.9%). Si tiene un solo predittore con un
+  margine dedicato.
+- **Riproducibilità**: `validation/run_case_surrogate_features.m` e
+  `validation/tools/fit_case_surrogate.py`. I coefficienti valgono per le
+  opzioni di default di `wp_layered_cylinder`: se cambiano, va rifatto il
+  fit.
+
+### 11.3 Nella scansione
+
+- `case_model` = 1 (default): `size_case_surrogate` trova il DTF minimo
+  sulla griglia DTF_initial + k·DTF_step, per bisezione (circa 10
+  valutazioni), con:
+  - case_margin·Pm ≤ Sm_case (case_margin = 1.05);
+  - case_margin_PmPb·(Pm+Pb) ≤ 1.5 Sm_case (case_margin_PmPb = 1.10).
+- S_z segue la nuova area del case.
+- Nuove colonne: S_T_VT = Pm del case, `Case_PmPb`, `case_x`.
+- `case_model` = 0: formula del vault di prima, ma con il foro ad arco.
+
+**Accoppiamento jacket–case.** Sui design di riferimento, +0.5 mm di
+jacket su tutti i layer fanno risparmiare 5 mm di nose (bench: DTF da 119 a
+114 mm; d7: da 103 a 95 mm). Il surrogato lo vede perché la base è il
+modello a strati.
+
+**Scan ridotto (macchina del design 10, 22 layout da 18 turn).**
+
+| | prima (formula del vault, foro ad arco) | surrogato del case |
+|---|---|---|
+| ingombro radiale della #1 | 540.1 mm | 520.9 mm |
+| nose della #1 | 173 mm | 152 mm |
+| Pm del case della #1 (surrogato) | — | 635 MPa |
+| tempo dello scan in Octave | 169 s | 210 s |

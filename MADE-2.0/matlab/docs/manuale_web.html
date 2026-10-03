@@ -206,6 +206,8 @@ nav.toc a.sub.active { font-weight: 600; }
       <a class="sub" href="#s5c-h6">Passo 6: dall'anello alle pareti</a>
       <a class="sub" href="#s5c-h7">Passo 7: il WP come colonna con attrito</a>
       <a class="sub" href="#s5c-h8">Verifica affiancata con il FE: dove va il carico</a>
+      <a class="sub" href="#s5c-h9">Surrogato del case nella scansione</a>
+      <a class="sub" href="#s5c-h10">Modello a telaio (scelta A, studio)</a>
     </details>
     <details class="toc-group" data-sec="s6"><summary><a href="#s6">6 · Modello elettromagnetico</a></summary>
       <a class="sub" href="#s6-h1">6.1 Il problema: magnetostatica 2D con correnti rettilinee</a>
@@ -287,6 +289,8 @@ nav.toc a.sub.active { font-weight: 600; }
       <tr><td>Coerenza dello stato di contatto</td><td>Nuovo controllo: le coppie che cambierebbero stato sulla soluzione restituita devono portare meno del 2% della forza normale. L'iterazione di contatto converge solo se è soddisfatto.</td><td>§8.7, §8.9</td></tr>
       <tr><td>FEM non valido</td><td>I plot restano, ma con un banner rosso “NOT VALIDATED” e l'avviso di non usare la figura di merito.</td><td>§8.9</td></tr>
       <tr><td>Verifica riproducibile RIS/Rect</td><td><code>verify_ris_rect_fem(p, cartella)</code>: selezione della forma, geometria, aree, materiali, Jacobiani, contatti, risultanti, residui e figure (sezione, GPS, zoom sul conduttore).</td><td>§2, §9</td></tr>
+      <tr><td>Foro del case ad arco nello scan</td><td>Il nose è dimensionato sullo spessore al centro dell'arco, come nel FE e in ANSYS (prima, col foro piano, era 17–25 mm più spesso del reale). Nuova colonna <code>R_bore</code>; l'ingombro radiale è R<sub>i</sub> − R<sub>bore</sub>.</td><td>§5, §7.5</td></tr>
+      <tr><td>Surrogato del case</td><td>Il nose è dimensionato con un surrogato tarato su 19 run FE: modello a strati × (a + b ln(h<sub>WP</sub>/t<sub>nose</sub>)), P<sub>m</sub> del case entro −3…+4% in leave-one-design-out. Nello scan ridotto la #1 guadagna 19 mm di ingombro radiale.</td><td>§5, §5c</td></tr>
       <tr><td>Modello a strati (in sviluppo)</td><td>Jacket e case in un unico modello analitico: cilindro di anelli ortotropi con la forza di Lorentz, soluzione in forma chiusa in ogni anello, cella del turn, colonna del WP con attrito. Confronto con il FE: jacket rms 8.3%, case −5…−27% (peggio sui nose sottili). Non ancora nella scansione. Emerso anche: il nose dello scan (R<sub>j</sub> − R<sub>k</sub>) è più spesso di 17–25 mm di quello del FE e di ANSYS (foro ad arco).</td><td>§5c</td></tr>
     </tbody>
   </table></div>
@@ -467,7 +471,12 @@ flowchart TD
       Se un layer non entra nel case con il gap toroidale minimo si tolgono 2 turn, che vengono aggiunti come layer in fondo.</li>
     <li><strong>Verifiche geometriche e di hot spot</strong>: larghezza minima del cavo, rapporto d'aspetto, JT minimo, THS entro il limite del tipo.</li>
     <li><strong>Jacket su tutti i layer</strong>: con <code>scf_model</code> = 0 (default) formula analitica × SCF di tabella × <code>SCF_transition_provisional</code> = 3.15 sui layer adiacenti a un cambio di grade (calibrazione su un solo FEM); con <code>scf_model</code> = 1 il surrogato di §5b. La pressione <code>p_rs</code> viene dal campo con cui è dimensionato il grade 1 (picco tarato o discreto con <code>field_model</code> 1/2, Ampère × <code>corr_B_WP</code> con 0). Le celle con Cond<sub>w</sub>/Cond<sub>h</sub> fuori da [<code>min_cable_aspect_ratio</code>, <code>max_cable_aspect_ratio</code>] sono scartate.</li>
-    <li><strong>Case</strong>: <code>size_case_vault</code> cresce il nose finché vault e jacket rispettano gli ammissibili.</li>
+    <li><strong>Case</strong>, secondo <code>case_model</code>:
+      <ul>
+        <li><strong>1 (default)</strong>: <code>size_case_surrogate</code> sceglie il nose più sottile per cui il surrogato del case, tarato sul FE (§5c), rispetta <code>case_margin</code>·P<sub>m</sub> ≤ S<sub>m,case</sub> e <code>case_margin_PmPb</code>·(P<sub>m</sub>+P<sub>b</sub>) ≤ 1.5 S<sub>m,case</sub>;</li>
+        <li><strong>0</strong>: <code>size_case_vault</code> cresce il nose finché vault e jacket rispettano gli ammissibili della formula analitica (§7.5).</li>
+      </ul>
+      In entrambi i casi il foro del case è un arco di raggio R<sub>bore</sub> = R<sub>k</sub>/cos(π/n<sub>TF</sub>), come nel FE e in ANSYS. Lo spessore del nose DTF è misurato al centro, sull'arco.</li>
     <li><strong>Accettazione meccanica</strong>: <code>S_T_VT &lt; S_amm_VT</code> e <code>S_T_JT &lt; S_amm_JT</code> (il confronto del vault con l'ammissibile del jacket era un bug, corretto dopo la revisione).</li>
     <li><strong>Campo reale e ridimensionamento</strong> (<code>field_model</code> = 2, oppure 1 con <code>field_verify</code> = 1): sul candidato dimensionato che ha passato tutti i controlli, <code>wp_peak_field_fast</code> calcola il picco reale di ogni layer. Se il picco di un grade differisce dal campo con cui è stato dimensionato di più di <code>field_tol</code> (0.05 T), o un layer lo supera, i passi 4–9 si ripetono con il campo reale di ogni grade, fino a <code>field_max_iter</code> passate (6). Un candidato che non converge è scartato e il numero dei candidati scartati viene stampato. Un candidato che fallisce un controllo in una passata è scartato subito: con un campo più alto i cavi crescono e i controlli peggiorano.</li>
   </ol>
@@ -528,7 +537,7 @@ flowchart LR
       <li><span class="chip bad">✕</span> <strong>Nose sottile</strong>: −17% con 75 mm, −27% con 35 mm.</li>
       <li><span class="chip bad">✕</span> <strong>Pareti laterali del case</strong>: nel FE sono <em>tese</em> in direzione radiale (+30…+60 MPa), nel modello compresse (−70…−190 MPa). Il segno è sbagliato.</li>
     </ul>
-    <p><strong>Perché sbaglia sul case.</strong> Il modello è assialsimmetrico, cioè un cilindro di anelli, e quindi non può rappresentare l'effetto telaio del case. Nel FE il WP spinge sul nose; il nose cede verso l'interno e le pareti, tirate, lo appendono alla piastra lato plasma. Per questo nella scansione il modello a strati non va usato per il case: per ora serve solo a capire.</p>
+    <p><strong>Perché sbaglia sul case.</strong> Il modello è assialsimmetrico, cioè un cilindro di anelli, e quindi non può rappresentare l'effetto telaio del case. Nel FE il WP spinge sul nose; il nose cede verso l'interno e le pareti, tirate, lo appendono alla piastra lato plasma. Per questo il modello a strati, da solo, non va usato per il case. Nella scansione entra come base del surrogato del case, corretto sul FE (in fondo alla sezione).</p>
   </div>
   <p>Il surrogato della §5b dimensiona il jacket, e <code>size_case_vault</code> (§7.5) dimensiona il nose con una formula di cilindro spesso. Sono due modelli separati con criteri diversi: si scambiano solo S<sub>z</sub> e l'altezza del WP. Il modello a strati (<code>physics/wp_layered_cylinder.m</code>) è un unico modello fisico, veloce come una formula (meno di 1 ms per design), che vede insieme tre cose:</p>
   <ul>
@@ -750,13 +759,35 @@ flowchart LR
     <li><strong>Il P<sub>m</sub> del jacket torna</strong> (±10%) perché la troppa compressione circonferenziale compensa la poca compressione radiale. Funziona per la verifica del jacket, ma non è un risultato fisico robusto.</li>
   </ol>
   <div class="callout">
-    <p><strong>Cosa propongo di decidere insieme:</strong></p>
-    <ul>
-      <li><strong>A.</strong> Estendere il modello analitico con l'effetto telaio: il WP come colonna che spinge sul nose, e il case come telaio chiuso nose–pareti–piastra con il nose come arco. È più fedele ma è un lavoro di ricerca, e l'esito non è garantito.</li>
-      <li><strong>B (consigliata).</strong> Nella scansione tenere il surrogato del jacket (§5b) e aggiungere un surrogato del case tarato sulle 19 run FE di riferimento: P<sub>m</sub> del nose in funzione dello spessore del nose, della forza centripeta e della larghezza del WP. Il modello a strati resta uno strumento per capire.</li>
-      <li><strong>C.</strong> Verificare il case solo col FE sulle prime soluzioni della scansione (10 minuti ciascuna).</li>
-    </ul>
+    <p><strong>Decisione (03/10/2026).</strong> Nella scansione si usa la scelta B: il surrogato del jacket (§5b) più un surrogato del case tarato sul FE (sotto). Il modello a telaio (scelta A) resta uno studio per gli sviluppi futuri. La terza strada scartata era verificare il case solo col FE sulle prime soluzioni.</p>
   </div>
+
+  <h3 id="s5c-h9">Surrogato del case nella scansione</h3>
+  <p>Il modello a strati non va bene da solo per il case, ma ne è una buona base. Porta i carichi (forza di Lorentz, forza verticale), le rigidezze di nose, WP e piastra e l'accoppiamento con il jacket; gli manca l'effetto telaio. Il rapporto tra FE e modello a strati sul massimo P<sub>m</sub> del case cresce infatti in modo regolare con x = h<sub>WP</sub>/t<sub>nose</sub>, il rapporto tra l'altezza del WP (dalla piastra al nose) e lo spessore del nose al centro: da 1.05 per x = 2.2 a 1.37 per x = 21. Il surrogato (<code>physics/case_stress_surrogate.m</code>) corregge con questo rapporto:</p>
+  <div class="math-block">\[ P_{m,case}=(a_m+b_m\ln x)\,P_{m,nose}^{LC},\qquad (P_m+P_b)_{case}=(a_b+b_b\ln x)\,P_{m,nose}^{LC},\qquad x=\frac{h_{WP}}{t_{nose}} \]</div>
+  <p>Il bersaglio è il massimo sulle SCL del case del FE: nose al centro e a metà, diagonale del vault, pareti, piastra, con il carico primario.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>19 run FE, x = 2.2 … 21</th><th class="num">a</th><th class="num">b</th><th class="num">leave-one-design-out, modello/FE</th><th class="num">rms</th></tr></thead>
+    <tbody>
+      <tr><td>P<sub>m</sub> del case</td><td class="num">0.958</td><td class="num">0.131</td><td class="num">0.967 … 1.040</td><td class="num">2.1%</td></tr>
+      <tr><td>P<sub>m</sub>+P<sub>b</sub> del case</td><td class="num">0.992</td><td class="num">0.231</td><td class="num">0.864 … 1.121</td><td class="num">7.1%</td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li><strong>Nella scansione</strong> (<code>case_model</code> = 1, default): <code>size_case_surrogate</code> trova per bisezione il nose più sottile con 1.05·P<sub>m</sub> ≤ S<sub>m,case</sub> e 1.10·(P<sub>m</sub>+P<sub>b</sub>) ≤ 1.5 S<sub>m,case</sub> (<code>case_margin</code>, <code>case_margin_PmPb</code>). Bastano circa 10 valutazioni del modello a strati. Nuove colonne: S_T_VT è ora il P<sub>m</sub> del case, più <code>Case_PmPb</code>, <code>case_x</code> e <code>R_bore</code>.</li>
+    <li><strong>Accoppiamento jacket–case</strong>: sui design di riferimento +0.5 mm di jacket su tutti i layer fanno risparmiare 5 mm di nose (bench: da 119 a 114 mm).</li>
+    <li><strong>Scan ridotto</strong> sulla macchina del design 10 (22 layout da 18 turn): la #1 passa da 540.1 a 520.9 mm di ingombro radiale e il nose da 173 a 152 mm, con P<sub>m</sub> del case di 635 MPa.</li>
+    <li><strong>Limiti</strong>: tarato per n<sub>TF</sub> = 12 e cavi rettangolari (con RIS si torna alla formula del vault); <code>extrapolated</code> segnala x fuori intervallo. Se cambiano le opzioni di default del modello a strati va rifatto il fit (<code>validation/run_case_surrogate_features.m</code>, <code>validation/tools/fit_case_surrogate.py</code>).</li>
+  </ul>
+<!--VERIFICA_SCAN-->
+
+  <h3 id="s5c-h10">Modello a telaio (scelta A, studio)</h3>
+  <p>L'idea per superare il limite assialsimmetrico è usare due campi radiali al posto di uno:</p>
+  <ul>
+    <li><strong>case</strong> (nose, pareti, piastra): u<sub>c</sub>(r). Le pareti sono parallele ai fianchi, e lo spostamento del case fissa l'accorciamento della corda e quindi la tensione circonferenziale di tutto l'anello, WP compreso.</li>
+    <li><strong>WP</strong>: u<sub>w</sub>(r). È una colonna che appoggia sul nose e sulle spalle degli scalini e scorre sulle pareti con attrito.</li>
+  </ul>
+  <p>Così le pareti possono andare in tensione mentre il WP è compresso. Al nose sottile si aggiunge la flessione come trave curva tra le pareti. Formulazione, piano di verifica e rischi sono in <code>docs/MODELLO_TELAIO.md</code>.</p>
 </section>
 
 <section id="s6">
@@ -982,7 +1013,14 @@ flowchart LR
     <li><strong>radiale</strong>: la rigidezza del WP verso l'interno è la serie dei layer (ognuno il parallelo dei suoi turn), combinata con le pareti laterali del case e la piastra lato plasma, per dare il coefficiente di ripartizione WP/case che corregge lo sforzo del jacket più interno (<code>dcr_WP_rad</code>);</li>
     <li><strong>toroidale</strong>: il case pieno d'acciaio, il cavo e il jacket del WP, e il vault stesso sono tre percorsi di rigidezza in parallelo che si dividono il carico circonferenziale di wedging; il vault porta la frazione <code>dcr_vault_tor = k<sub>steel</sub>/(k<sub>SC</sub>+k<sub>JT</sub>+k<sub>vault</sub>)</code>.</li>
   </ul>
-  <p>Lo sforzo circonferenziale del vault usa la formula di un anello spesso in pressione (fattore 2/(1−β²), β = R<sub>k</sub>/R<sub>i</sub>, il rapporto tra raggio interno ed esterno del case):</p>
+  <p><strong>Foro ad arco.</strong> Il foro del case è un arco di raggio R<sub>bore</sub> centrato sull'asse macchina, come nel FE e nel modello ANSYS.</p>
+  <ul>
+    <li>DTF è lo spessore del nose al centro: R<sub>bore</sub> = R<sub>j</sub> − DTF.</li>
+    <li>R<sub>k</sub> = R<sub>bore</sub>·cos(π/n<sub>TF</sub>) resta il parametro ANSYS del foro piano, i cui spigoli stanno sull'arco (<code>WEDGE_INTR_INS</code> = R<sub>k</sub>/cos(π/n<sub>TF</sub>)).</li>
+    <li>Prima lo scan usava DTF = R<sub>j</sub> − R<sub>k</sub>, quindi il nose reale al centro era più sottile di 17–25 mm.</li>
+    <li>L'area del case è quella del settore con il foro ad arco, R<sub>i</sub>² tan(θ/2) − (θ/2) R<sub>bore</sub>².</li>
+  </ul>
+  <p>Lo sforzo circonferenziale del vault usa la formula di un anello spesso in pressione (fattore 2/(1−β²), β = R<sub>bore</sub>/R<sub>i</sub>, il rapporto tra raggio interno ed esterno del case):</p>
   <div class="math-block">\[ S_{c,VT}=\frac{2}{1-\beta^2}\,p_{rs}\cdot dcr_{vault,tor},\qquad S_z=\frac{T_{bf}}{A_{JT}+A_{case}} \]</div>
   <p>con T<sub>bf</sub> la stessa forza assiale del modello FE (§8.2). Il case è accettato quando sia <code>S_T_VT = S_z + S_c,VT</code> sia il jacket corretto <code>S_T_JT = S_z + S_rm,JT</code> rispettano i rispettivi ammissibili — dopo la revisione, il vault è confrontato con <code>S_amm_VT</code> e non più, per errore, con <code>S_amm_JT</code> (punto C07, §10).</p>
   <div class="callout">
