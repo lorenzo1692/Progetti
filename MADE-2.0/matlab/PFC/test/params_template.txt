@@ -35,7 +35,7 @@ E_cbl_HTS 120
 E_ins 20
 ring_nu 0.3333333
 ring_Fz_area_fix 1
-fz_source 0
+fz_source 1
 fcgr_mode 1
 plasma_cycles_min 30
 fcgr_C0 3.86e-11

@@ -57,8 +57,12 @@ descrizioni).
 Carico verticale: `ring_Fz_area_fix` (default `1`) usa `FZ/(pi*(Re^2-Ri^2))`,
 la forza assiale sull'area dell'anello; `0` riproduce il legacy
 `FZ/(Re^2-Ri^2)*pi`, che sovrastima di pi^2. `fz_source` sceglie la forza:
-`0` forza netta esterna (file o scenari, default), `1` compressione al piano
-medio `FZmax` calcolata da `emag` per ogni candidato, `2` il massimo dei due.
+`1` compressione al piano medio `FZmax` calcolata da `emag` per ogni candidato
+(default, come nel CS), `0` forza netta esterna (file o scenari, legacy), `2` il
+massimo dei due.
+
+Come nel CS, `size_conductor_cicc` chiama `Ic_sst33(B, T, ...)` con B e T nell'ordine
+corretto (il legacy li scambiava; cambia solo `WP_SC_type` 101 e il ramo HTS di 102).
 
 ## Dimensionamento di sistema (`system_sizing`)
 

@@ -29,12 +29,11 @@ function [type_cable, N_Cu, N_Sc, N_tot, S_Cable, S_REBCO, S_Cu_HTS, THS, mat] =
 %   propagate as an unusable candidate rather than raising a dedicated
 %   error - exactly the legacy behavior.
 %
-%   OPEN QUESTION (not changed here, see manuale PFC): for WP_SC_type=101
-%   or the HTS branch of 102, this calls Ic_sst33(T_dim, B_local, ...)
-%   exactly as the legacy cicc.m did - Ic_sst33's own signature is
-%   (B, T, theta, opt), so T_dim (a temperature, 4.2) lands in the B slot
-%   and B_local (a field) lands in the T slot. Not exercised by
-%   WP_SC_type=100 (the PF_opt_VNS.m default).
+%   Fix (same as CS, 01/10/2026): the legacy cicc.m called
+%   Ic_sst33(T_dim, B_local, ...), i.e. with B and T swapped relative to
+%   Ic_sst33's (B, T, theta, opt) signature. Here it is called as
+%   Ic_sst33(B_local, T_dim, ...). Changes results only for
+%   WP_SC_type=101 or the HTS branch of 102 (never for the LTS default).
 
 CunonCu = 1;
 S_tapes = 4*1e-7;    % [m^2] REBCO tape cross-section
@@ -45,7 +44,7 @@ VF = 0.8;            % void fraction in the conductor
 N_fili = [1500 1440 1350 1296 1200 1152 1080 972 960 900 864 810 768 720 675 648 540 486 360 324 300 216 180 162 144]; % [-] catalogue of standard strand counts
 
 theta = 0;
-T_dim = 4.2; % [K] LTS design temperature (also passed, unchanged, as the "B" argument to Ic_sst33 - see note above)
+T_dim = 4.2; % [K] LTS design temperature (also used as the REBCO temperature in Ic_sst33)
 
 N_Cu = 0;
 type_cable = {'X'};
@@ -55,7 +54,7 @@ S_Cable_0 = 0;
 
 if WP_SC_type == 101
     type_cable = {'HTS'};
-    Ic_sc = Ic_sst33(T_dim, B_local, theta, [3,4]);
+    Ic_sc = Ic_sst33(B_local, T_dim, theta, [3,4]);
     mat = 2; % 0 = Nb3Sn, 1 = NbTi, 2 = REBCO
     Tlim = 150;
 elseif WP_SC_type == 100
@@ -70,7 +69,7 @@ elseif WP_SC_type == 100
     end
 elseif WP_SC_type == 102
     if B_local > 15
-        Ic_sc = Ic_sst33(T_dim, B_local, theta, [3,4]); %#ok<NASGU>
+        Ic_sc = Ic_sst33(B_local, T_dim, theta, [3,4]); %#ok<NASGU>
         mat = 2;
         Tlim = 150;
     else

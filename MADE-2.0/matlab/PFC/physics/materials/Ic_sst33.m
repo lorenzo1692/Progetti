@@ -12,12 +12,9 @@ function [Ic, FA] = Ic_sst33(B, T, theta, opt)
 %   manuale PFC) - consolidate into a shared MADE-2.0/matlab/materials/
 %   later if/when the two are merged.
 %
-%   CALLER NOTE (same open question as CS, not resolved here): PFC's own
-%   size_conductor_cicc.m (ported from cicc.m) calls
-%   Ic_sst33(T_dim, B_local, theta, [3,4]) with T_dim=4.2 and B_local the
-%   actual field - i.e. B and T are swapped relative to this signature.
-%   Reproduced exactly, unchanged; not exercised by the WP_SC_type=100
-%   (full LTS) default path used by PF_opt_VNS.m.
+%   CALLER NOTE: the legacy cicc.m called this as Ic_sst33(T_dim, B_local, ...),
+%   swapping B and T. Fixed in size_conductor_cicc.m (as in CS): always call
+%   as Ic_sst33(B, T, theta, opt).
 
 if nargin < 4
     opt = [3, 4];
