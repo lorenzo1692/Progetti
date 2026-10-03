@@ -155,8 +155,14 @@ if strcmpi(getf(opts, 'cavity', 'hull'), 'hull')
 else
     cav = @(r1, r2, W) W + 2*git;
 end
+% hoop path of the WP rings: 'chord' = walls, insulation and WP in series
+% along the sector chord (axisymmetric ring); 'centre' = the WP alone, as
+% on the centre plane x = 0 of the sector, where the hoop force of the
+% stiff lateral walls does not pass: it turns into the nose and the plate
+% around the soft WP (frame action, docs/MODELLO_A_STRATI.md section 10)
+hoop_c = strcmpi(getf(opts, 'hoop', 'chord'), 'centre');
 mix = @(r1, r2, W, Er_w, Et_w, Ez_w, is_wp) mixed(r1, r2, W, cav(r1, r2, W), tw, Er_w, Et_w, Ez_w, Ec, th, ...
-    [Ei Eit], wall_r*is_wp + ~is_wp);
+    [Ei Eit], wall_r*is_wp + ~is_wp, hoop_c);
 R = struct('r1', {}, 'r2', {}, 'type', {}, 'layer', {}, 'C', {}, 'jz', {});
 R(end+1) = ring(Rb, Rj, 'nose', 0, steel_w(Ec, nu, 2*tw/(2*(Rb + Rj)/2*tan(th/2)), Ei), 0);
 R(end+1) = ring(Rj, Rii(nl), 'ground', nl, mix(Rj, Rii(nl), nt(nl)*Cw(nl), Ei, Eit, Eit, 0), 0);
@@ -342,7 +348,7 @@ S(2,2) = S(2,2) + fw/En;
 C = inv(S);
 end
 
-function C = mixed(r1, r2, W, Wcav, tw, Er_w, Et_w, Ez_w, Ec, th, Eins, wall_r)
+function C = mixed(r1, r2, W, Wcav, tw, Er_w, Et_w, Ez_w, Ec, th, Eins, wall_r, hoop_c)
 % ring of one sector: lateral case walls + insulation (lateral ground
 % insulation, the hull filler beside a narrower layer and the wedge
 % insulation on the flanks) + the WP of width W (or, for an insulation
@@ -360,6 +366,7 @@ f = [w_wall, w_ins, W]/chord;
 Ek = [Ec Eins(2) Er_w; Ec Eins(1) Et_w; Ec Eins(2) Ez_w];
 Er = f*(Ek(1,:).*[wall_r 1 1])';
 Et = 1/(f*(1./Ek(2,:))');
+if nargin >= 13 && hoop_c, Et = Et_w; end
 Ez = f*Ek(3,:)';
 C = diag([Er Et Ez]);
 end

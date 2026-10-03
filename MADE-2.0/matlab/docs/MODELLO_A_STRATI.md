@@ -373,3 +373,75 @@ R_j − R_k/cos(π/n_TF).
 - **Decisione.** Si adotta il modello nello scan se il jacket ha rms ≤ 10%
   e 90° percentile ≤ 1.10, e il case sta entro ±5%. Altrimenti si resta con
   il surrogato del jacket e si aggiunge un surrogato del case.
+
+## 10. Verifica affiancata con il FE (03/10/2026)
+
+`validation/compare_layered_vs_fe.m` mette FE 2D e modello sullo stesso
+design e sullo stesso carico primario, senza raffreddamento (nel FE
+T_op = T_ref). Non confronta solo le tensioni di verifica ma **dove va il
+carico**. Per questo `wp_mech_surrogate` restituisce ora anche, per ogni
+elemento, centroide, area, materiale e tensione media (`out.elem`); la
+soluzione FE non cambia.
+
+### 10.1 Forza circonferenziale attraverso il piano x = 0 (nose / WP / piastra)
+
+| Design (nose) | FE | modello | totale FE / modello [MN/m] |
+|---|---|---|---|
+| d10 (154 mm) | 69 / 26 / 5 % | 67 / 27 / 6 % | 93.0 / 92.4 |
+| bench (111 mm) | 60 / 33 / 7 % | 56 / 37 / 7 % | 85.4 / 85.5 |
+| s1_7 (75 mm) | 41 / 54 / 5 % | 34 / 61 / 5 % | 103.1 / 102.2 |
+| s2_4 (35 mm) | 25 / 70 / 6 % | 18 / 77 / 5 % | 109.2 / 109.1 |
+
+### 10.2 Membrana nel case (MPa, FE / modello)
+
+| Design | nose circ. | nose ass. | piastra circ. | piastra ass. | parete radiale | parete ass. |
+|---|---|---|---|---|---|---|
+| d10 | −416 / −405 | 216 / 194 | −249 / −281 | 277 / 241 | +43 / −191 | 349 / 246 |
+| bench | −464 / −432 | 191 / 169 | −292 / −296 | 253 / 219 | +62 / −130 | 339 / 236 |
+| s1_7 | −558 / −464 | 92 / 74 | −285 / −253 | 183 / 144 | +29 / −72 | 252 / 164 |
+| s2_4 | −774 / −568 | 7 / 15 | −313 / −252 | 150 / 113 | +38 / −70 | 227 / 132 |
+
+### 10.3 WP, piano di mezzeria, media per layer (bench, MPa, FE / modello)
+
+| Layer | circonferenziale | radiale | Pm jacket |
+|---|---|---|---|
+| L1 | −62 / −101 | −8 / −8 | 516 / 533 |
+| L3 | −75 / −102 | −86 / −36 | 557 / 536 |
+| L6 | −83 / −102 | −155 / −67 | 596 / 535 |
+| L9 | −106 / −95 | −154 / −85 | 565 / 540 |
+| L11 | −117 / −123 | −139 / −87 | 594 / 550 |
+
+### 10.4 Lettura
+
+1. **Effetto telaio assente.** Nel FE le pareti laterali sono tese
+   radialmente (+30…+60 MPa): il WP spinge sul nose, il nose cede e le
+   pareti lo appendono alla piastra. Nel modello le pareti condividono la
+   deformazione radiale del WP e sono compresse (−70…−190 MPa).
+   - La loro tensione assiale nel FE è più alta del ~40%.
+   - È un limite dell'ipotesi assialsimmetrica, non un parametro da tarare.
+2. **WP troppo rigido in direzione circonferenziale nei layer esterni**
+   (−100 contro −60…−80 MPa). Così il WP sottrae forza circonferenziale al
+   nose, di più quando il WP è grande e il nose sottile.
+   - La variante `hoop = 'centre'` (rigidezza circonferenziale del solo WP)
+     corregge la forma del profilo ma sposta poco la ripartizione: il nose
+     di s2_4 passa da −568 a −594 contro −774 MPa.
+   - Resta da migliorare la cella del turn (raccordi, contatto solo sui
+     tratti piatti).
+3. **Pressione radiale al centro del WP circa il doppio della colonna del
+   modello** (−155 contro −67 MPa).
+   - La colonna è una media sulla larghezza: nel FE il carico si concentra
+     al centro e si scarica verso le pareti.
+   - Nei layer profondi la pressione cala verso il nose.
+4. **Il Pm del jacket torna** (±10%) per compensazione: troppa compressione
+   circonferenziale e poca radiale.
+
+### 10.5 Proposta
+
+- **A.** Modello analitico con effetto telaio: WP come colonna sul nose,
+  case come telaio chiuso nose–pareti–piastra con il nose ad arco. È
+  ricerca, con esito incerto.
+- **B (consigliata).** Surrogato del jacket (§5b) e surrogato del case
+  tarato sulle 19 run FE di riferimento, con il Pm del nose in funzione di
+  spessore del nose, forza centripeta e larghezza del WP. Il modello a
+  strati resta uno strumento di comprensione.
+- **C.** Verifica del case solo col FE sulle prime soluzioni della scansione.
