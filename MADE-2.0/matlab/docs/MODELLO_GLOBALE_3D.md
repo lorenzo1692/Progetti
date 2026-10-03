@@ -90,6 +90,35 @@ altri carichi (gravità, guasti) il risultato è sbagliato. Correzione:
 `F,N_CUR,FY,-F_TOR(J)` per la bobina 1, o in generale la proiezione della
 forza globale ruotata sulla direzione tangenziale di ogni bobina.
 
+## Come lanciarlo in MATLAB (senza ANSYS)
+
+`coil3d/run_tf3d_global.m` usa il punto di progetto scelto in MADE:
+
+```matlab
+cd MADE-2.0/matlab; addpath(genpath(pwd)); rmpath(genpath(fullfile(pwd,'legacy')));
+[row, p] = load_design_point('<tag>_results_<data>.xlsx', idx);   % la soluzione scelta
+% 1) prima senza OIS: disegna la linea media con le tacche s/s_max per scegliere gli OIS
+G = run_tf3d_global(row, p);
+% 2) con gli OIS: [s_inizio s_fine spessore] per pannello, controllati e mostrati prima del run
+G = run_tf3d_global(row, p, struct('ois', [0.30 0.40 0.10; 0.60 0.70 0.10]));
+% con PF/CS (carichi fuori piano e controllo distanze): opts.pf = [rc zc dr dz I; ...]
+```
+
+- **Sezione delle travi** dal design (`coil3d/tf3d_beam_section.m`): cassa a
+  cuneo tra `Rk_` e `Ri_` + WP strato per strato con il modulo longitudinale
+  del turn (jacket, cavo, isolante), isolamento di massa; proprietà pesate sul
+  modulo (E_ref = E_case); torsione con Bredt sulla cassa chiusa; aree di
+  taglio dalle pareti. `section = 'hrec'` torna al quadrato cavo di STR_360.
+- **Shell del vault**: spessore = naso `Rj_ - Rk_` (l'anello che regge la
+  forza di centraggio nel dimensionamento 2D); `t_vault` per cambiarlo.
+- **OIS** (`coil3d/tf3d_ois_zones.m`): posizione (frazione della lunghezza
+  della linea media, 0 = piano medio interno, ~0.5 = piano medio esterno) e
+  spessore di ogni pannello. Prima del run: errore se fuori da [0 1], sovrapposti
+  tra loro o al vault, meno di 2 nodi; avviso se le casse si toccano (larghezza
+  libera `2R sin(π/n_TF) − W ≤ 0`), se lo spessore supera la larghezza libera,
+  se un PF è più vicino di `ois_clearance` (0.1 m). Poi grafico e conferma y/n
+  (`confirm_ois = false` per saltarla).
+
 ## Come lanciare il confronto fuori piano
 
 1. **ANSYS** – in `STR_360_improved.mac` correggere il segno della forza

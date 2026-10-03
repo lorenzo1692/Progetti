@@ -43,9 +43,40 @@ on the coil set, rotated to every coil or given coil by coil. The beam
 orientation follows the coil (toroidal direction for a planar TF), which
 for a non-planar coil becomes the finite-build frame of the coil
 filament instead of the Frenet frame, ill-defined where the curvature
-vanishes. \todo{link section properties to the 2D design (WP + case
-homogenised: $K_\mathrm{e,rad}$, $K_\mathrm{e,tor}$) -- today W, wall and
-shell thickness are inputs.}
+vanishes.
+
+\paragraph{Section from the selected MADE design.} The beam section is not
+an input: it is the inner-leg cross-section of the design point selected
+in the TF solver. The case is the wedge between $R_k$ and $R_i$; the
+winding pack is the stack of layers $n_{t,k}\,w_{c,k}\times h_{c,k}$ with
+ground and grade insulation, each layer with the longitudinal modulus of
+its turn,
+\begin{equation}
+E_{L,k}=\frac{E_J A_{J,k}+E_{\mathrm{cbl},k}A_{\mathrm{cbl},k}+E_\mathrm{ins}A_{\mathrm{ins},k}}{w_{c,k}h_{c,k}},
+\end{equation}
+since the beam axis follows the conductor. Area and bending stiffnesses
+are modulus-weighted ($E_\mathrm{ref}=E_\mathrm{case}$) about the elastic
+centroid: $I_z$ (in-plane bending, radial lever arm) and $I_y$
+(out-of-plane bending, toroidal lever arm). The torsional constant follows
+Bredt's formula for the closed case (plasma-side plate, lateral walls,
+nose), $J=4A_m^2/\oint \mathrm{d}s/t$, neglecting the winding pack; the
+shear areas are those of the lateral walls (in-plane) and of plasma-side
+plate and nose (out-of-plane). The vault shells take the nose thickness
+$R_j-R_k$, i.e. the ring that carries the centring force in the 2D sizing,
+so that the 2D and 3D models share one geometry. The eccentricity between
+elastic centroid and current centre line is reported and, at present, not
+modelled.
+
+\paragraph{Outer intercoil structures chosen and checked before the run.}
+The OIS are not found by a radius window as in the reference ANSYS model,
+but declared by the designer as panels between adjacent coils, each with
+a position along the centreline (fractions $s_1$--$s_2$ of the coil
+length) and a thickness. Before the solution the code checks that the
+panels do not overlap each other or the wedged vault, that the cases are
+actually apart there (free width $2R\sin(\pi/N_\mathrm{TF})-W>0$, else the
+region is wedged), that the panel is not thicker than that free width, and
+that it keeps a clearance from the PF/CS coils; it then plots the
+centreline with the panels and asks for confirmation.
 
 \paragraph{Element verification.} Cantilever beam under axial, two
 bending and torsion loads: exact; membrane patch test on a distorted
@@ -79,13 +110,61 @@ OIS max Tresca [MPa] & 107 / 133 & 107 / 126\\
 \end{indented}
 \end{table}
 
-\subsection{Roadmap for stellarator coils}
-% 1. Reader for coil filaments (e.g. coils-file format used by
-%    stellarator optimisation codes) + finite-build frame.
-% 2. Local level: TF chain without wedge -> WP + cable on local B_peak.
-% 3. Global level: beam-shell model (exists, verified for TF in-plane),
-%    to generalise: shells along arbitrary support surfaces, coil-by-coil
-%    loads (no rotational symmetry, only field-period symmetry).
-% 4. Benchmark on a published stellarator coil set
-%    \todo{choose: e.g. W7-X non-planar coil (published FE data)}.
-\todo{status of each step at submission time.}
+\subsection{Adapting the beam--shell model to stellarator coils}
+The model was written for an arbitrary centreline (nodes in 3D, beams
+with an orientation vector, shells between coils), so the extension
+concerns the inputs rather than the solver.
+
+\paragraph{Centreline and section frame.} Each coil is read as a filament
+(the output of the coil optimisation) and resampled. The beam orientation
+vector is the toroidal-like normal of the finite-build frame of the coil
+(the frame in which the optimisation defines the winding-pack
+rectangle), constant on each element; the Frenet frame is avoided because
+it is undefined where the curvature vanishes and flips at inflection
+points.
+
+\paragraph{Section without wedge.} The local level is the TF chain without
+the wedge (section~\ref{sec:tf}): the winding pack is a rectangle around
+the filament, sized on the local peak field, and the case a box of
+prescribed wall thicknesses around it. The section routine is the same
+as for the TF coil with the trapezoid replaced by a rectangle, and the
+same modulus-weighted, Bredt and shear-area definitions. Since the
+cross-section does not change along a stellarator coil, one section per
+coil type is used; if the case is locally reinforced, the section can be
+assigned per element.
+
+\paragraph{Loads and symmetry.} Line loads come from Biot--Savart on the
+complete coil set (finite build, multi-filament near the coil), with PF
+coils and plasma current when relevant. Unlike the tokamak TF system, the
+loads differ from coil to coil: they are computed for the unique coils of
+one half period and mapped to the others by the field-period rotation and
+by stellarator symmetry (rotation by $\pi$ about a horizontal axis), and
+applied coil by coil.
+
+\paragraph{Intercoil structure.} There is no wedged vault: all the
+centring and out-of-plane loads go through the case and the intercoil
+structure, which becomes the main structural element. It is modelled with
+the same shells, generalising the OIS panels of the TF case: (i) panels
+are declared per pair of adjacent coils, since the coils differ; (ii) the
+nodes of two different coils do not correspond, so each panel connects
+nodes matched by closest-point projection along the two centrelines, and
+warped quadrilaterals are split in two triangles; (iii) the pre-run checks
+use the actual distance between the case surfaces of the two coils
+instead of $2R\sin(\pi/N_\mathrm{TF})-W$, and keep-out zones for ports,
+diagnostics and heating lines replace the PF clearance. Gravity supports
+and, if present, a central support ring close the model.
+
+\paragraph{Back to the conductor.} Section forces $(N,V_y,V_z,T,M_y,M_z)$
+along each coil are converted into stresses in the winding pack and in
+the case with the same modulus-weighted section, $\sigma_{L,k}=E_{L,k}/E_\mathrm{ref}\,
+(N/A + M_z y/I_z + M_y x/I_y)$, plus the local magnetic pressure on the
+turns; jacket and case are checked against the same Tresca allowables as
+the TF solver, and the case walls or the intercoil panels are thickened
+where they fail.
+
+\paragraph{Status and verification path.} The solver, the section from
+the design and the OIS controls are implemented and verified on the
+tokamak TF system (table~\ref{tab:global}); the stellarator inputs
+(filament reader, finite-build frame, coil-by-coil symmetry, panel
+matching between different coils) are the next step.
+\todo{benchmark on a published stellarator coil set with FE results.}

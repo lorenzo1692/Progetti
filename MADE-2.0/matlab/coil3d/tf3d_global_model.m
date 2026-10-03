@@ -28,6 +28,11 @@ function m = tf3d_global_model(P, F1, opts)
 %     (same load on all coils), or F_all (n_TF*M x 3) in opts.F_all for
 %     coil-by-coil loads.
 %
+%   MADE design inputs (RUN_TF3D_GLOBAL): opts.sec (beam section from
+%   TF3D_BEAM_SECTION, replaces W/t_wall), opts.t_vault (vault shell
+%   thickness), opts.ois_zones (from TF3D_OIS_ZONES: node ranges and
+%   thickness of each OIS panel, replaces ois_R; region 1+q).
+%
 %   opts (defaults = STR_360 of 29/09/2026): n_TF 12, W 0.675, t_wall
 %   0.05, E 205e9, nu 0.3, t_shell 0.14, vault_tol 1e-3, ois_R [3.5 5],
 %   ois_wrap false (true reproduces the extra element STR_360 builds
@@ -41,7 +46,7 @@ function m = tf3d_global_model(P, F1, opts)
 if nargin < 3, opts = struct(); end
 d = struct('n_TF', 12, 'W', 0.675, 't_wall', 0.05, 'E', 205e9, 'nu', 0.3, 't_shell', 0.14, ...
     'vault_tol', 1e-3, 'ois_R', [3.5 5], 'ois_wrap', false, 'gs_R', 3, 'gs_node', [], ...
-    'with_vault', true, 'with_ois', true, 'F_all', []);
+    'with_vault', true, 'with_ois', true, 'F_all', [], 'sec', [], 't_vault', [], 'ois_zones', []);
 fn = fieldnames(opts); for i = 1:numel(fn), d.(fn{i}) = opts.(fn{i}); end
 M = size(P, 1); n = d.n_TF;
 node = @(c, k) (c-1)*M + k;
@@ -60,6 +65,7 @@ if ~isempty(d.F_all), F(:, 1:3) = d.F_all; end
 W = d.W; t = d.t_wall; Wi = W - 2*t;
 sec = struct('E', d.E, 'nu', d.nu, 'A', W^2 - Wi^2, 'Iy', (W^4 - Wi^4)/12, 'Iz', (W^4 - Wi^4)/12, ...
     'J', (W - t)^3*t, 'Asy', 2*t*(W - t), 'Asz', 2*t*(W - t));
+if ~isempty(d.sec), sec = d.sec; d.E = sec.E; d.nu = sec.nu; end   % section of the MADE design (TF3D_BEAM_SECTION)
 % shell regions on coil 1 (indices along the loop)
 R1 = hypot(P(:,1), P(:,2)); z1 = P(:,3);
 pairs = zeros(0, 3);                                  % [j j+1 region]
@@ -69,7 +75,13 @@ if d.with_vault
     j = find(inV & inV(nxt));
     pairs = [pairs; j nxt(j)' ones(numel(j), 1)];
 end
-if d.with_ois
+if ~isempty(d.ois_zones)
+    % explicit OIS zones (TF3D_OIS_ZONES): consecutive nodes of each zone
+    for q = 1:numel(d.ois_zones)
+        j = d.ois_zones(q).idx(:); j = j(1:end-1);
+        pairs = [pairs; j nxt(j)' (1+q)*ones(numel(j), 1)]; %#ok<AGROW>
+    end
+elseif d.with_ois
     for reg = [2 3]
         if reg == 2, inO = R1 >= d.ois_R(1) & R1 <= d.ois_R(2) & z1 >= 0;
         else,        inO = R1 >= d.ois_R(1) & R1 <= d.ois_R(2) & z1 <= 0; end
@@ -104,8 +116,11 @@ for c = 1:n
     er = [x(1:2) 0]/norm(x(1:2)); ez = [0 0 1]; et = cross(ez, er);
     sup(c) = struct('node', k, 'frame', [er; et; ez], 'mask', [0 1 1 0 0 0]);
 end
+t_reg = d.t_shell*ones(size(reg));
+if ~isempty(d.t_vault), t_reg(reg == 1) = d.t_vault; end
+for q = 1:numel(d.ois_zones), t_reg(reg == 1+q) = d.ois_zones(q).t; end
 m = struct('X', X, 'beam', beam, 'beam_k', bk, 'sec', sec, 'shell', shell, ...
-    'shell_t', d.t_shell*ones(size(shell, 1), 1), 'shell_E', d.E, 'shell_nu', d.nu, 'sup', sup, 'F', F, ...
+    'shell_t', t_reg, 'shell_E', d.E, 'shell_nu', d.nu, 'sup', sup, 'F', F, ...
     'M', M, 'n_TF', n, 'shell_region', reg, 'shell_coil', sc, 'gs_node', gs, 'opts', d);
 m.node_of = node;
 end
