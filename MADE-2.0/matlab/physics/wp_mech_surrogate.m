@@ -1424,17 +1424,30 @@ g = sqrt(3/5); [GX, GY] = meshgrid([-g 0 g]); [WX, WY] = meshgrid([5 8 5]/9);
 gq = [GX(:), GY(:)]; wq = WX(:).*WY(:);
 gt = [1/6 1/6; 2/3 1/6; 1/6 2/3]; wt = [1 1 1]'/6;
 Fz = 0;
-for e = 1:size(mesh.q8,1)
+% per element: centroid, area, material and area-averaged stress
+% [sx sy sz txy] (diagnostics: force partitions, layered-model comparison)
+nq = size(mesh.q8,1); ne = nq + size(mesh.t6,1);
+EA = zeros(ne,1); ES = zeros(ne,4); EC = zeros(ne,2); EM = zeros(ne,1);
+for e = 1:nq
     nodes = mesh.q8(e,:); X = xy(nodes,:);
     S = elem_stress_at(X, U, nodes, ez, sol.qD{e}, sol.qeth{e}, @q8_dN, gq);
-    for q = 1:9, [~, dJ] = elem_B(X, @q8_dN, gq(q,:)); Fz = Fz + S(q,3)*dJ*wq(q); end
+    for q = 1:9
+        [~, dJ] = elem_B(X, @q8_dN, gq(q,:)); Fz = Fz + S(q,3)*dJ*wq(q);
+        EA(e) = EA(e) + dJ*wq(q); ES(e,:) = ES(e,:) + S(q,:)*dJ*wq(q);
+    end
+    EC(e,:) = mean(X(1:4,:), 1); EM(e) = mesh.q8_mat(e);
 end
 for e = 1:size(mesh.t6,1)
     nodes = mesh.t6(e,:); X = xy(nodes,:);
     S = elem_stress_at(X, U, nodes, ez, sol.tD{e}, sol.teth{e}, @t6_dN, gt);
-    for q = 1:3, [~, dJ] = elem_B(X, @t6_dN, gt(q,:)); Fz = Fz + S(q,3)*dJ*wt(q); end
+    for q = 1:3
+        [~, dJ] = elem_B(X, @t6_dN, gt(q,:)); Fz = Fz + S(q,3)*dJ*wt(q);
+        EA(nq+e) = EA(nq+e) + dJ*wt(q); ES(nq+e,:) = ES(nq+e,:) + S(q,:)*dJ*wt(q);
+    end
+    EC(nq+e,:) = mean(X(1:3,:), 1); EM(nq+e) = mesh.t6_mat(e);
 end
 out.Fz_integral = Fz;
+out.elem = struct('xy', EC, 'area', EA, 'mat', EM, 'S', ES./EA);
 out.elem_SINT.q8 = zeros(size(mesh.q8,1),1);
 for e = 1:size(mesh.q8,1)
     nodes = mesh.q8(e,:);
