@@ -407,6 +407,13 @@ end
 hf = opts.h_fine;
 Pq = qn(unique(bedge(:,1:2)),:);
 P = [Pq; sample_polyline(geo.cav, hf); sample_outer(geo, hf); interior_points(geo, opts)];
+if ~geo.is_round && get_or(opts, 'cable_fill', 0)
+    % Rect cable interiors: a triangular lattice of points (spacing about the
+    % wall element length), otherwise the constrained Delaunay fills each
+    % cable with fans of slivers from its boundary stations alone
+    % (min angle ~5 deg, quality 2 r_in/r_out ~0.2)
+    P = [P; rect_cable_points(geo, get_or(opts, 'wall_element_max', 6e-3))];
+end
 if geo.is_round
     % RIS cable interiors: concentric rings of points, otherwise the
     % Delaunay of points that all lie on one circle is degenerate (any
@@ -795,6 +802,25 @@ Q = [Q; [linspace(-xt, xt, nt+1)', top*ones(nt+1,1)]];
 na = max(4, ceil(2*hf*R/h));
 a = linspace(-hf, hf, na+1)';
 Q = [Q; [R*sin(a), R*cos(a)]];
+end
+
+function P = rect_cable_points(geo, h)
+% triangular lattice inside every rounded-rectangle cable, at least ~0.6 h
+% from its contour (the fillet radius r_SC is below 0.6 h)
+P = zeros(0,2);
+for t = 1:size(geo.cable_rr, 1)
+    c = geo.cable_rr(t,:);                       % [xa xb ya yb r]
+    w = c(2) - c(1); hh = c(4) - c(3);
+    nx = max(1, round(w/h)); ny = max(1, round(hh/(h*sqrt(3)/2)));
+    dx = w/nx; dy = hh/ny; m = 0.6*min(dx, dy);
+    for j = 1:ny-1
+        y = c(3) + j*dy;
+        off = mod(j, 2)*dx/2;
+        x = c(1) + off + (0:nx)*dx;
+        x = x(x > c(1) + m & x < c(2) - m);
+        P = [P; [x(:), y*ones(numel(x), 1)]]; %#ok<AGROW>
+    end
+end
 end
 
 function P = interior_points(geo, opts)
