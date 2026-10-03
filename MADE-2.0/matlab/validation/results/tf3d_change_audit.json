@@ -1,0 +1,16 @@
+{
+  "original_existing_files_modified": [
+    "matlab/input/WP_TF_input_template.xlsx",
+    "matlab/validation/TF_FEM_benchmark_2026_findings.md",
+    "matlab/postprocess/plot_wp_mech_surrogate.m",
+    "matlab/docs/REPORT_codice_e_modello_meccanico.md",
+    "matlab/main_WP_TF_design.m"
+  ],
+  "original_input_values_modified": [],
+  "original_2d_physics_mechanics_scan_and_legacy": "byte-identical to input ZIP",
+  "surrogate_plot_panels_and_diagnostics": "retained verbatim; optional figure output added",
+  "plot_save_prompt": "static review only; native MATLAB export not executed",
+  "GPS_figure": "dedicated mesh/Tresca/deformation/radial-displacement figure, actual FEM solution",
+  "EM3D_outputs": "all turn paths; full coil-1 field by declared reflection; forces/radial profile/CSV",
+  "verification": "static MATLAB integration checks; direct Python field-reflection test; native MATLAB graphics not run"
+}

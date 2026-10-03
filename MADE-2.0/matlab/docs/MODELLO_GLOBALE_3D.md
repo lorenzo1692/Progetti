@@ -1,0 +1,99 @@
+# Modello globale 3D a travi e shell (controparte MATLAB di STR_360)
+
+Serve per la verifica a valle del dimensionamento 2D, in particolare per i
+carichi fuori piano (forze toroidali da PF, torsione della gamba interna,
+taglio nelle strutture di collegamento tra bobine). È la ricostruzione in
+MATLAB del modello ANSYS `STR_360.dat` caricato il 29/09/2026.
+
+## File
+
+| File | Cosa fa |
+|---|---|
+| `coil3d/tf3d_global_model.m` | Costruisce il modello: tutte le n_TF bobine, travi lungo la linea media, shell tra bobine adiacenti (vault e OIS), supporti gravitazionali, carichi |
+| `coil3d/tf3d_global_solve.m` | Soluzione statica lineare: travi di Timoshenko 3D, shell a 4 nodi (membrana con modi incompatibili QM6, piastra Mindlin MITC4, rigidezza di drilling), vincoli in assi locali |
+| `validation/verify_tf3d_ansys_global.m` | Confronto con l'export ANSYS di `validation/ansys/POST_TF_BEAM_EXPORT.mac` |
+
+## Modello (come STR_360)
+
+- **Travi**: BEAM188 lungo la linea media di ogni bobina, sezione HREC
+  0.675 × 0.675 m, parete 0.05 m (la cassa). Orientamento: asse locale z
+  toroidale (il nodo K di ANSYS è spostato di 1 m in x per la bobina 1),
+  quindi M_z è la flessione nel piano della bobina.
+- **Shell**: SHELL181, t = 0.14 m, un elemento tra due bobine adiacenti per
+  ogni tratto di linea media: gamba interna dritta (vault, nodi con R =
+  R_min) e struttura di collegamento esterna (OIS, R tra 3.5 e 5 m, parte
+  superiore e inferiore separate). Opzione `ois_wrap` = true riproduce
+  l'elemento in più che STR_360 crea tra il primo e l'ultimo nodo di ogni
+  gruppo OIS (non adiacenti lungo la bobina; `STR_360_improved` lo toglie).
+- **Supporti**: per ogni bobina, spostamento toroidale e verticale nullo
+  nel nodo più vicino a (R massimo, 0.8 · z minimo) tra i nodi con R ≤ 3 m.
+- **Carichi**: forze nodali della bobina 1 (riga j di FL_TF_1 sul nodo j),
+  ruotate su tutte le bobine; oppure un carico diverso per bobina.
+
+## Verifica degli elementi (casi con soluzione analitica)
+
+| Caso | Risultato |
+|---|---|
+| Mensola trave, carichi assiale, flessione nei due piani, torsione | esatta |
+| Patch test di membrana su mesh distorta | spostamenti esatti, N uniforme |
+| Flessione pura della membrana (una fila di elementi) | esatta (QM6) |
+| Mensola di piastra, 8 elementi | −0.4% rispetto a Eulero-Bernoulli |
+
+## Confronto con ANSYS STR_360 (carichi nel piano, run del 29/09/2026)
+
+12 bobine × 162 nodi, 1944 travi, 924 shell, 11 664 gradi di libertà,
+13 s in Octave.
+
+| Grandezza | ANSYS | MATLAB |
+|---|---|---|
+| Forza assiale nella trave | 7.6 … 52.4 MN | 7.8 … 52.3 MN (scarto max 1%) |
+| Momento nel piano | −2.18 … 3.00 MN·m | −2.17 … 2.92 MN·m |
+| Taglio nel piano | −3.85 … 3.37 MN | −3.87 … 3.43 MN |
+| Sforzo massimo in fibra della cassa (N/A + flessione) | 504 MPa | 500 MPa |
+| Spostamento radiale / verticale | −5.02 … 0.39 / −0.39 … 10.59 mm | −4.93 … 0.32 / −0.18 … 10.41 mm |
+| Reazione verticale al supporto, per bobina | 1.838 MN | 1.838 MN |
+| Vault: N11 (circonferenziale) / N22 | −109 … −87 / 13.8 … 17.8 MN/m | entro 0.5% / 0.7% |
+| Vault: M11, M22, Q23 | | entro 5–6% |
+| Vault: intensità di Tresca max (superfici) | 883 MPa | 880 MPa |
+| OIS: N22, M11, M22, Q23 | | entro 1–10% |
+| OIS: N11 | fino a 6.9 MN/m | scarto max 1.1 MN/m (agli estremi della zona) |
+| OIS: intensità di Tresca max | 107 / 133 MPa | 107 / 126 MPa |
+
+Gli scarti massimi del momento e del taglio nel piano (12% e 7% del
+massimo) sono locali, agli estremi della zona OIS (R ≈ 5 m), dove una sola
+fila di shell attraverso la luce è sensibile alla formulazione
+dell'elemento (SHELL181 integrazione ridotta contro QM6/MITC4).
+
+Note sul confronto:
+- l'export ANSYS dà come "centroide" degli shell il punto medio del lato
+  sulla bobina 1, uguale per i due shell ai lati della bobina: il lato è
+  riconosciuto dal numero di elemento (STR_360 crea prima la coppia 1-2,
+  poi la coppia 12-1);
+- STR_360 costruisce gli shell della coppia 12-1 e l'elemento di chiusura
+  del vault a z = 0 con i nodi in ordine inverso: normale ribaltata, quindi
+  M11, M22 e Q13 cambiano segno (M12 e Q23 no). Il confronto ne tiene conto.
+
+## Carichi fuori piano
+
+Con la componente toroidale di FL_TF_1 (risultante sulla bobina 1
+−3.55 MN), MATLAB dà: torsione massima 3.65 MN·m sulla gamba interna
+(R 1.12 m, z −1.8 m), flessione fuori piano 5.9 MN·m e taglio fuori piano
+9.8 MN all'estremo della zona OIS (R ≈ 5 m), spostamento toroidale massimo
+6.7 mm, N12 nel vault −18 … −9 MN/m. Manca ancora il confronto con ANSYS.
+
+**Attenzione a `STR_360_improved.mac`**: applica la forza toroidale come FY
+in coordinate nodali cilindriche (`F,N_CUR,FY,F_TOR(J)` con F_TOR = colonna
+Fx globale di FL_TF_1). Sulla bobina 1 (θ = 90°) la direzione tangenziale
+è −x globale, quindi la forza toroidale risulta applicata con il segno
+opposto. Da solo il caso fuori piano cambia solo di segno; combinato con
+altri carichi (gravità, guasti) il risultato è sbagliato. Correzione:
+`F,N_CUR,FY,-F_TOR(J)` per la bobina 1, o in generale la proiezione della
+forza globale ruotata sulla direzione tangenziale di ogni bobina.
+
+## Prossimi passi
+
+1. Run ANSYS di `STR_360_improved` con la forza toroidale (segno corretto) e
+   lo stesso export: confronto fuori piano.
+2. Collegamento al flusso di MADE: linea media dalla forma MATLAB, carichi
+   dal modulo 3D (`tf3d_centreline_loads`), sezione della cassa dal
+   dimensionamento 2D.

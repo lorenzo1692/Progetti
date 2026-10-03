@@ -1,0 +1,193 @@
+! ============================================================================
+! POST_TF_BEAM_EXPORT.mac - export of the global 3D beam model results for
+! the MADE 2.0 MATLAB benchmark (validation/verify_tf3d_ansys_beam.m)
+! ----------------------------------------------------------------------------
+! Run AFTER the SOLVE of STR_360_improved.mac, in the same session/database
+! (it uses the components TF1_ELEM, TF1_NODE and the element type 6 shells):
+!
+!     /INPUT,'POST_TF_BEAM_EXPORT','mac'
+!
+! Files written in the working directory (comma separated, one row each):
+!   BEAM_TF1_EL.csv   one row per BEAM188 element of coil 1 (32 columns):
+!      1  element number
+!      2-4   node I  X Y Z [m]      5-7  node J X Y Z      8-10 orientation node K X Y Z
+!     11-16  node I: FX MY MZ TQ SFZ SFY   (SMISC 1-6)   [N, N m]
+!     17-22  node J: FX MY MZ TQ SFZ SFY   (SMISC 14-19)
+!     23-27  node I: SDIR SBYT SBYB SBZT SBZB (SMISC 31-35) [Pa]
+!     28-32  node J: SDIR SBYT SBYB SBZT SBZB (SMISC 36-40)
+!   NODE_TF1_U.csv    one row per node of coil 1 (10 columns):
+!      node, X Y Z [m], UX UY UZ [m], ROTX ROTY ROTZ [rad]   (RSYS,0: global
+!      Cartesian; coil 1 lies in the plane X = 0, Y radial, Z vertical)
+!   SHELL_TF1_EL.csv  one row per SHELL181 element attached to coil 1 (inner-
+!      leg vault strips and OIS strips) (15 columns):
+!      element, centroid X Y Z, N11 N22 N12 [N/m], M11 M22 M12 [N], Q13 Q23 [N/m]
+!      (SMISC 1-8), SINT top, SINT bottom, SEQV mid [Pa]
+!   REACT_TF.txt      PRRSOL listing of all reactions (supports)
+!   SUM_TF.txt        FSUM of the element forces on coil 1 nodes (load check)
+! ============================================================================
+FINISH
+/POST1
+SET,LAST
+CSYS,0
+RSYS,0
+! ----------------------------------------------------------------------------
+! 1. BEAM188 elements of coil 1
+! ----------------------------------------------------------------------------
+ALLSEL,ALL
+CMSEL,S,TF1_ELEM
+ETABLE,ERAS
+ETABLE,FXI,SMISC,1
+ETABLE,MYI,SMISC,2
+ETABLE,MZI,SMISC,3
+ETABLE,TQI,SMISC,4
+ETABLE,SFZI,SMISC,5
+ETABLE,SFYI,SMISC,6
+ETABLE,FXJ,SMISC,14
+ETABLE,MYJ,SMISC,15
+ETABLE,MZJ,SMISC,16
+ETABLE,TQJ,SMISC,17
+ETABLE,SFZJ,SMISC,18
+ETABLE,SFYJ,SMISC,19
+ETABLE,SDI,SMISC,31
+ETABLE,SYTI,SMISC,32
+ETABLE,SYBI,SMISC,33
+ETABLE,SZTI,SMISC,34
+ETABLE,SZBI,SMISC,35
+ETABLE,SDJ,SMISC,36
+ETABLE,SYTJ,SMISC,37
+ETABLE,SYBJ,SMISC,38
+ETABLE,SZTJ,SMISC,39
+ETABLE,SZBJ,SMISC,40
+*GET,NE_B,ELEM,0,COUNT
+*DEL,BE,,NOPR
+*DIM,BE,ARRAY,NE_B,32
+E_ = 0
+*DO,K_,1,NE_B
+    E_ = ELNEXT(E_)
+    NI_ = NELEM(E_,1)
+    NJ_ = NELEM(E_,2)
+    NK_ = NELEM(E_,3)
+    BE(K_,1) = E_
+    BE(K_,2) = NX(NI_)
+    BE(K_,3) = NY(NI_)
+    BE(K_,4) = NZ(NI_)
+    BE(K_,5) = NX(NJ_)
+    BE(K_,6) = NY(NJ_)
+    BE(K_,7) = NZ(NJ_)
+    *IF,NK_,GT,0,THEN
+        BE(K_,8) = NX(NK_)
+        BE(K_,9) = NY(NK_)
+        BE(K_,10) = NZ(NK_)
+    *ENDIF
+    *GET,BE(K_,11),ELEM,E_,ETAB,FXI
+    *GET,BE(K_,12),ELEM,E_,ETAB,MYI
+    *GET,BE(K_,13),ELEM,E_,ETAB,MZI
+    *GET,BE(K_,14),ELEM,E_,ETAB,TQI
+    *GET,BE(K_,15),ELEM,E_,ETAB,SFZI
+    *GET,BE(K_,16),ELEM,E_,ETAB,SFYI
+    *GET,BE(K_,17),ELEM,E_,ETAB,FXJ
+    *GET,BE(K_,18),ELEM,E_,ETAB,MYJ
+    *GET,BE(K_,19),ELEM,E_,ETAB,MZJ
+    *GET,BE(K_,20),ELEM,E_,ETAB,TQJ
+    *GET,BE(K_,21),ELEM,E_,ETAB,SFZJ
+    *GET,BE(K_,22),ELEM,E_,ETAB,SFYJ
+    *GET,BE(K_,23),ELEM,E_,ETAB,SDI
+    *GET,BE(K_,24),ELEM,E_,ETAB,SYTI
+    *GET,BE(K_,25),ELEM,E_,ETAB,SYBI
+    *GET,BE(K_,26),ELEM,E_,ETAB,SZTI
+    *GET,BE(K_,27),ELEM,E_,ETAB,SZBI
+    *GET,BE(K_,28),ELEM,E_,ETAB,SDJ
+    *GET,BE(K_,29),ELEM,E_,ETAB,SYTJ
+    *GET,BE(K_,30),ELEM,E_,ETAB,SYBJ
+    *GET,BE(K_,31),ELEM,E_,ETAB,SZTJ
+    *GET,BE(K_,32),ELEM,E_,ETAB,SZBJ
+*ENDDO
+*MWRITE,BE,'BEAM_TF1_EL','csv'
+%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G
+! ----------------------------------------------------------------------------
+! 2. Nodal displacements and rotations of coil 1 (global Cartesian)
+! ----------------------------------------------------------------------------
+ALLSEL,ALL
+CMSEL,S,TF1_NODE
+*GET,NN_B,NODE,0,COUNT
+*DEL,BN,,NOPR
+*DIM,BN,ARRAY,NN_B,10
+N_ = 0
+*DO,K_,1,NN_B
+    N_ = NDNEXT(N_)
+    BN(K_,1) = N_
+    BN(K_,2) = NX(N_)
+    BN(K_,3) = NY(N_)
+    BN(K_,4) = NZ(N_)
+    *GET,BN(K_,5),NODE,N_,U,X
+    *GET,BN(K_,6),NODE,N_,U,Y
+    *GET,BN(K_,7),NODE,N_,U,Z
+    *GET,BN(K_,8),NODE,N_,ROT,X
+    *GET,BN(K_,9),NODE,N_,ROT,Y
+    *GET,BN(K_,10),NODE,N_,ROT,Z
+*ENDDO
+*MWRITE,BN,'NODE_TF1_U','csv'
+%G,%G,%G,%G,%G,%G,%G,%G,%G,%G
+! ----------------------------------------------------------------------------
+! 3. SHELL181 strips attached to coil 1 (inner-leg vault and OIS)
+! ----------------------------------------------------------------------------
+ALLSEL,ALL
+CMSEL,S,TF1_NODE
+ESLN,S,0
+ESEL,R,TYPE,,6
+*GET,NE_S,ELEM,0,COUNT
+*IF,NE_S,GT,0,THEN
+    ETABLE,ERAS
+    ETABLE,N11,SMISC,1
+    ETABLE,N22,SMISC,2
+    ETABLE,N12,SMISC,3
+    ETABLE,M11,SMISC,4
+    ETABLE,M22,SMISC,5
+    ETABLE,M12,SMISC,6
+    ETABLE,Q13,SMISC,7
+    ETABLE,Q23,SMISC,8
+    SHELL,TOP
+    ETABLE,SINTT,S,INT
+    SHELL,BOT
+    ETABLE,SINTB,S,INT
+    SHELL,MID
+    ETABLE,SEQVM,S,EQV
+    *DEL,SH,,NOPR
+    *DIM,SH,ARRAY,NE_S,15
+    E_ = 0
+    *DO,K_,1,NE_S
+        E_ = ELNEXT(E_)
+        SH(K_,1) = E_
+        SH(K_,2) = CENTRX(E_)
+        SH(K_,3) = CENTRY(E_)
+        SH(K_,4) = CENTRZ(E_)
+        *GET,SH(K_,5),ELEM,E_,ETAB,N11
+        *GET,SH(K_,6),ELEM,E_,ETAB,N22
+        *GET,SH(K_,7),ELEM,E_,ETAB,N12
+        *GET,SH(K_,8),ELEM,E_,ETAB,M11
+        *GET,SH(K_,9),ELEM,E_,ETAB,M22
+        *GET,SH(K_,10),ELEM,E_,ETAB,M12
+        *GET,SH(K_,11),ELEM,E_,ETAB,Q13
+        *GET,SH(K_,12),ELEM,E_,ETAB,Q23
+        *GET,SH(K_,13),ELEM,E_,ETAB,SINTT
+        *GET,SH(K_,14),ELEM,E_,ETAB,SINTB
+        *GET,SH(K_,15),ELEM,E_,ETAB,SEQVM
+    *ENDDO
+    *MWRITE,SH,'SHELL_TF1_EL','csv'
+%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G,%G
+*ENDIF
+! ----------------------------------------------------------------------------
+! 4. Reactions and load check
+! ----------------------------------------------------------------------------
+ALLSEL,ALL
+/OUTPUT,'REACT_TF','txt'
+PRRSOL
+/OUTPUT
+CMSEL,S,TF1_ELEM
+CMSEL,S,TF1_NODE
+ESLN,S,1
+/OUTPUT,'SUM_TF','txt'
+FSUM
+/OUTPUT
+ALLSEL,ALL
+/COM,POST_TF_BEAM_EXPORT: written BEAM_TF1_EL.csv, NODE_TF1_U.csv, SHELL_TF1_EL.csv, REACT_TF.txt, SUM_TF.txt

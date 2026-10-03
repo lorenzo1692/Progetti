@@ -1,0 +1,30 @@
+Correzione del modello APDL STR_MODEL per jacket variabile tra i layer (03/10/2026)
+====================================================================================
+
+Causa del fallimento
+--------------------
+In geom/TF_cab_trpz.f, TF_jck_trpz.f, TF_tins_trpz.f e TF_fill_trpz.f la mezza
+larghezza del cavo era calcolata con il jacket del PRIMO layer:
+
+    HCW(n,k) = LTOT*0.5-JT_w(1,1)-ICIT
+
+mentre la parete laterale del jacket usa quello del layer, JT_w(n,k). Il bordo
+esterno del jacket (HCW + JT_w(n,k)) finiva quindi a LTOT/2 - ICIT + (JT_w(n,k) -
+JT_w(1,1)): nei layer con jacket piu' spesso del primo il turn usciva dalla sua
+cella di 0.5-1.2 mm (design #1: JT 2.3 / 2.8 / 3.5 mm) e si sovrapponeva al
+turn vicino (isolante, filler, contatti) -> errore in ANSYS. Con jacket
+costante JT_w(n,k) = JT_w(1,1) e l'errore non si vedeva.
+
+Correzioni (file in geom/)
+--------------------------
+1. HCW(n,k) = LTOT*0.5-JT_w(n,k)-ICIT                       (causa del fallimento)
+2. R_N = R(n,k) al posto di R(j,k)                          (j = layer dentro il grade;
+                                                             innocuo finche' R era costante)
+3. Raggio interno del jacket per grade: R(n,k) = CFRG(i,1) se il file di parametri
+   definisce CFRG (come MADE: clamp(JT, r_SC_min, r_SC_max) per grade); altrimenti
+   R(n,k) = CFR come prima (file di parametri vecchi).
+   Prima: CFR unico = clamp(max JT) = 3.5 mm per tutti i layer, MADE e il FE
+   del surrogato usano invece 2.3 / 2.8 / 3.5 mm.
+
+input/ParametriTF.f: il design #1 rigenerato con export_ansys_input aggiornato
+(identico al tuo + l'array CFRG). Diff completo: STR_MODEL_jacket_fix.diff.

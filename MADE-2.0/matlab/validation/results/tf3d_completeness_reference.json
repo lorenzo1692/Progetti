@@ -1,0 +1,10 @@
+{
+  "scope": "Python direct Biot-Savart reference, not MATLAB execution",
+  "reflection_relative_error": 1.5409911480567619e-16,
+  "coil_count": 12,
+  "turns_per_coil": 104,
+  "displayed_turn_paths": 1248,
+  "full_coil1_samples_90segments": 9360,
+  "lower_samples_reconstructed": 4680,
+  "status": "PASS"
+}

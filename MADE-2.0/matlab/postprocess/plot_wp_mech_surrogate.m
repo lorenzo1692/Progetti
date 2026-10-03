@@ -1,0 +1,144 @@
+function [fig, gps_fig] = plot_wp_mech_surrogate(out, p, fig_title)
+%PLOT_WP_MECH_SURROGATE Stress map and figure of merit of WP_MECH_SURROGATE.
+%
+%   PLOT_WP_MECH_SURROGATE(out, p) plots, for one solved design point:
+%     1. the Tresca stress intensity over the whole inner-leg section
+%        (element centres, MPa) with the case stress-classification lines;
+%     2. the jacket stresses per layer (maximum over the turns): primary
+%        membrane Pm and membrane+bending Pm+Pb (Lorentz + axial load case)
+%        against Sm and 1.5 Sm, Pm+Pb under all loads (P+Q, with the
+%        cool-down) and the peak in the cable fillet (for information);
+%   and prints the validity checks and the figure of merit in the console.
+%   A result whose checks fail is labelled INVALID.
+%
+%   fig = PLOT_WP_MECH_SURROGATE(...) also returns the figure handle.
+%   [fig,gps_fig] also returns the dedicated GPS mesh/solution figure.
+%   All original panels and console diagnostics are retained.
+%   out - result of WP_MECH_SURROGATE; p - machine parameters.
+
+if nargin < 3 || isempty(fig_title), fig_title = 'WP mechanical surrogate'; end
+fig_title = sprintf('%s [%s conductor]', fig_title, out.geo.shape_name);
+if ~out.valid
+    % keep the diagnostic plots, but make it impossible to mistake them for
+    % a verified result
+    fig_title = sprintf('NOT VALIDATED (%s) - %s', out.checks.summary, fig_title);
+end
+gps_fig = plot_wp_gps_section(out, [fig_title ' - GPS']);
+mark_invalid(gps_fig, out);
+drawnow;
+Smj = out.fom.Sm_jacket; Smc = out.fom.Sm_case;
+m = out.mesh; xy = m.xy;
+
+fig = figure('Name', 'WP mechanical surrogate', 'NumberTitle', 'off', ...
+    'units', 'normalized', 'outerposition', [0.05 0.08 0.9 0.84]);
+
+% --- 1. Tresca map: whole section and WP zoom ---------------------------
+clim_ = [0, max(1.5*max(Smj, Smc), out.fom.jacket_peak)/1e6];
+ax1 = subplot(1, 3, 1);
+draw_map(ax1, out, clim_);
+for q = 1:numel(out.case_scl)
+    s = out.case_scl(q);
+    plot(ax1, [s.P0(1) s.P1(1)], [s.P0(2) s.P1(2)], 'k-', 'LineWidth', 1.2);
+    text(ax1, s.P1(1), s.P1(2), sprintf(' %.0f/%.0f', s.Pm/1e6, s.PmPb/1e6), 'FontSize', 7);
+end
+title(ax1, {fig_title, 'steel Tresca [MPa]; case SCLs: Pm/Pm+Pb'}, 'Interpreter', 'none');
+
+ax2 = subplot(1, 3, 2);
+draw_map(ax2, out, clim_);
+[~, it] = max([out.turn.peak]);
+plot(ax2, out.turn(it).peak_xy(1), out.turn(it).peak_xy(2), 'kp', 'MarkerFaceColor', 'w', 'MarkerSize', 12);
+cav = out.geo.cav;
+xlim(ax2, [min(cav(:,1)) max(cav(:,1))] + [-0.01 0.01]);
+ylim(ax2, [min(cav(:,2)) max(cav(:,2))] + [-0.01 0.01]);
+cb = colorbar(ax2); ylabel(cb, 'Tresca stress intensity [MPa]');
+title(ax2, sprintf('WP: jacket peak %.0f MPa (star)', out.fom.jacket_peak/1e6));
+
+% --- 2. Jacket per layer ------------------------------------------------
+f = out.fom;
+Smj = f.Sm_jacket; Smc = f.Sm_case;
+if f.classified, PL = out.primary.layer; else, PL = out.layer; end
+ax3 = subplot(1, 3, 3);
+nl = numel(PL.Pm);
+hb = bar(ax3, 1:nl, [PL.Pm; PL.PmPb]'/1e6, 'grouped');
+hold(ax3, 'on');
+hq = plot(ax3, 1:nl, out.layer.PmPb/1e6, 'ks--', 'MarkerFaceColor', 'w');
+hp = plot(ax3, 1:nl, out.layer.peak/1e6, 'kd-', 'MarkerFaceColor', 'k');
+hs = plot(ax3, [0.5 nl+0.5], [Smj Smj]/1e6, 'r--', 'LineWidth', 1.2);
+h15 = plot(ax3, [0.5 nl+0.5], 1.5*[Smj Smj]/1e6, 'r:', 'LineWidth', 1.2);
+hold(ax3, 'off');
+xlabel(ax3, 'Layer (1 = plasma side)'); ylabel(ax3, 'Jacket stress [MPa]');
+legend(ax3, [hb(1) hb(2) hq hp hs h15], {'P_m primary', 'P_m+P_b primary', ...
+    'P_m+P_b all loads (P+Q)', 'peak in cable fillet', 'S_m', '1.5 S_m'}, 'Location', 'northwest');
+title(ax3, {sprintf('Jacket P_m %.0f, P_m+P_b %.0f, P+Q %.0f, peak %.0f MPa', f.jacket_Pm/1e6, ...
+    f.jacket_PmPb/1e6, f.jacket_PQ/1e6, f.jacket_peak/1e6), ...
+    sprintf('Case P_m %.0f, P_m+P_b %.0f MPa - %s', f.case_Pm/1e6, f.case_PmPb/1e6, f.status)}, ...
+    'Interpreter', 'tex');
+grid(ax3, 'on');
+
+mark_invalid(fig, out);
+
+% --- console table --------------------------------------------------
+fprintf('\nMechanical surrogate (%s conductor) - checks: %s\n', out.geo.shape_name, out.checks.summary);
+c = out.checks;
+fprintf(['  area %.1e | cable area %.1e | min detJ %.2e | contact converged %d | ' ...
+    'residual total %.1e / primary %.1e | force balance %.1e / %.1e | ' ...
+    'contact violation %.1e / %.1e | axial %.1e | SCL coverage %.2f\n'], c.area_rel_err, ...
+    c.cable_area_rel_err, c.min_detJ, c.contact_converged, c.solve_residual, c.solve_residual_primary, ...
+    c.force_balance, c.force_balance_primary, c.contact_violation_force, c.contact_violation_force_primary, ...
+    c.axial_rel_err, c.scl_min_coverage);
+if isfield(c, 'penetration_rel')
+    fprintf('  penalty contact: max penetration %.1e x min JT', c.penetration_rel);
+    if out.geo.is_round
+        fprintf(' | RIS bonded side: %d pairs, tension carried %.1e of the normal force', ...
+            out.sol.contact.n_cable_bonded, c.bond_tension_fraction);
+    end
+    fprintf('\n');
+end
+if ~out.valid
+    fprintf(2, ['  NOT VALIDATED: the plots are kept for diagnosis only; do not use this figure of ' ...
+        'merit to accept or rank the design point.\n']);
+end
+if f.classified
+    fprintf('Figure of merit (linearized Tresca; P = Lorentz + axial, Q = cool-down):\n');
+else
+    fprintf('Figure of merit (UNCLASSIFIED: all loads used as primary, conservative):\n');
+end
+for k = 1:numel(f.util)
+    fprintf('  %-24s %.3f\n', f.util_names{k}, f.util(k));
+end
+fprintf('  jacket Pm    %5.0f MPa at layer %d col %d (Sm = %.0f MPa)\n', f.jacket_Pm/1e6, f.jacket_Pm_at, Smj/1e6);
+fprintf('  jacket Pm+Pb %5.0f MPa at layer %d col %d (1.5 Sm = %.0f MPa)\n', f.jacket_PmPb/1e6, f.jacket_PmPb_at, 1.5*Smj/1e6);
+fprintf('  jacket P+Q   %5.0f MPa at layer %d col %d (3 Sm = %.0f MPa)\n', f.jacket_PQ/1e6, f.jacket_PQ_at, 3*Smj/1e6);
+fprintf('  jacket peak  %5.0f MPa at layer %d col %d (local, for information)\n', f.jacket_peak/1e6, f.jacket_peak_at);
+fprintf('  case Pm %.0f MPa (%s), Pm+Pb %.0f MPa (%s), P+Q %.0f MPa (%s); Sm = %.0f MPa\n', ...
+    f.case_Pm/1e6, f.case_Pm_at, f.case_PmPb/1e6, f.case_PmPb_at, f.case_PQ/1e6, f.case_PQ_at, Smc/1e6);
+fprintf('  -> %s\n', f.status);
+end
+
+function draw_map(ax, out, clim_)
+% steel (jacket, case) coloured by Tresca, other materials in grey
+m = out.mesh; xy = m.xy;
+hold(ax, 'on');
+qs = m.q8_mat == 2; ts = m.t6_mat == 4;
+grey = [0.82 0.82 0.82];
+patch(ax, 'Faces', m.q8(~qs, [1 5 2 6 3 7 4 8]), 'Vertices', xy, 'FaceColor', grey, 'EdgeColor', 'none');
+patch(ax, 'Faces', m.t6(~ts, [1 4 2 5 3 6]), 'Vertices', xy, 'FaceColor', grey, 'EdgeColor', 'none');
+patch(ax, 'Faces', m.q8(qs, [1 5 2 6 3 7 4 8]), 'Vertices', xy, ...
+    'FaceVertexCData', out.elem_SINT.q8(qs)/1e6, 'FaceColor', 'flat', 'EdgeColor', 'none');
+patch(ax, 'Faces', m.t6(ts, [1 4 2 5 3 6]), 'Vertices', xy, ...
+    'FaceVertexCData', out.elem_SINT.t6(ts)/1e6, 'FaceColor', 'flat', 'EdgeColor', 'none');
+axis(ax, 'equal'); box(ax, 'on');
+colormap(ax, jet(256));
+set(ax, 'CLim', clim_);
+xlabel(ax, 'Toroidal x [m]'); ylabel(ax, 'Radial y [m]');
+end
+
+function mark_invalid(f, out)
+% red banner on figures of a result whose validity checks failed
+if out.valid || isempty(f) || ~ishghandle(f), return, end
+set(f, 'Name', [get(f, 'Name') ' - NOT VALIDATED']);
+annotation(f, 'textbox', [0 0.955 1 0.045], 'String', ...
+    sprintf('NOT VALIDATED (%s): diagnostic only, figure of merit not usable', out.checks.summary), ...
+    'Color', [0.8 0 0], 'FontWeight', 'bold', 'HorizontalAlignment', 'center', 'EdgeColor', 'none', ...
+    'Interpreter', 'none');
+end

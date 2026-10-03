@@ -13,7 +13,7 @@ g.theta_TF = 2*pi/p.n_TF;
 
 g.RTFi = p.R0 - p.R0/p.A - p.wb;                        % [m] TF inner-leg outer radius
 g.RTFo = (p.R0 + p.R0/p.A)*(1/p.ripple)^(1/p.n_TF);      % [m] TF outer-leg inner radius
-g.R_VV = g.RTFi*1.05;                                    % [m]
+g.R_VV = g.RTFi*p.R_VV_margin_factor;                    % [m]
 
 % Bending-free shell-model factors: the original script recomputed
 % 0.5*log(RTFo/RTFi) four times (inductance, hoop tension x2, DTF sizing)
