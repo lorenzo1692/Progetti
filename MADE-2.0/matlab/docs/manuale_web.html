@@ -213,7 +213,7 @@ details[open] summary { margin-bottom: 10px; }
       <tr><td>Coerenza dello stato di contatto</td><td>Nuovo controllo: le coppie che cambierebbero stato sulla soluzione restituita devono portare meno del 2% della forza normale. L'iterazione di contatto converge solo se è soddisfatto.</td><td>§8.7, §8.9</td></tr>
       <tr><td>FEM non valido</td><td>I plot restano, ma con un banner rosso “NOT VALIDATED” e l'avviso di non usare la figura di merito.</td><td>§8.9</td></tr>
       <tr><td>Verifica riproducibile RIS/Rect</td><td><code>verify_ris_rect_fem(p, cartella)</code>: selezione della forma, geometria, aree, materiali, Jacobiani, contatti, risultanti, residui e figure (sezione, GPS, zoom sul conduttore).</td><td>§2, §9</td></tr>
-      <tr><td>Modello a strati (in sviluppo)</td><td>Jacket e case in un unico modello analitico: cilindro di anelli ortotropi con la forza di Lorentz, soluzione in forma chiusa in ogni anello, cella del turn, colonna del WP con attrito. Confronto con il FE: jacket rms 8.3%, case −6…−15%. Non ancora nella scansione. Emerso anche: il nose dello scan (R<sub>j</sub> − R<sub>k</sub>) è più spesso di 17–25 mm di quello del FE e di ANSYS (foro ad arco).</td><td>§5c</td></tr>
+      <tr><td>Modello a strati (in sviluppo)</td><td>Jacket e case in un unico modello analitico: cilindro di anelli ortotropi con la forza di Lorentz, soluzione in forma chiusa in ogni anello, cella del turn, colonna del WP con attrito. Confronto con il FE: jacket rms 8.3%, case −5…−27% (peggio sui nose sottili). Non ancora nella scansione. Emerso anche: il nose dello scan (R<sub>j</sub> − R<sub>k</sub>) è più spesso di 17–25 mm di quello del FE e di ANSYS (foro ad arco).</td><td>§5c</td></tr>
     </tbody>
   </table></div>
 </section>
@@ -585,18 +585,23 @@ flowchart LR
       <tr><td>Surrogato del jacket (§5b), per confronto</td><td class="num">1.0</td><td class="num">7.1%</td><td>LOO 0.87 … 1.23</td></tr>
     </tbody>
   </table></div>
-  <p>I dati sono le 21 run FE della taratura del jacket, 392 layer; come nel surrogato sono escluse le due varianti anomale. Per il case, sul benchmark e sul design 7:</p>
-  <ul>
-    <li>nose al centro: 601 contro 655 MPa (−8%) e 553 contro 606 (−9%);</li>
-    <li>piastra lato plasma: −6% e −15%;</li>
-    <li>parete laterale: −9%.</li>
-  </ul>
-  <p>Sono il 20–24% sotto prima delle correzioni di geometria e di cella. Le altre run di riferimento sono in corso (<code>validation/run_mech_reference_fe.m</code>).</p>
+  <p>I dati del jacket sono le 21 run FE della taratura, 392 layer; come nel surrogato sono escluse le due varianti anomale. Per il case ci sono 19 run FE dedicate, tutte valide: 13 design più le varianti +0.5 e +1.0 mm di jacket di bench, d7 e d10 (<code>validation/results/mech_reference_fe.csv</code>).</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Case, P<sub>m</sub> primario: modello / FE</th><th class="num">nose al centro</th><th class="num">piastra lato plasma</th><th class="num">parete laterale 50%</th></tr></thead>
+    <tbody>
+      <tr><td>bench, d7, d10 (nose 107–154 mm)</td><td class="num">0.92 / 0.91 / 0.95</td><td class="num">0.94 / 0.85 / 0.99</td><td class="num">0.91 / 0.91 / 1.08</td></tr>
+      <tr><td>7 design della scansione tarata (nose 75–119 mm)</td><td class="num">0.83 … 0.88</td><td class="num">0.85 … 0.93</td><td class="num">0.79 … 0.85</td></tr>
+      <tr><td>3 design con nose di 33–35 mm (s2_x)</td><td class="num">0.73 … 0.75</td><td class="num">0.76 … 0.79</td><td class="num">0.78 … 0.81</td></tr>
+      <tr><td>Tutte le 19 run</td><td class="num">0.73 … 0.95 (medio 0.87)</td><td class="num">0.76 … 0.99</td><td class="num">0.78 … 1.08</td></tr>
+    </tbody>
+  </table></div>
+  <p>Prima delle correzioni di geometria e di cella il nose era il 17–20% sotto. Ora l'errore dipende dallo spessore del nose: più il nose è sottile, più il modello lo sottostima. Un fattore costante quindi non basta.</p>
+  <p>Il FE conferma che un jacket più spesso scarica il case, ma poco. Sul bench, +0.5/+1.0 mm di jacket danno sul nose −2.3%/−4.4% (modello −3.5%/−6.7%).</p>
   <div class="callout">
     <p><strong>Stato.</strong></p>
     <ul>
       <li><strong>Jacket.</strong> È quasi al livello del surrogato con un solo parametro, ma risponde allo spessore del jacket circa 1.5 volte più del FE. Sul bench, +0.5/+1.0 mm danno −7.3%/−11.8% contro −4.4%/−8.4%, quindi nel loop sarebbe ottimista quando ingrossa il jacket.</li>
-      <li><strong>Case.</strong> È ancora sottostimato del 6–15%.</li>
+      <li><strong>Case.</strong> È ancora sottostimato: nose −5…−27%, medio −13%, peggio sui nose sottili. Prima di correggere serve il confronto per componenti (σ<sub>θ</sub>, σ<sub>z</sub>) nel nose sottile di s2_4.</li>
       <li><strong>Prossimo passo.</strong> Sostituire la cella in serie e parallelo con una cella elementare risolta numericamente una volta per grade (rigidezze e localizzazione esatte), lasciando analitico l'anello.</li>
       <li><strong>Criterio per usarlo nella scansione.</strong> Jacket con rms ≤ 10% e 90° percentile ≤ 1.10, case entro ±5%.</li>
       <li><strong>Da decidere.</strong> <code>size_case_vault</code> dimensiona il nose come R<sub>j</sub> − R<sub>k</sub> (foro piano), mentre FE e ANSYS hanno il foro ad arco: il nose reale al centro è più sottile di 17–25 mm. Va stabilito qual è la geometria di progetto.</li>

@@ -280,8 +280,58 @@ la ripartizione locale.
 | | d7 | 606 / 533 (−12%) | 534 / 437 (−18%) | 357 / 328 |
 | + cella 'wrapped' (default) | bench | 655 / 601 (−8%) | 545 / 514 (−6%) | 402 / 366 (−9%) |
 | | d7 | 606 / 553 (−9%) | 534 / 452 (−15%) | 357 / 324 (−9%) |
-| | d10 | 631 / 599 (−5%) | 526 / 522 (−1%) | 403 / 436 (+8%) |
-| | s1_1 | 577 / 505 (−13%) | 448 / 390 (−13%) | 321 / 269 (−16%) |
+
+**Tutte le 19 run FE di riferimento** (versione di default;
+`validation/results/mech_reference_fe.csv`, `run_mech_reference_fe`, tutte
+valide). Spessore del nose al centro come nel FE (mm), poi FE / modello in MPa.
+
+| Run | nose FE [mm] | nose al centro | piastra lato plasma | parete laterale 50% |
+|---|---:|---|---|---|
+| bench | 111 | 655 / 601 (−8%) | 545 / 514 (−6%) | 402 / 366 (−9%) |
+| d7 | 107 | 606 / 553 (−9%) | 534 / 452 (−15%) | 357 / 324 (−9%) |
+| d10 | 154 | 631 / 599 (−5%) | 526 / 522 (−1%) | 403 / 436 (+8%) |
+| s1_1 | 114 | 577 / 505 (−12%) | 448 / 390 (−13%) | 321 / 269 (−16%) |
+| s1_13 | 119 | 566 / 497 (−12%) | 410 / 375 (−9%) | 312 / 264 (−15%) |
+| s2_4 | 35 | 782 / 583 (−25%) | 463 / 365 (−21%) | 318 / 248 (−22%) |
+| s1_2 | 107 | 589 / 514 (−13%) | 463 / 396 (−14%) | 326 / 272 (−17%) |
+| s1_4 | 119 | 561 / 494 (−12%) | 412 / 373 (−9%) | 309 / 250 (−19%) |
+| s1_7 | 75 | 649 / 538 (−17%) | 468 / 396 (−15%) | 332 / 273 (−18%) |
+| s1_9 | 101 | 585 / 507 (−13%) | 425 / 376 (−12%) | 319 / 253 (−21%) |
+| s1_17 | 109 | 576 / 496 (−14%) | 396 / 370 (−7%) | 314 / 261 (−17%) |
+| s2_1 | 33 | 788 / 573 (−27%) | 491 / 373 (−24%) | 324 / 262 (−19%) |
+| s2_2 | 34 | 829 / 602 (−27%) | 492 / 385 (−22%) | 327 / 259 (−21%) |
+| bench@jt+0.5 | 111 | 640 / 580 (−9%) | 526 / 493 (−6%) | 392 / 352 (−10%) |
+| bench@jt+1.0 | 111 | 626 / 561 (−10%) | 507 / 473 (−7%) | 383 / 339 (−11%) |
+| d7@jt+0.5 | 107 | 590 / 530 (−10%) | 511 / 429 (−16%) | 347 / 311 (−10%) |
+| d7@jt+1.0 | 107 | 576 / 511 (−11%) | 490 / 409 (−17%) | 337 / 298 (−12%) |
+| d10@jt+0.5 | 154 | 613 / 574 (−6%) | 504 / 496 (−2%) | 391 / 415 (+6%) |
+| d10@jt+1.0 | 154 | 597 / 552 (−8%) | 483 / 473 (−2%) | 382 / 397 (+4%) |
+
+Rapporto modello/FE: nose 0.73 … 0.95 (medio 0.87), piastra 0.76 … 0.99,
+parete laterale 0.78 … 1.08.
+
+Osservazioni:
+- **L'errore sul nose cresce quando il nose si assottiglia**:
+  - −5% con 154 mm (d10);
+  - −8 … −14% tra 100 e 120 mm;
+  - −17% con 75 mm (s1_7);
+  - −25 … −27% con 33–35 mm (s2_x).
+
+  Non è quindi un fattore costante. Ipotesi da verificare sulle componenti
+  (σ_θ e σ_z separati nel nose del FE, che le run non salvano):
+  - la flessione del vault come trave tra le pareti, che nel FE dà anche
+    membrana sulla linea centrale;
+  - una ripartizione assiale diversa nel nose sottile.
+- **Spessore del jacket e case.** Sul bench, +0.5 / +1.0 mm di jacket danno:
+  - nose: FE −2.3% / −4.4%, modello −3.5% / −6.7%;
+  - piastra: FE −3.5% / −7.0%, modello −4.1% / −8.0%.
+
+  Il FE conferma che un jacket più spesso scarica il case, ma poco (~2% ogni
+  0.5 mm sul nose). Il modello coglie il segno ed esagera l'entità, come per
+  il jacket.
+- **Pareti laterali** sottostimate del 15–22% sui design della scansione
+  tarata. Il modello di parete (deformazione radiale dell'anello, σ_θ
+  dell'anello) è il più grezzo.
 
 Spessore del nose al centro: R_j − R_k contro il FE R_j − R_k/cos(π/n_TF).
 
@@ -305,15 +355,15 @@ Va deciso quale geometria è quella di progetto. Se è l'arco, R_k va
 interpretato come raggio dello spigolo, oppure il vault va verificato su
 R_j − R_k/cos(π/n_TF).
 
-Le altre run FE di riferimento (`run_mech_reference_fe`) sono in corso.
-
 ## 9. Stato e prossimi passi
 
 - **Jacket.** Con un solo parametro tarato (μ efficace = 0.1) il modello è
   vicino al surrogato: rms 8.3% contro 7%, massimo del design 0.85 … 1.09.
   Però sovrastima il beneficio di un jacket più spesso (§8.1).
-- **Case.** Sui quattro design disponibili il nose è sottostimato del 5–13%,
-  la piastra dell'1–15% e la parete laterale tra −16% e +8%. Criterio concordato ±5%: non ancora rispettato.
+- **Case** (19 run FE). Il nose è sottostimato del 5–27% (medio −13%), di più
+  quando è sottile; la piastra dell'1–24%; la parete laterale tra −22% e +8%.
+  Il criterio concordato (±5%) non è rispettato. Prima di correggere serve il
+  confronto per componenti nel nose sottile (s2_4).
 - **Prossimo passo.** Una cella elementare risolta numericamente una volta
   per grade: un turn con raccordi, cavo, jacket e isolante, con le tre
   deformazioni medie unitarie. Dà le rigidezze equivalenti esatte e le
