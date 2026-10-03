@@ -1,0 +1,116 @@
+--- strmodel/geom/TF_cab_trpz.f	2023-03-21 17:10:50.000000000 +0000
++++ strfix/geom/TF_cab_trpz.f	2026-10-03 19:58:43.467061998 +0000
+@@ -1,4 +1,5 @@
+ /PREP7
++*GET,CFRG_TYPE,PARM,CFRG,TYPE		! 1 = per-grade jacket internal radius array defined in ParametriTF
+ /PSYMB,CSYS,0
+ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+@@ -18,13 +19,17 @@
+ 		n=n+1
+ 		*DO,k,1,NT(i)
+ 			*GET,ULT_KP,KP,,NUM,MAX
+-			R(n,k)   = CFR! JT_h(j,k)			! Jacket internal radius
+-			R_N      = R(j,k)                       
++			*IF,CFRG_TYPE,EQ,1,THEN
++				R(n,k) = CFRG(i,1)			! Jacket internal radius of the grade (clamp(JT, r_SC_min, r_SC_max), as MADE)
++			*ELSE
++				R(n,k) = CFR			! parameter files without CFRG: one radius for the whole WP
++			*ENDIF
++			R_N      = R(n,k)                       
+ 			EXT_RAD  = R_N+JT_h(n,k)       	    ! Jacket external radius		
+ 			JER(n,k) = 3.0*1.E-3**SI_UNIT       
+ 			HJH(n,k) = JH(n,k)*0.5              ! Half jacket Height
+ 			HJW(n,k) = LTOT*0.5-ICIT  			! Half jacket width
+-			HCW(n,k) = LTOT*0.5-JT_w(1,1)-ICIT  ! Half conductor width			
++			HCW(n,k) = LTOT*0.5-JT_w(n,k)-ICIT  ! Half conductor width (jacket of THIS layer; was JT_w(1,1): with a variable jacket the turn overflowed its cell)			
+ 			HCH(n,k) = JH(n,k)*0.5-JT_h(n,k)    ! Half conductor Height
+ 
+ 			*IF,n,NE,1,THEN,
+--- strmodel/geom/TF_jck_trpz.f	2026-09-24 07:45:41.888591200 +0000
++++ strfix/geom/TF_jck_trpz.f	2026-10-03 19:58:43.467390675 +0000
+@@ -1,4 +1,5 @@
+ /PREP7
++*GET,CFRG_TYPE,PARM,CFRG,TYPE		! 1 = per-grade jacket internal radius array defined in ParametriTF
+ LSEL,,LCCAT
+ LDELE,ALL
+ ALLSEL,ALL,ALL
+@@ -23,13 +24,17 @@
+ 		n=n+1
+ 		*DO,k,1,NT(i)
+ 			*GET,ULT_KP,KP,,NUM,MAX
+-			R(n,k)   = CFR! JT_h(j,k)			! Jacket internal radius
+-			R_N      = R(j,k)                       
++			*IF,CFRG_TYPE,EQ,1,THEN
++				R(n,k) = CFRG(i,1)			! Jacket internal radius of the grade (clamp(JT, r_SC_min, r_SC_max), as MADE)
++			*ELSE
++				R(n,k) = CFR			! parameter files without CFRG: one radius for the whole WP
++			*ENDIF
++			R_N      = R(n,k)                       
+ 			EXT_RAD  = R_N+JT_h(n,k)       	    ! Jacket external radius		
+ 			! ! ! JER(n,k) = 3.0*1.E-3**SI_UNIT       
+ 			HJH(n,k) = JH(n,k)*0.5              ! Half jacket Height
+ 			HJW(n,k) = LTOT*0.5-ICIT  			! Half jacket width
+-			HCW(n,k) = LTOT*0.5-JT_w(1,1)-ICIT  ! Half conductor width			
++			HCW(n,k) = LTOT*0.5-JT_w(n,k)-ICIT  ! Half conductor width (jacket of THIS layer; was JT_w(1,1): with a variable jacket the turn overflowed its cell)			
+ 			HCH(n,k) = JH(n,k)*0.5-JT_h(n,k)    ! Half conductor Height
+ 
+ 			HCH_N = HCH(n,k)
+--- strmodel/geom/TF_tins_trpz.f	2023-03-21 17:58:19.000000000 +0000
++++ strfix/geom/TF_tins_trpz.f	2026-10-03 19:58:43.467660255 +0000
+@@ -1,4 +1,5 @@
+ /PREP7
++*GET,CFRG_TYPE,PARM,CFRG,TYPE		! 1 = per-grade jacket internal radius array defined in ParametriTF
+ LSEL,,LCCAT
+ LDELE,ALL
+ ALLSEL,ALL,ALL
+@@ -30,13 +31,17 @@
+ 		n=n+1
+ 		*DO,k,1,NT(i)
+ 			*GET,ULT_KP,KP,,NUM,MAX
+-			R(n,k)   = CFR! JT_h(j,k)			! Jacket internal radius
+-			R_N      = R(j,k)                       
++			*IF,CFRG_TYPE,EQ,1,THEN
++				R(n,k) = CFRG(i,1)			! Jacket internal radius of the grade (clamp(JT, r_SC_min, r_SC_max), as MADE)
++			*ELSE
++				R(n,k) = CFR			! parameter files without CFRG: one radius for the whole WP
++			*ENDIF
++			R_N      = R(n,k)                       
+ 			EXT_RAD  = R_N+JT_h(n,k)       	    ! Jacket external radius		
+ 			JER(n,k) = 3.0*1.E-3**SI_UNIT       
+ 			HJH(n,k) = JH(n,k)*0.5              ! Half jacket Height
+ 			HJW(n,k) = LTOT*0.5-ICIT  			! Half jacket width
+-			HCW(n,k) = LTOT*0.5-JT_w(1,1)-ICIT  ! Half conductor width			
++			HCW(n,k) = LTOT*0.5-JT_w(n,k)-ICIT  ! Half conductor width (jacket of THIS layer; was JT_w(1,1): with a variable jacket the turn overflowed its cell)			
+ 			HCH(n,k) = JH(n,k)*0.5-JT_h(n,k)    ! Half conductor Height
+ 
+ 			HCH_N = HCH(n,k)
+--- strmodel/geom/TF_fill_trpz.f	2023-03-17 13:31:15.000000000 +0000
++++ strfix/geom/TF_fill_trpz.f	2026-10-03 19:58:43.467781555 +0000
+@@ -1,4 +1,5 @@
+ /PREP7
++*GET,CFRG_TYPE,PARM,CFRG,TYPE		! 1 = per-grade jacket internal radius array defined in ParametriTF
+ LSEL,,LCCAT
+ LDELE,ALL
+ ALLSEL,ALL,ALL
+@@ -24,13 +25,17 @@
+ 		n=n+1
+ 		*DO,k,1,NT(i)
+ 			*GET,ULT_KP,KP,,NUM,MAX
+-			R(n,k)   = CFR! JT_h(j,k)			! Jacket internal radius
+-			R_N      = R(j,k)                       
++			*IF,CFRG_TYPE,EQ,1,THEN
++				R(n,k) = CFRG(i,1)			! Jacket internal radius of the grade (clamp(JT, r_SC_min, r_SC_max), as MADE)
++			*ELSE
++				R(n,k) = CFR			! parameter files without CFRG: one radius for the whole WP
++			*ENDIF
++			R_N      = R(n,k)                       
+ 			EXT_RAD  = R_N+JT_h(n,k)       	    ! Jacket external radius		
+ 			JER(n,k) = 3.0*1.E-3**SI_UNIT       
+ 			HJH(n,k) = JH(n,k)*0.5              ! Half jacket Height
+ 			HJW(n,k) = LTOT*0.5-ICIT  			! Half jacket width
+-			HCW(n,k) = LTOT*0.5-JT_w(1,1)-ICIT  ! Half conductor width			
++			HCW(n,k) = LTOT*0.5-JT_w(n,k)-ICIT  ! Half conductor width (jacket of THIS layer; was JT_w(1,1): with a variable jacket the turn overflowed its cell)			
+ 			HCH(n,k) = JH(n,k)*0.5-JT_h(n,k)    ! Half conductor Height
+ 
+ 			HCH_N = HCH(n,k)

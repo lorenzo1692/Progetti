@@ -91,6 +91,10 @@ else
     cable_type_str = 'rect';
 end
 CFR = min(max(max(JT), p.r_SC_min), p.r_SC_max);
+% jacket internal (cable fillet) radius per FEM grade, as MADE builds the
+% cable (WP_TURN_GEOMETRY: r_SC = clamp(JT, r_SC_min, r_SC_max)); read by the
+% *_trpz geometry macros as CFRG(i,1) (CFR is kept for older macros)
+grade_CFR = min(max(grade_JTwG, p.r_SC_min), p.r_SC_max);
 
 tag = matlab.lang.makeValidName(template_tag);
 out_file = fullfile(out_dir, sprintf('ParametriTF_%s.f', tag));
@@ -161,6 +165,7 @@ for d = 1:numel(dims)
     fprintf(fid, '*DIM,%s,ARRAY,NL_G,NT_G\n', dims{d});
 end
 fprintf(fid, '*DIM,CABLE_TYPE,CHAR,GRADES,1\n*DIM,JHG,ARRAY, GRADES,1\n*DIM,JT_hG,ARRAY, GRADES,1\n*DIM,JT_wG,ARRAY, GRADES,1\n');
+fprintf(fid, '*DIM,CFRG,ARRAY, GRADES,1\n');
 fprintf(fid, '!-----------------------------------------------------------------------!\n!!! Parameters\n!-----------------------------------------------------------------------!\n');
 fprintf(fid, '!!! Cable Type\n');
 for i = 1:n_grades_fem
@@ -179,6 +184,10 @@ for i = 1:n_grades_fem
 end
 for i = 1:n_grades_fem
     fprintf(fid, 'JT_hG(%d,1)   = JT_wG(%d,1)\n', i, i);
+end
+fprintf(fid, '!!! Jacket internal radius per grade = clamp(JT, r_SC_min, r_SC_max), as MADE (read by the *_trpz macros)\n');
+for i = 1:n_grades_fem
+    fprintf(fid, 'CFRG(%d,1)    = SCALEF*(%.6g)*1.E-3**SI_UNIT\n', i, grade_CFR(i)*1e3);
 end
 fprintf(fid, ['!-----------------------------------------------------------------------!\n' ...
     'n=0\n*DO,i,1,GRADES\n\t*DO,j,1,NL(i)\n\t\tn=n+1\n\t\t*DO,k,1,NT(i)\n\t\t\t' ...
