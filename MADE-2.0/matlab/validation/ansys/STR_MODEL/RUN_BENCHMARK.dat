@@ -9,7 +9,7 @@
 FINISH
 /CLEAR,ALL
 /INQUIRE,MODEL_ROOT,DIRECTORY
-/CWD,'%MODEL_ROOT(1)%\output'
+/CWD,'%MODEL_ROOT(1)%\output'                ! the folder written by RUN.dat
 MDIR = '..\'
 RESUME,STR_2D,db
 MDIR = '..\'

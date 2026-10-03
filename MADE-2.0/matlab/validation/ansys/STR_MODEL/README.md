@@ -10,8 +10,8 @@ Launch `RUN.dat` in batch from this folder, for example:
 
     ansys2xx -b -i RUN.dat -o RUN.out
 
-`RUN.dat` creates the subfolder `output\` and makes it the working
-directory. Every file the run writes goes there:
+`RUN.dat` creates the subfolder `output\` (`/MKDIR`) and makes it the
+working directory (`/CWD`, all MPI processes). Every file the run writes goes there:
 
 | File | Content |
 |---|---|
@@ -76,5 +76,8 @@ called by the current flow; each one says so in its header.
   but the file is not in `geom/`: restore it before running a RIS model.
 - `geom/nuovo 1` is an unnamed scratch copy of an inter-layer insulation
   macro and is not used.
-- The output-folder commands (`/INQUIRE`, `/CWD`, `%MDIR%` in `/INPUT`)
-  are standard APDL but have not been run here: check the first run.
+- Output folder: created with `/MKDIR` and entered with `/CWD`. The first
+  version used `/SYS,mkdir`, which fails when the model sits on a network
+  (UNC) path, because cmd.exe cannot start there. If `/CWD` fails anyway,
+  `RUN.dat` detects it (`/INQUIRE` + `STRPOS`) and runs in the model
+  folder as before.
