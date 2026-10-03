@@ -779,7 +779,16 @@ flowchart LR
     <li><strong>Scan ridotto</strong> sulla macchina del design 10 (22 layout da 18 turn): la #1 passa da 540.1 a 520.9 mm di ingombro radiale e il nose da 173 a 152 mm, con P<sub>m</sub> del case di 635 MPa.</li>
     <li><strong>Limiti</strong>: tarato per n<sub>TF</sub> = 12 e cavi rettangolari (con RIS si torna alla formula del vault); <code>extrapolated</code> segnala x fuori intervallo. Se cambiano le opzioni di default del modello a strati va rifatto il fit (<code>validation/run_case_surrogate_features.m</code>, <code>validation/tools/fit_case_surrogate.py</code>).</li>
   </ul>
-<!--VERIFICA_SCAN-->
+  <p><strong>Verifica col FE 2D</strong> delle prime due soluzioni dello scan ridotto (carico primario, MPa, FE / surrogato):</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Soluzione</th><th class="num">case P<sub>m</sub></th><th class="num">case P<sub>m</sub>+P<sub>b</sub></th><th class="num">jacket P<sub>m</sub></th><th class="num">jacket P<sub>m</sub>+P<sub>b</sub></th></tr></thead>
+    <tbody>
+      <tr><td>#1</td><td class="num">629 / 635 (+1%)</td><td class="num">689 / 704 (+2%)</td><td class="num">617 / 557</td><td class="num">1028 / 900</td></tr>
+      <tr><td>#2</td><td class="num">627 / 633 (+1%)</td><td class="num">685 / 705 (+3%)</td><td class="num">614 / 553</td><td class="num">1013 / 895</td></tr>
+    </tbody>
+  </table></div>
+  <p>Il case passa con il margine previsto (P<sub>m</sub> ≤ 667 MPa). Il jacket invece supera 1.5 S<sub>m</sub> = 1000 MPa in P<sub>m</sub>+P<sub>b</sub> dell'1–3%: è il layout del design 10, il peggiore per il surrogato del jacket (§5b), e va corretto con <code>refine_jacket_fe</code> come previsto dal main.</p>
+
 
   <h3 id="s5c-h10">Modello a telaio (scelta A, studio)</h3>
   <p>L'idea per superare il limite assialsimmetrico è usare due campi radiali al posto di uno:</p>

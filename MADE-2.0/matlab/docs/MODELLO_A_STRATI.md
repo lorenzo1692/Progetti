@@ -524,3 +524,16 @@ modello a strati.
 | nose della #1 | 173 mm | 152 mm |
 | Pm del case della #1 (surrogato) | — | 635 MPa |
 | tempo dello scan in Octave | 169 s | 210 s |
+
+**Verifica col FE 2D delle prime due soluzioni dello scan ridotto**
+(carico primario, MPa).
+
+| | case Pm FE / surrogato | case Pm+Pb FE / surrogato | jacket Pm FE / surrogato | jacket Pm+Pb FE / surrogato |
+|---|---|---|---|---|
+| #1 | 629 / 635 (+1%) | 689 / 704 (+2%) | 617 / 557 | 1028 / 900 |
+| #2 | 627 / 633 (+1%) | 685 / 705 (+3%) | 614 / 553 | 1013 / 895 |
+
+- **Case**: verificato con il margine previsto (Pm ≤ 667 MPa).
+- **Jacket**: Pm+Pb supera 1.5 Sm = 1000 MPa dell'1–3%. È il layout del
+  design 10, il peggiore per il surrogato del jacket (§5b del manuale): va
+  corretto con `refine_jacket_fe`, come previsto dal flusso del main.
