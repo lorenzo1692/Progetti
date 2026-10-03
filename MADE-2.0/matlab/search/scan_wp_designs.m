@@ -672,6 +672,11 @@ else
     if isstruct(DATA), rb = [DATA.radial_build]; else, rb = DATA.radial_build; end
     [~, order] = sort(rb(:));
     DATA = DATA(order, :);
+    if scf_model == 1 || case_model == 1
+        % calibration range of the FE surrogates (n_TF, Ri, Iop, WP width,
+        % layers, h_WP/t_nose): outside it they extrapolate
+        surrogate_validity(DATA, p);
+    end
 end
 end
 
