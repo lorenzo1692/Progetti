@@ -90,6 +90,40 @@ altri carichi (gravità, guasti) il risultato è sbagliato. Correzione:
 `F,N_CUR,FY,-F_TOR(J)` per la bobina 1, o in generale la proiezione della
 forza globale ruotata sulla direzione tangenziale di ogni bobina.
 
+## Come lanciare il confronto fuori piano
+
+1. **ANSYS** – in `STR_360_improved.mac` correggere il segno della forza
+   toroidale (vedi sopra): per la bobina 1 `F,N_CUR,FY,-F_TOR(J)`, oppure
+   applicare la forza globale ruotata e proiettata sulla direzione
+   tangenziale di ogni bobina. Lanciare il SOLVE.
+2. Nella **stessa sessione** ANSYS, con la cartella di lavoro del run:
+   `/INPUT,'POST_TF_BEAM_EXPORT','mac'` (file in `validation/ansys/`).
+   Scrive `NODE_TF1_U.csv`, `BEAM_TF1_EL.csv`, `SHELL_TF1_EL.csv`,
+   `REACT_TF.txt`, `SUM_TF.txt`. Copiare nella stessa cartella anche
+   `FL_TF_1.csv` (i carichi usati da ANSYS).
+3. **MATLAB**, dalla cartella `MADE-2.0/matlab` dello zip:
+
+   ```matlab
+   addpath(genpath(pwd)); rmpath(genpath(fullfile(pwd,'legacy')));
+   % controllo: solo carichi nel piano, deve ridare la tabella sopra
+   R0 = verify_tf3d_ansys_global('C:\percorso\run_ansys', 'verify_inplane', ...
+        struct('with_toroidal', false, 'ois_wrap', false));
+   % fuori piano: con la componente toroidale di FL_TF_1
+   R1 = verify_tf3d_ansys_global('C:\percorso\run_ansys', 'verify_oop', ...
+        struct('with_toroidal', true, 'ois_wrap', false));
+   ```
+
+   `ois_wrap = false` perché `STR_360_improved` non ha l'elemento OIS di
+   chiusura (con lo `STR_360` originale: `true`). Se `n_TF`, sezione della
+   cassa (`W`, `t_wall`) o spessore degli shell (`t_shell`) sono diversi dai
+   default (12, 0.675 m, 0.05 m, 0.14 m) passarli nella stessa struct.
+4. Risultati in `verify_oop/verify_tf3d_ansys_global.txt` + figure:
+   per ogni grandezza (forze e momenti delle travi, N/M/Q degli shell,
+   spostamenti, reazioni) range ANSYS, range MATLAB e scarto massimo.
+   Attesi fuori piano (MATLAB): torsione max 3.65 MN·m sulla gamba interna,
+   flessione fuori piano 5.9 MN·m e taglio 9.8 MN a R ≈ 5 m, spostamento
+   toroidale max 6.7 mm.
+
 ## Prossimi passi
 
 1. Run ANSYS di `STR_360_improved` con la forza toroidale (segno corretto) e
