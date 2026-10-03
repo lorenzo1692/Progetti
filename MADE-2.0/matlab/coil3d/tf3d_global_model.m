@@ -33,7 +33,10 @@ function m = tf3d_global_model(P, F1, opts)
 %   ois_wrap false (true reproduces the extra element STR_360 builds
 %   between the first and last node of each OIS group, which are not
 %   adjacent along the coil), gs_R 3, gs_node [] (index in coil 1 to
-%   override the rule), with_vault/with_ois true.
+%   override the rule), with_vault/with_ois true. Design-driven options
+%   (TF3D_GLOBAL_FROM_DESIGN): sec (beam section struct E, nu, A, Iy, Iz,
+%   J, Asy, Asz, replacing the HREC W x t_wall), t_vault and t_ois (shell
+%   thickness of the vault and of the OIS, default t_shell).
 %
 %   m: model struct for TF3D_GLOBAL_SOLVE plus M, n_TF, node_of(c, k),
 %   shell_region (1 vault, 2 OIS upper, 3 OIS lower), shell_coil, gs_node.
@@ -41,7 +44,7 @@ function m = tf3d_global_model(P, F1, opts)
 if nargin < 3, opts = struct(); end
 d = struct('n_TF', 12, 'W', 0.675, 't_wall', 0.05, 'E', 205e9, 'nu', 0.3, 't_shell', 0.14, ...
     'vault_tol', 1e-3, 'ois_R', [3.5 5], 'ois_wrap', false, 'gs_R', 3, 'gs_node', [], ...
-    'with_vault', true, 'with_ois', true, 'F_all', []);
+    'with_vault', true, 'with_ois', true, 'F_all', [], 'sec', [], 't_vault', [], 't_ois', []);
 fn = fieldnames(opts); for i = 1:numel(fn), d.(fn{i}) = opts.(fn{i}); end
 M = size(P, 1); n = d.n_TF;
 node = @(c, k) (c-1)*M + k;
@@ -60,6 +63,13 @@ if ~isempty(d.F_all), F(:, 1:3) = d.F_all; end
 W = d.W; t = d.t_wall; Wi = W - 2*t;
 sec = struct('E', d.E, 'nu', d.nu, 'A', W^2 - Wi^2, 'Iy', (W^4 - Wi^4)/12, 'Iz', (W^4 - Wi^4)/12, ...
     'J', (W - t)^3*t, 'Asy', 2*t*(W - t), 'Asz', 2*t*(W - t));
+if ~isempty(d.sec)
+    for f = {'E', 'nu', 'A', 'Iy', 'Iz', 'J', 'Asy', 'Asz'}
+        sec.(f{1}) = d.sec.(f{1});
+    end
+end
+if isempty(d.t_vault), d.t_vault = d.t_shell; end
+if isempty(d.t_ois), d.t_ois = d.t_shell; end
 % shell regions on coil 1 (indices along the loop)
 R1 = hypot(P(:,1), P(:,2)); z1 = P(:,3);
 pairs = zeros(0, 3);                                  % [j j+1 region]
@@ -104,8 +114,9 @@ for c = 1:n
     er = [x(1:2) 0]/norm(x(1:2)); ez = [0 0 1]; et = cross(ez, er);
     sup(c) = struct('node', k, 'frame', [er; et; ez], 'mask', [0 1 1 0 0 0]);
 end
+t_reg = [d.t_vault d.t_ois d.t_ois];
 m = struct('X', X, 'beam', beam, 'beam_k', bk, 'sec', sec, 'shell', shell, ...
-    'shell_t', d.t_shell*ones(size(shell, 1), 1), 'shell_E', d.E, 'shell_nu', d.nu, 'sup', sup, 'F', F, ...
+    'shell_t', reshape(t_reg(max(reg, 1)), [], 1), 'shell_E', d.E, 'shell_nu', d.nu, 'sup', sup, 'F', F, ...
     'M', M, 'n_TF', n, 'shell_region', reg, 'shell_coil', sc, 'gs_node', gs, 'opts', d);
 m.node_of = node;
 end

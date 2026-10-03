@@ -190,7 +190,7 @@ for i = 1:N
     Ienc = Ienc + j*pi*(R(i).r2^2 - R(i).r1^2);
 end
 g = compute_operating_params(p);
-T_bf = getf(opts, 'T_bf', 0.5*(g.k_bf*nTF*(sum(nt)*row.Iop)^2*Mu0/(2*pi)));
+T_bf = getf(opts, 'T_bf', axial_load_factor(p)*0.5*(g.k_bf*nTF*(sum(nt)*row.Iop)^2*Mu0/(2*pi)));
 Nz = nTF*T_bf;
 
 % ---- linear system in [A_1 B_1 ... A_N B_N eps0] -------------------------

@@ -5,8 +5,9 @@
 ! - symmetry of the wedged sector: UY = 0 (local cylindrical CS 2011) on
 !   the outer face of the wedge insulation at both flanks;
 ! - vertical force of the inner leg, T_bf/2 (T_bf = vertical tension of
-!   the whole coil, bending-free D-shape formula), applied through the
-!   generalized plane strain (GSGDATA/GSBDATA);
+!   the whole coil, bending-free D-shape formula, times AXIAL_LOAD_FACTOR
+!   of the MADE 3D global model if the parameter file defines it),
+!   applied through the generalized plane strain (GSGDATA/GSBDATA);
 ! - Lorentz forces on the conductors, read from EM_2D.rst (LDREAD);
 ! - uniform temperature 4.2 K from the reference 293 K (cool-down).
 ! Writes CHECK_TF.txt [MN]: resultant of the Lorentz nodal forces Fx
@@ -95,6 +96,13 @@ ASUM
 k_bf = 0.5*log((OUTERLEG_INTR)/(INNLEG_OUTR))
 Mu_0 = 4e-7*pi
 T_bf = (k_bf*N_TF*(N_WIRES*TF_CURRENT)**2)*Mu_0/(2*PI)
+! factor of the MADE 3D global model (inner-leg vertical force / T_bf),
+! written by export_ansys_input; parameter files without it: 1
+*GET,ALF_TYPE,PARM,AXIAL_LOAD_FACTOR,TYPE
+*IF,ALF_TYPE,EQ,-1,THEN
+	AXIAL_LOAD_FACTOR = 1
+*ENDIF
+T_bf = T_bf*AXIAL_LOAD_FACTOR
 ! r0 = sqrt(Rm_OUTERLEG*Rm_INNERLEG)
 ! theta = PI/2
 ! dz = (r0*k_bf)*sin(theta)*exp(k_bf*sin(theta))*dtheta

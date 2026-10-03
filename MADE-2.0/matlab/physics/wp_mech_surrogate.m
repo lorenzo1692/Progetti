@@ -99,7 +99,7 @@ t_mesh = toc(t_start);
 if ~isfield(opts, 'T_bf') || isempty(opts.T_bf)
     g = compute_operating_params(p);
     NI = sum(geo.n_turns)*row.Iop;
-    opts.T_bf = 0.5*g.k_bf*p.n_TF*NI^2*(4e-7*pi)/(2*pi);
+    opts.T_bf = axial_load_factor(p)*0.5*g.k_bf*p.n_TF*NI^2*(4e-7*pi)/(2*pi);   % x global-model factor
 end
 
 sys = surr_assemble(mesh, mat, geo, row.Iop, opts.T_bf);
