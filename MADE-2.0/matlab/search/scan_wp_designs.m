@@ -666,7 +666,11 @@ if counter == 0
 else
     % ranking: smallest radial build of the inner leg (Ri_ - R_bore) first, so
     % design #1 is the best starting point
-    [~, order] = sort([DATA.radial_build]);   % table column (MATLAB) or struct array (Octave test stand-in)
+    % (MATLAB table: DATA.radial_build is the column; [DATA.radial_build]
+    % would expand to height x width elements and replicate the rows.
+    % Struct array: Octave test stand-in.)
+    if isstruct(DATA), rb = [DATA.radial_build]; else, rb = DATA.radial_build; end
+    [~, order] = sort(rb(:));
     DATA = DATA(order, :);
 end
 end
