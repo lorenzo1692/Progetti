@@ -1,0 +1,111 @@
+! Diagnostic export for the already solved structural benchmark.
+! Open the matching STR_2D.db and STR_2D.rst before calling this macro.
+! No SOLVE, SAVE, geometry, material, constraint or load edits are performed.
+! Postprocessing state is set to LAST, FULL graphics, global axes, AVPRIN=0.
+! Outputs overwrite only TFBM_*.txt files in the working directory (.\output with RUN.dat).
+FINISH
+/POST1
+FILE,STR_2D,rst
+SET,LAST
+/GRAPHICS,FULL
+/EFACET,2
+CSYS,0
+RSYS,0
+DSYS,0
+AVPRIN,0
+ALLSEL,ALL
+
+/OUTPUT,TFBM_model,txt
+/COM,TF benchmark export: loaded database must match STR_2D.rst.
+/COM,Global Cartesian axes; AVPRIN=0; selected result is SET,LAST.
+SET,LIST
+GSLIST,ALL
+ETLIST,ALL
+MPLIST,ALL
+RLIST,ALL
+CSLIST,ALL
+DLIST,ALL
+CELIST,ALL
+CPLIST,ALL
+BFLIST,ALL
+*STATUS
+/OUTPUT
+
+/OUTPUT,TFBM_global,txt
+/COM,Coordinates, connectivity, applied nodal loads, displacements, reactions.
+ALLSEL,ALL
+NLIST,ALL
+ELIST,ALL
+FLIST,ALL
+PRNSOL,U,COMP
+PRRSOL,F
+GSLIST,ALL
+/OUTPUT
+
+/OUTPUT,TFBM_jacket,txt
+/COM,Material 2 only. Nodal averaging is restricted to this material.
+ALLSEL,ALL
+ESEL,S,MAT,,2
+NSLE,S,ALL
+PRNSOL,U,COMP
+PRNSOL,S,COMP
+PRNSOL,S,PRIN
+/COM,Element-nodal components below preserve element boundaries.
+PRESOL,S,COMP
+PRESOL,EPEL,COMP
+PRESOL,EPTH,COMP
+/OUTPUT
+
+/OUTPUT,TFBM_case,txt
+/COM,Material 10 only. Nodal averaging is restricted to this material.
+ALLSEL,ALL
+ESEL,S,MAT,,10
+NSLE,S,ALL
+PRNSOL,U,COMP
+PRNSOL,S,COMP
+PRNSOL,S,PRIN
+PRESOL,S,COMP
+PRESOL,EPEL,COMP
+PRESOL,EPTH,COMP
+/OUTPUT
+
+/OUTPUT,TFBM_cable,txt
+/COM,Conductor node IDs, coordinates and applied loads for LDREAD checks.
+ALLSEL,ALL
+ESEL,S,MAT,,1
+NSLE,S,ALL
+NLIST,ALL
+ELIST,ALL
+FLIST,ALL
+PRNSOL,U,COMP
+/OUTPUT
+
+/OUTPUT,TFBM_contacts,txt
+/COM,Contact element types 12,13,14,15; target type 11 is excluded.
+ALLSEL,ALL
+ESEL,S,TYPE,,12,15
+NSLE,S,ALL
+ELIST,ALL
+NLIST,ALL
+PRESOL,CONT,STAT
+PRESOL,CONT,PRES
+PRESOL,CONT,SFRIC
+PRESOL,CONT,GAP
+PRESOL,CONT,SLIDE
+/OUTPUT
+
+/OUTPUT,TFBM_section_nodes,txt
+/COM,Historical SCL endpoints. IDs are not stable after remeshing.
+/COM,Coordinates and connectivity must be checked before reusing the path.
+ALLSEL,ALL
+NSEL,S,NODE,,183612
+NSEL,A,NODE,,183605
+NLIST,ALL
+ESLN,S
+ELIST,ALL
+/OUTPUT
+
+ALLSEL,ALL
+CSYS,0
+RSYS,0
+/COM,TFBM diagnostic files written. No solution has been recomputed.

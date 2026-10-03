@@ -1,0 +1,78 @@
+!=======================================================================
+! RUN.dat - batch driver of the 2D model of the TF inner leg
+!
+! 1. Electromagnetic model and solution (EM_MODEL.f, Solution_EM.f):
+!    Lorentz forces on the conductors, result file EM_2D.rst.
+! 2. Structural model and solution (STR_MODEL.f, Solution_STR.f): EM
+!    forces read with LDREAD from EM_2D.rst, vertical force, cool-down,
+!    solution, plots and the TFBM_*.txt diagnostic export.
+! 3. Removal of the solver scratch files.
+!
+! Launch it from the model folder (the folder that contains this file).
+! Everything the run writes - databases (*.db), results (*.rst), scratch
+! files, plots (*.png), CHECK_TF.txt, TFBM_*.txt - goes to the subfolder
+! .\output, created if missing. Model files are read from the model
+! folder through the parameter MDIR (= ..\ seen from .\output).
+!=======================================================================
+FINISH
+/CLEAR,ALL
+/SYS,if not exist output mkdir output        ! Windows shell: create .\output if missing
+/INQUIRE,MODEL_ROOT,DIRECTORY                ! absolute path of the model folder
+/CWD,'%MODEL_ROOT(1)%\output'                ! from here on every file is written to .\output
+
+!---- 1. Electromagnetic model and solution ---------------------------!
+/FILNAME,EM_2D
+MDIR = '..\'                                 ! model folder, relative to .\output
+/INPUT,'%MDIR%EM_MODEL','f'
+/INPUT,'%MDIR%Solution_EM','f'
+FINISH
+
+!---- 2. Structural model and solution ----------------------------------!
+/CLEAR,NOSTART                               ! also clears the parameters: MDIR is set again
+/FILNAME,STR_2D
+MDIR = '..\'
+/INPUT,'%MDIR%STR_MODEL','f'
+/INPUT,'%MDIR%Solution_STR','f'
+FINISH
+
+!---- 3. Scratch files: removed (kept: *.db, *.rst, plots, text files) --!
+*DO,c,0,16
+	/DELETE,'EM_2D%c%','emat'
+	/DELETE,'EM_2D%c%','full'
+	/DELETE,'EM_2D%c%','esav'
+	/DELETE,'EM_2D%c%','r001'
+	/DELETE,'EM_2D%c%','rdb'
+	/DELETE,'EM_2D%c%','DSP'
+	/DELETE,'EM_2D%c%','stat'
+	/DELETE,'EM_2D%c%','rst'
+
+	/DELETE,'STR_2D%c%','emat'
+	/DELETE,'STR_2D%c%','full'
+	/DELETE,'STR_2D%c%','esav'
+	/DELETE,'STR_2D%c%','r001'
+	/DELETE,'STR_2D%c%','rdb'
+	/DELETE,'STR_2D%c%','DSP'
+	/DELETE,'STR_2D%c%','stat'
+	/DELETE,'STR_2D%c%','rst'
+
+	/DELETE,'RUN%c%','out'                   ! distributed-solver logs (in .\output)
+	/DELETE,'RUN%c%','err'
+*ENDDO
+/DELETE,'EM_2D','DSP'
+/DELETE,'EM_2D','esav'
+/DELETE,'EM_2D','mntr'
+/DELETE,'EM_2D','rdb'
+/DELETE,'EM_2D','idhi'
+/DELETE,'STR_2D','DSP'
+/DELETE,'STR_2D','esav'
+/DELETE,'STR_2D','mntr'
+/DELETE,'STR_2D','rdb'
+/DELETE,'STR_2D','idhi'
+
+SAVE
+/EXIT,NOSAVE
+FINISH
+
+! Diagnostic exports of an existing solution only (no new solve):
+! /CLEAR,NOSTART
+! /INPUT,'..\RUN_BENCHMARK','dat'

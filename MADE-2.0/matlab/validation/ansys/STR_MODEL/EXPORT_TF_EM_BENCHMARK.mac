@@ -1,0 +1,30 @@
+! Diagnostic export for an already solved EM_2D database/results pair.
+! Load the matching EM_2D.db before calling. No new solution is performed.
+! Exports conductor node IDs and coordinates for LDREAD correspondence checks.
+FINISH
+/POST1
+FILE,EM_2D,rst
+SET,LAST
+/GRAPHICS,FULL
+/EFACET,2
+CSYS,0
+RSYS,0
+AVPRIN,0
+ALLSEL,ALL
+/OUTPUT,TFBM_em,txt
+/COM,Conductor-only electromagnetic benchmark, global Cartesian axes.
+SET,LIST
+ETLIST,ALL
+MPLIST,ALL
+RLIST,ALL
+ESEL,S,MAT,,1
+NSLE,S,ALL
+NLIST,ALL
+ELIST,ALL
+PRNSOL,B,COMP
+PRNSOL,FMAG,COMP
+FLIST,ALL
+EMFT
+/OUTPUT
+ALLSEL,ALL
+/COM,TFBM_em.txt written. No solution has been recomputed.

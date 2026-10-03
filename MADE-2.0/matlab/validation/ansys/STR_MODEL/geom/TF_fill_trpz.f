@@ -1,3 +1,8 @@
+!=======================================================================
+! TF_fill_trpz.f - Corner fillers between the rounded turn insulation and the square
+! cell corners. Stepped WP.
+! Called by STR_MODEL.f (WP_TOPOLOGY other than RIS_only).
+!=======================================================================
 /PREP7
 *GET,CFRG_TYPE,PARM,CFRG,TYPE		! 1 = per-grade jacket internal radius array defined in ParametriTF
 LSEL,,LCCAT

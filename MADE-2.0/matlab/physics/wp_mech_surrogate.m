@@ -1520,6 +1520,11 @@ function scl = case_scl(mesh, sol, geo)
 % 3/4 of the WP height, plasma-side plate. Linearized Pm and Pm+Pb (Tresca).
 xy = mesh.xy; ce = find(mesh.t6_mat == 4);
 Tc = mesh.t6(ce, 1:3);
+% point location on the case triangles only: pass tsearchn just their
+% vertices (all the mesh nodes made MATLAB warn "Some input points are not
+% referenced by the triangulation" once per SCL)
+[un, ~, tl] = unique(Tc(:));
+xyc = xy(un,:); Tcl = reshape(tl, size(Tc));
 V = geo.cav(1:end-1,:);
 Y1 = min(V(:,2)); Y2 = max(V(:,2));
 xb = max(V(abs(V(:,2)-Y1) < 1e-9, 1));                 % cavity bottom corner x
@@ -1541,7 +1546,7 @@ for q = 1:numel(scl)
     P0 = scl(q).P0; P1 = scl(q).P1;
     s = linspace(0.002, 0.998, ns)';
     P = P0 + s*(P1 - P0);
-    [idx, bc] = tsearchn(xy, Tc, P);
+    [idx, bc] = tsearchn(xyc, Tcl, P);
     S = nan(ns, 4);
     for k = 1:ns
         if isnan(idx(k)), continue, end
