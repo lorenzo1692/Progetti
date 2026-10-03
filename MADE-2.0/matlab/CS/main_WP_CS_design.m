@@ -3,8 +3,9 @@
 % design-point solver, mirroring MADE-2.0/matlab/main_WP_TF_design.m (TF).
 %
 % Pipeline:
-%   1. Ask for (and let you review) the machine parameter Excel file and
-%      the plasma-scenario Ampere-turns file.
+%   1. Ask for (and let you review) the machine parameter Excel file; the
+%      plasma-scenario Ampere-turns file (Baseline*.xlsx) is looked for in the
+%      same folder, which becomes the working folder for all outputs.
 %   2. Read them into a parameter struct + MAt bound (io/*.m).
 %   3. Derive operating parameters and the turns/layers/Iop search space
 %      (physics/compute_operating_params.m, search/generate_combinations.m).
@@ -34,46 +35,50 @@
 clearvars; close all; clc
 
 this_dir = fileparts(mfilename('fullpath'));
-% test/ holds Octave-only stand-ins for TABLE/HEIGHT that must never shadow MATLAB's own
+
+% The MATLAB path survives between runs: drop the Octave-only stand-ins for TABLE/HEIGHT
+% (CS/test/octave_shims) if an earlier version of this script added them, since they
+% shadow MATLAB's own functions.
+all_paths = strsplit(path, pathsep);
+shim_paths = all_paths(~cellfun(@isempty, strfind(all_paths, 'octave_shims')));
+if ~isempty(shim_paths), rmpath(shim_paths{:}); end
+
+% Everything under CS/ except CS/test, plus the shared helpers one level up
 cs_paths = strsplit(genpath(this_dir), pathsep);
 cs_test = fullfile(this_dir, 'test');
 cs_paths = cs_paths(~cellfun(@isempty, cs_paths) & ~strncmp(cs_paths, cs_test, numel(cs_test)));
 addpath(strjoin(cs_paths, pathsep));
 addpath(fileparts(this_dir)); % MADE-2.0/matlab/: shared xbr.m, xbz.m, xlm.m (used by TF too)
 
+%% 1. Select the machine parameter file; the scenario file is looked for in the same folder
 default_input = fullfile(this_dir, 'input', 'WP_CS_input_template.xlsx');
-
-%% 1. Select and review the machine parameter file
-fprintf('Machine parameter file [%s]:\n', default_input);
-input_answer = strtrim(input('Press Enter to use it, or type another path: ', 's'));
-if isempty(input_answer)
-    input_file = default_input;
-else
-    input_file = input_answer;
-end
+[input_file, scenario_file, work_dir, units] = cs_select_inputs(default_input);
 
 fprintf(['\nBEFORE RUNNING: open %s and review every parameter\n' ...
     '(especially "Machine geometry", "Design point" and "Materials & allowables") - ' ...
-    'this run will use exactly what is saved in that file.\n'], input_file);
+    'this run will use exactly what is saved in that file,\n' ...
+    'with the scenario file %s (lengths in %s, Ampere-turns in %s).\n' ...
+    'The parameter workbook is always in SI as labeled in its Unit column (m, A, V, T, MPa ...).\n'], ...
+    input_file, scenario_file, units.len_name, units.cur_name);
 proceed = strtrim(input('Type "y" to confirm and run the solver: ', 's'));
 if ~strcmpi(proceed, 'y')
     fprintf('Aborted: input not confirmed.\n');
     return
 end
 
-%% 1b. Select the plasma-scenario Ampere-turns file
-fprintf('\nPlasma-scenario Ampere-turns file (e.g. Baseline_VNS_22_07_2025.xlsx):\n');
-scenario_file = strtrim(input('Path: ', 's'));
-if isempty(scenario_file) || ~isfile(scenario_file)
-    error('main_WP_CS_design:scenario_file_required', ...
-        'A valid scenario Ampere-turns file is required (see read_scenario_currents.m).');
-end
+% start from the input folder: results, plots and exports are saved there
+cd(work_dir);
+fprintf('Working folder: %s\n', work_dir);
 
 [~, tag] = fileparts(input_file); % used to tag every output file from this run
 
 %% 2-4. Read input, derive parameters, scan the design space
 p = read_machine_input(input_file);
-MAt = read_scenario_currents(scenario_file);
+if p.Re_0 > 5 || p.WP_h0 > 5 || p.Iop_max < 1e3
+    warning('main_WP_CS_design:units', ...
+        'Re_0 = %g, WP_h0 = %g, Iop_max = %g: the workbook expects m and A (not mm / kA). Check the values.', p.Re_0, p.WP_h0, p.Iop_max);
+end
+MAt = read_scenario_currents(scenario_file, units);
 g = compute_operating_params(p);
 env = generate_combinations(p, g, MAt);
 
@@ -98,7 +103,7 @@ plot_cs_section(DATA, sel_idx, tag, p, g);
 
 %% 6. Optional FEM verification of the chosen design (whole stack, axisymmetric)
 if strcmpi(strtrim(input('Verify the chosen design with the FEM stack model? [y/N]: ', 's')), 'y')
-    geom = read_coil_geometry(scenario_file);
+    geom = read_coil_geometry(scenario_file, units);
     fem_res = fem_cs_verify(DATA(sel_idx, :), p, g, geom, struct('plot', true));
     save(sprintf('%s_design_%d_fem.mat', tag, sel_idx), 'fem_res');
 end

@@ -11,17 +11,23 @@ cd MADE-2.0/matlab/CS
 main_WP_CS_design
 ```
 
-Il main chiede il file dei parametri (`input/WP_CS_input_template.xlsx`, da
-copiare e modificare) e il file scenario della macchina (es.
-`Baseline_VNS_22_07_2025.xlsx`: colonne R, Z, dr, dz e una per scenario). Poi scansiona
+Copia `input/WP_CS_input_template.xlsx` nella cartella di lavoro (quella con il file
+scenario `Baseline*.xlsx`: colonne R, Z, dr, dz e una per scenario), avvia MATLAB lì o
+indica il percorso del workbook. Il main propone il `WP_CS_input*.xlsx` della cartella
+corrente, cerca il file scenario **nella stessa cartella del workbook** (se ce n'è più
+di uno lo fai scegliere, se manca lo chiede) e **chiede le unità del file scenario**:
+lunghezze in m o mm, Ampere-turns in A, kA o MA, proponendo un valore dedotto dai dati
+e avvisando se la combinazione dà valori implausibili. Il workbook dei parametri è
+sempre in SI come indicato nella colonna Unit. Poi lavora in quella cartella: scansiona
 turns/layers/Iop, salva i design fattibili, permette di sceglierne uno, produce i plot
 (scatter di scan, sezione di un modulo e del CS completo colorata per |B|) e, a
-richiesta, lo verifica con il FEM dello stack.
+richiesta, lo verifica con il FEM dello stack e lo esporta per ANSYS.
 
 ## Struttura
 
 - `input/` — template Excel (52 parametri, incluse le opzioni FEM).
-- `io/` — `read_machine_input`, `read_scenario_currents` (bound Ampere-turns),
+- `io/` — `cs_select_inputs` (scelta file e unità), `read_machine_input`,
+  `read_scenario_currents` (bound Ampere-turns),
   `read_coil_geometry` (per il FEM).
 - `physics/` — `size_conductor_cicc`, `size_cicc_cable`, `eqv_stress_coil_cicc`,
   `emag_field_forces`, `fcgr`, `ParametriY`, `heat_balance_cicc_ode`, materiali in

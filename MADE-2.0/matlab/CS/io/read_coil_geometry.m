@@ -1,7 +1,7 @@
-function geom = read_coil_geometry(xlsx_path)
+function geom = read_coil_geometry(xlsx_path, units)
 %READ_COIL_GEOMETRY Load the combined CS+PFC+plasma geometry and per-scenario Ampere-turns table.
 %
-%   geom = READ_COIL_GEOMETRY(xlsx_path) reads a machine geometry file
+%   geom = READ_COIL_GEOMETRY(xlsx_path, units) reads a machine geometry file
 %   (columns: R, Z, dr, dz, then one column per plasma scenario) such as
 %   Baseline_VNS_07_2026_V3_CREATE.xlsx, and returns a struct geom with:
 %     geom.R, geom.Z, geom.dr, geom.dz  - one value per conductor row
@@ -14,6 +14,9 @@ function geom = read_coil_geometry(xlsx_path)
 %     geom.MAt                         - max(MAt_scenario, [], 2): the
 %                                         governing (worst-case) Ampere-
 %                                         turns requirement per conductor
+%
+%   units (optional, from CS_SELECT_INPUTS): len_scale (file length unit to
+%   m) and cur_scale (file current unit to A); the returned geom is in m, A.
 %
 %   Row convention: rows 1:n_moduli are the CS modules; any further row (PF
 %   coils, plasma filament) is a background conductor of the FEM field.
@@ -33,12 +36,17 @@ if size(raw, 2) < 5
          '(R, Z, dr, dz, then one column per plasma scenario).'], xlsx_path, size(raw,2));
 end
 
+len_scale = 1; cur_scale = 1;
+if nargin > 1
+    if isfield(units, 'len_scale'), len_scale = units.len_scale; end
+    if isfield(units, 'cur_scale'), cur_scale = units.cur_scale; end
+end
 geom = struct();
-geom.R = raw(:, 1);
-geom.Z = raw(:, 2);
-geom.dr = raw(:, 3);
-geom.dz = raw(:, 4);
-geom.MAt_signed = raw(:, 5:end);
+geom.R = raw(:, 1)*len_scale;
+geom.Z = raw(:, 2)*len_scale;
+geom.dr = raw(:, 3)*len_scale;
+geom.dz = raw(:, 4)*len_scale;
+geom.MAt_signed = raw(:, 5:end)*cur_scale;
 geom.MAt_scenario = abs(geom.MAt_signed);
 geom.MAt = max(geom.MAt_scenario, [], 2);
 end
