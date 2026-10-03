@@ -17,9 +17,10 @@ toroidal field (TF), central solenoid (CS) and poloidal field (PF) coils, and
 modules design mirror magnets without new physics. Rather than a single
 optimum, \MADE{} exhaustively explores the design space and returns every
 feasible design point, allowing trade-off studies. \todo{verification result,
-e.g. agreement with reference designs within X\%}. Finally, we lay out the
-extension to stellarators, where non-planar coils lose the wedged support of
-tokamak TF coils: the conductor is sized as in the TF solver without the
-wedge, and the structural verification is delegated to a global beam--shell
-model able to follow non-planar centrelines, which also generalises the
-analysis of D-shaped TF coils.
+e.g. agreement with reference designs within X\%}. The code is verified on three machines, DTT, ITER and CEFTR
+\todo{result}. Finally, we introduce a global beam--shell model of the
+whole coil system, verified against ANSYS on a D-shaped TF system, and use
+it to lay out the extension to stellarators, where non-planar coils lose
+the wedged support of tokamak TF coils: the conductor is sized as in the TF
+solver without the wedge, and the structure is verified by the global
+model along non-planar centrelines.

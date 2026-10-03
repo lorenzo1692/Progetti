@@ -1,28 +1,47 @@
 \section{Central solenoid and poloidal field coils}
 \label{sec:cspf}
-% NB: the CS/PF solvers are not yet in this repository
-% (MADE-2.0/matlab contains only the TF chain). Import them before
-% writing this section so equations match the code.
+% Sources: MADE macro-block II [Giannini2023MADE, sec. 2.2], macro-block
+% III [Giannini2024MADEIII]; code: MADE-2.0/matlab/CS and /PFC
+% (branch claude/tf-cs-pfc-folders-ih6f07).
+
+\subsection{Axisymmetric field, flux and forces}
+Both solvers share an axisymmetric electromagnetic sub-module: field
+components of thick coils via complete elliptic integrals and Heuman's
+lambda function, vector potential and flux
+$\Phi(r,z)=2\pi r A_\theta(r,z)$, self- and mutual inductances, and
+Lorentz forces per coil and per scenario time point
+\cite{Giannini2023MADE}. This is the sub-module reused for mirrors
+(section~\ref{sec:mirror}).
 
 \subsection{Central solenoid}
-% Input: flux swing (from scenario: ramp-up + flat-top + Ejima), CS
-% radius/height from inboard build, number of modules, cycles.
-% Physics: B_peak from flux and geometry; conductor via the shared
-% module; jacket/structure sized on hoop + vertical (separating) loads,
-% Tresca and fatigue (cyclic loading -> crack growth / allowable
-% reduction). Pre-compression structure.
-\todo{equations and design flow from the CS solver.}
+Input: stack height, outer radius (from the TF inner leg), number of
+modules, superconductor option, current and conductor-size ranges, and
+the scenario currents of CS, PF and plasma. The search enumerates turns,
+layers and current; for each candidate the conductor is sized by the
+shared module (hot spot with $\tau=LI/V_\mathrm{max}$), the hoop stress of
+the thick solenoid with linear field gradient is recovered on the jacket
+through a stiffness-sharing factor, and the vertical stress uses the
+axial force crossing the mid-plane computed for each candidate with the
+full stack. Fatigue is assessed by fatigue crack growth (Paris law with
+ITER criteria, residual stress, Walker correction)
+\cite{Giannini2023MADE}. Figures of merit: flux swing vs number of
+plasma cycles.
+\paragraph{New in 2.0.} Axisymmetric FE model of the full stack (orthotropic
+homogenised turns region, inter-module plates, inertial or preloaded
+base), loaded by $\mathbf J\times\mathbf B$ for the design case and every
+scenario; module-by-module comparison with the analytical stresses;
+export to ANSYS. \todo{numbers from the DTT/ITER cases.}
 
 \subsection{Poloidal field coils}
-% Input: PF currents (per scenario snapshot) and positions from the
-% free-boundary equilibrium. Field on coil from Biot-Savart of the full
-% CS+PF+plasma set (or envelope). Conductor via shared module;
-% rectangular WP; hoop stress in the jacket (ring); support loads.
-\todo{equations and design flow from the PF solver.}
-
-\subsection{Field on coil for axisymmetric sets}
-% Common sub-module: field of thick axisymmetric coils (elliptic
-% integrals / filament discretisation) -> peak field per coil and
-% per grade. Also the loads (radial hoop, vertical) per coil.
-% This is the sub-module re-used for mirrors (section 6).
-\todo{describe the method used in the code (xbr.m/xbz.m?).}
+Input: centroid $(R_m,Z_m)$ and maximum ampere-turns of each coil from the
+free-boundary equilibrium over the scenario (IMAG, SOF, SOB, EOB), placed
+in the domain left free by the optimised TF shape
+\cite{Giannini2024MADEIII}. For each coil and WP height the search returns
+feasible layouts; the hoop stress uses the thick-ring solution with a
+non-zero field at both edges, corrected by
+$\gamma=K_\mathrm{eq}(\mathrm{steel})/K_\mathrm{eq}(\mathrm{CICC})$.
+Typical figures of merit: minimum peak field (divertor coils, allowing
+NbTi) or minimum number of turns / hydraulic length (vertical-field
+coils).
+\paragraph{New in 2.0.} Scenario forces from the coupling matrix, FCGR as a
+sizing option, axisymmetric FE verification of the selected WP.

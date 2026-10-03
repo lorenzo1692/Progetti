@@ -7,9 +7,10 @@
 
 \subsection{Superconductor selection and critical current}
 Three options are available: pure LTS, pure HTS (REBCO) and hybrid. In the
-LTS option NbTi is used below \todo{6~T (code) -- comment in code says 5~T:
-fix one of the two} and Nb$_3$Sn above; in the hybrid option REBCO is used
-above 15~T and LTS below, with a fallback to REBCO when the LTS cable would
+LTS option NbTi is used below a threshold field and Nb$_3$Sn above; in the
+hybrid option REBCO is used above a second threshold and LTS below
+\todo{thresholds differ today: TF 6/15~T, CS--PF 6.2/14.5~T; make them one
+input of the shared module}, with a fallback to REBCO when the LTS cable would
 exceed the maximum number of strands. Critical-current parametrisations:
 \begin{itemize}
 \item Nb$_3$Sn: \todo{scaling law and strand data sets (DTT TF, ITER, WST)
@@ -35,9 +36,15 @@ included, helium, RRR, magnetoresistance.}
 The number of copper strands is found by bisection until the hot-spot
 temperature equals $T_\mathrm{lim}$ (250~K for LTS, 150~K for HTS).
 The dump time constant is
-$\tau_\mathrm{dump}=\max(\tau_\mathrm{VV},\,L I_\mathrm{op}/V_\mathrm{max},\,4~\mathrm{s})$,
-i.e. limited by the vacuum-vessel loads, the terminal voltage and a
-minimum value \todo{justify 4 s and the $\tau_\mathrm{VV}$ expression}.
+$\tau_\mathrm{dump}=\max(\tau_\mathrm{VV},\,L I_\mathrm{op}/V_\mathrm{max},\,4~\mathrm{s})$.
+The first term is the shortest discharge compatible with the eddy-current
+loads on the vacuum vessel \cite{Giannini2023MADE,Bachmann_aspect},
+\begin{equation}
+\tau_\mathrm{VV}=\frac{B_0\,NI\,N_\mathrm{TF}\,(R_0/A)^2}{R_\mathrm{VV}\,\sigma_\mathrm{a,VV}},
+\end{equation}
+with $\sigma_\mathrm{a,VV}=120$~MPa; the second is set by the maximum
+terminal voltage. \todo{justify the 4~s floor (hard-coded) or make it an
+input.}
 
 \subsection{Cable and jacket cross-section}
 The cable area includes strands (void fraction, twist factor), the central

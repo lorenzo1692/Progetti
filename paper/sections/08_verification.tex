@@ -1,12 +1,34 @@
-\section{Verification}
+\section{Verification on real machines}
 \label{sec:verification}
-% For each solver, compare MADE output with a published reference design
-% where the inputs (configuration) are public:
-%  - TF: \todo{e.g. EU-DEMO 2018/2024 TF, DTT TF, ITER TF}
-%      compare I_op, B_peak, WP size, radial build, J_eng, stress.
-%  - CS: \todo{reference}
-%  - PF: \todo{reference}
-%  - Hot-spot module vs. reference quench analysis.
-%  - Global model (TF D-coil) vs reference FE.
-% Table: quantity | reference | MADE | deviation.
-\todo{Table~\ref{tab:verification}.}
+Three machines with public design data are used: DTT, ITER and CEFTR.
+For each, MADE~2.0 is run from the configuration only, and the selected
+design point is compared with the reference magnet design.
+
+\begin{table}[h]
+\caption{\label{tab:machines}Configuration inputs of the verification
+cases. \todo{fill and cite each value.}}
+\begin{indented}
+\item[]\begin{tabular}{@{}llll}
+\br
+ & DTT & ITER & CEFTR\\
+\mr
+$R_0$ [m] & \todo{} & 6.2 & 8\\
+$A$ & \todo{} & 3.1 & 2.7\\
+$B_0$ [T] & \todo{} & 5.3 & 6\\
+$N_\mathrm{TF}$ & 18 & 18 & 16\\
+Ripple & \todo{} & \todo{} & 1\%\\
+Superconductor (TF/CS/PF) & \todo{} & Nb$_3$Sn/Nb$_3$Sn/NbTi & \todo{}\\
+Reference design & \todo{} & \cite{Mitchell2008} & \todo{}\\
+\br
+\end{tabular}
+\end{indented}
+\end{table}
+
+% Per machine, table: quantity | reference | MADE | deviation
+%  TF: I_op, B_peak, n turns, WP w x h, radial build, J_eng, sigma_T case
+%      and jacket, hot spot, stored energy
+%  CS: flux swing, B_peak, I_op, modules/turns/layers, hoop stress, cycles
+%  PF: per coil I_op, B_peak, WP size, hoop stress (ITER: compare with
+%      [Giannini2024MADEIII] Table II and with the ITER DDD)
+%  FE checks: TF 2D (field + stress), CS/PF axisymmetric, TF global model.
+\todo{tables per machine.}

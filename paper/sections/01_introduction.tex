@@ -19,9 +19,24 @@
 %    stress vs hot spot), robustness to assumptions.
 % 5. Third idea: one set of modules, many devices (tokamak TF/CS/PF,
 %    mirror, stellarator in progress).
-% 6. What is new in 2.0 w.r.t. MADE 1.0 \todo{cite/describe v1.0}:
-%    modular architecture, Excel-driven input, HTS/LTS/hybrid grading,
-%    hot-spot ODE, CS/PF/mirror, roadmap for global model.
+% 6. History: MADE was born for the DTT CS [Giannini2020DTT, Giannini2021DTT]
+%    and extended in EUROfusion DEMO: macro-blocks I (TF) and II (CS)
+%    [Giannini2023MADE], macro-block III (TF shape optimisation + PF,
+%    ITER case) [Giannini2024MADEIII]. Companion analytical work:
+%    [Portone2023HTS].
+%    What is new in 2.0:
+%    - one modular code base (io/physics/search/postprocess) per coil
+%      family, Excel input, no machine data in the code;
+%    - TF: peak field per grade from a discrete 2D field model calibrated
+%      at scan start and validated against ANSYS (replaces the linear
+%      smeared gradient + constant correction of v1);
+%    - TF: FE-calibrated mechanical surrogates for jacket and case;
+%    - CS/PF: axisymmetric FE verification of the chosen design inside
+%      the code, scenario forces, FCGR fatigue as sizing option;
+%    - 3D module: bending-free shape iteration with Biot-Savart on the
+%      discrete coil set, and a global beam+shell model of the whole TF
+%      system verified against ANSYS;
+%    - mirrors with the same modules; path to stellarators.
 % 7. Paper outline.
 
 \todo{Write from the paragraph plan above.}
