@@ -170,19 +170,3 @@ D_eqv = (S_Cable_0*4/pi)^0.5;           % Diametro cavo equivalente da area eqv
 A_w  = ((D_eqv+0.0004)^2-D_eqv^2)*pi/4; % Considereo l'area del wrapping in acciaio di spessore 0.4 mm
 S_Cable =  pi/4*D_eqv^2+A_w;            % Correggo area equivalente del cavo LTS                                     
 end
-
-
-function t_delay = cicc_tau_delay(cp, Iop, B, mat, N_Sc, N_Cu)
-%CICC_TAU_DELAY Tau_delay for the hot-spot transient (cicc_params.m: Tau_delay_mode).
-if strcmpi(cp.Tau_delay_mode, 'detection')
-    A_seg = N_Cu*pi*cp.d_fili^2/4;
-    if mat == 2
-        A_non = 0;
-    else
-        A_non = N_Sc*pi*cp.d_fili^2/(4*(1 + cp.CunonCu));
-    end
-    t_delay = quench_delay_time(Iop, A_seg, A_non, B, mat, cp.quench);
-else
-    t_delay = cp.Tau_delay;
-end
-end

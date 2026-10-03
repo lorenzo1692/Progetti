@@ -26,7 +26,7 @@ if nargin < 3 || isempty(fig_title)
     fig_title = sprintf('Hot-spot transient - Iop=%.0f A, Tau_{dis}=%.1f s', row.Iop, row.Tau_discharge);
 end
 
-cp = cicc_params();
+cp = cicc_params(p);
 n_layers = row.n_layers;
 n_turns = row.n_turns(1:n_layers);
 type_cable = row.type_cable(1:n_layers);
@@ -68,7 +68,9 @@ for g = 1:n_g
         mat = 0; sc_name = 'Nb_3Sn'; lim = p.THS_max_LTS;
     end
     [THS, t, T] = heat_balance_cicc_ode(N_Sc(k), N_Cu(k), cp.d_fili, cp.CunonCu, row.Iop, B, ...
-        row.Tau_discharge, mat, cp.d_cc, cp.VF, cp.cos_theta, cp.S_tapes, cp.Tau_delay);
+        row.Tau_discharge, mat, cp.d_cc, cp.VF, cp.cos_theta, cp.S_tapes, ...
+        cicc_tau_delay(cp, row.Iop, B, mat, N_Sc(k), N_Cu(k)));
+    grades(g).t_delay = cicc_tau_delay(cp, row.Iop, B, mat, N_Sc(k), N_Cu(k));
     grades(g).layers = starts(g):ends(g);
     grades(g).type = type_cable{k};
     grades(g).sc_name = sc_name;
@@ -108,8 +110,9 @@ for L = lims
     text(ax, 0.02*t_end, L, sprintf(' %s limit %.0f K', strjoin(types, '/'), L), ...
         'Color', 'r', 'VerticalAlignment', 'bottom', 'FontSize', 9);
 end
-plot(ax, [cp.Tau_delay cp.Tau_delay], [0 max([lims, grades.THS])*1.05], 'k:', 'HandleVisibility', 'off');
-text(ax, cp.Tau_delay, 5, ' discharge start', 'FontSize', 8, 'VerticalAlignment', 'bottom');
+t_del = [grades.t_delay];
+plot(ax, [max(t_del) max(t_del)], [0 max([lims, grades.THS])*1.05], 'k:', 'HandleVisibility', 'off');
+text(ax, max(t_del), 5, ' discharge start', 'FontSize', 8, 'VerticalAlignment', 'bottom');
 hold(ax, 'off');
 xlim(ax, [0 t_end]);
 ylim(ax, [0 max([lims, grades.THS])*1.1]);
@@ -138,7 +141,7 @@ for g = 1:n_g
         sprintf('Cu Area seg = %.1f [mm^2]', A_cu_s*1e6), ...
         sprintf('%s Area = %.1f [mm^2]', G.sc_name, A_sc*1e6), ...
         sprintf('N_{sc} = %d   N_{Cu} = %d', G.N_Sc, G.N_Cu), ...
-        sprintf('\\tau_{del} = %.1f [s]   \\tau_{dis} = %.2f [s]', cp.Tau_delay, row.Tau_discharge), ...
+        sprintf('\\tau_{del} = %.2f-%.2f [s]   \\tau_{dis} = %.2f [s]', min(t_del), max(t_del), row.Tau_discharge), ...
         sprintf('I_{op} = %.2f [kA]   B_{op} = %.2f [T]', row.Iop/1000, G.B)};
     text(ax2, 0, y, keyt, 'Units', 'normalized', 'VerticalAlignment', 'top', ...
         'FontSize', 9, 'Color', cols(g,:)*0.8);

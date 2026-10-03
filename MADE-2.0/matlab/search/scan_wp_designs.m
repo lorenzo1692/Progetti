@@ -90,6 +90,7 @@ end
 field_tol = 0.05;     if isfield(p, 'field_tol') && ~isempty(p.field_tol), field_tol = p.field_tol; end           % [T]
 field_max_iter = 6;   if isfield(p, 'field_max_iter') && ~isempty(p.field_max_iter), field_max_iter = p.field_max_iter; end
 n_field_rejected = 0;
+cp_cicc = cicc_params(p);   % conductor constants + input overrides (quench delay)
 cicc_cache = containers.Map('KeyType', 'char', 'ValueType', 'any');
 % rejection statistics per reason and per lateral case width (printed at the
 % end): which check removes which candidates
@@ -247,7 +248,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                         cc = cicc_cache(ckey);
                     else
                         cc = cell(1, 8);
-                        [cc{:}] = cicc(B, Iop, Tau_discharge, p.WP_SC_type, p.THS_max_LTS, p.THS_max_HTS);
+                        [cc{:}] = cicc(B, Iop, Tau_discharge, p.WP_SC_type, p.THS_max_LTS, p.THS_max_HTS, cp_cicc);
                         cicc_cache(ckey) = cc;
                     end
                     [type_cable(var), N_Cu(var), N_Sc(var), N_tot(var), S_Cable(var), ...

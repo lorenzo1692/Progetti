@@ -1,4 +1,27 @@
-# Criterio per il tau delay (proposta, 2026-10-03)
+# Criterio per il tau delay (2026-10-03)
+
+## Come si sceglie (file di input)
+
+Nel foglio `Input`, categoria *Thermal allowables*:
+
+| Nome | Valore | Effetto |
+|---|---|---|
+| `Tau_delay_mode` | 0 | ritardo fisso `Tau_delay` per tutti i grade |
+| `Tau_delay_mode` | 1 | criterio ITER: dump 2 s dopo che la zona normale ha raggiunto 0.1 V (`t_det` dalla fisica del cavo, sotto); i grade HTS usano `Tau_delay` (ITER non ha dati HTS) |
+| `Tau_delay` | [s] | ritardo fisso (modo 0, e HTS nel modo 1) |
+| `v_quench_LTS` | [m/s] | velocità di propagazione della zona normale nel CICC LTS (solo modo 1) |
+
+Fonte dei valori ITER TF (0.1 V + 2 s): R. Zanino et al., *Quench analysis
+of an ITER TF coil* (analisi di quench della bobina TF ITER: propagazione
+fino a t(0.1 V) + 2 s). Altre fonti ITER: soglia 0.2 V su un pancake per il
+TF; CS: soglia ±0.55 V e holding time 1.5 s (M. Coatanéa et al., IEEE TAS
+25(3) 2015, DOI 10.1109/TASC.2015.2390296). **Da verificare sul testo
+completo / ITER DDD prima della pubblicazione.**
+
+Esempio (12 T, 60 kA, τ_dis 20 s, v_q 5 m/s): modo 1 → τ_delay 2.16 s,
+516 strand di Cu; modo 0 con 1 s → 477; con 3 s → 545.
+
+## Studio originale (proposta)
 
 ## Cosa rappresenta
 

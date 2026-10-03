@@ -63,7 +63,7 @@ for j = 1:nI
     N = ceil(g.NI/Iop(j));
     L = Mu_0*(p.n_TF*N*g.k_bf)^2*g.r_bf/2*(besseli(0, g.k_bf) + 2*besseli(1, g.k_bf) + besseli(2, g.k_bf))/p.n_TF;
     tau = max(g.Tau_discharge1, L*Iop(j)/p.V_MAX);
-    [~, ~, ~, ~, S_cab(j)] = cicc(1.1*B_amp, Iop(j), tau, p.WP_SC_type, p.THS_max_LTS, p.THS_max_HTS);
+    [~, ~, ~, ~, S_cab(j)] = cicc(1.1*B_amp, Iop(j), tau, p.WP_SC_type, p.THS_max_LTS, p.THS_max_HTS, cicc_params(p));
 end
 
 p_rs = (1.1*B_amp)^2/(2*Mu_0);           % as the scan: pressure from the (calibrated) plasma-side field
