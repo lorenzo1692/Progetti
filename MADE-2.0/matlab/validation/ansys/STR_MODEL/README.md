@@ -68,7 +68,15 @@ called by the current flow; each one says so in its header.
 3. **Comments** in English, with a header in every file (purpose,
    caller, inputs and outputs). Typos and misleading section titles were
    fixed, for example "DOUBLE PANCAKE INSULATION" in the inter-layer
-   insulation macros. No command was changed apart from points 1 and 2.
+   insulation macros. No command was changed apart from points 1, 2 and 4.
+4. **Air mesh of the EM model** (`geom/TF_air.f`). The last node merge,
+   after the air is mirrored, used the default tolerance of 0.1 mm. In a
+   design with variable jacket it merged two distinct nodes of a small air
+   triangle and collapsed it ("aspect ratio 1.E+20", "zero or negative
+   determinant of the Jacobian"): 6 errors and the batch run stopped. It
+   now merges with 1e-6 m, as the final merges in `TF_fill_trpz.f` and
+   `TF_cfill.f`: the nodes that must merge (symmetry axis, mirrored air on
+   the cables of the other half) coincide exactly.
 
 ## Open points
 

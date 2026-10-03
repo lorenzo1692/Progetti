@@ -56,5 +56,9 @@ ARSYM,X,ALL
 
 ASEL,,MAT,,THAT_MAT,THIS_MAT,,1
 ALLSEL,BELOW,AREA
-NUMMRG,NODE
-NUMMRG,KP
+! Tight tolerance (1 micron): only the truly coincident nodes are merged (air
+! on the symmetry axis, mirrored air on the cables of the other half). The
+! default 1e-4 also merged two distinct nodes of a small air triangle (< 0.1 mm)
+! and collapsed it (zero Jacobian -> run stopped). Same tolerance as TF_fill_trpz.
+NUMMRG,NODE,1e-6
+NUMMRG,KP,1e-6
