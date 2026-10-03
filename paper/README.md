@@ -47,8 +47,11 @@ Tutti i punti aperti sono marcati `\todo{...}` (rosso nel PDF).
   `size_cicc_cable.m`), shell per la struttura intercoil, carichi da
   Biot–Savart. Le forze di sezione tornano al livello locale per le verifiche.
 
-Scelte da fare: frame locale (non Frenet, usare il frame finite-build della
-bobina), solutore FE proprio in MATLAB vs codice FE esterno pilotato da MADE.
+Il solutore esiste già in MATLAB (`coil3d/tf3d_global_model.m` +
+`tf3d_global_solve.m`, controparte di STR_360) ed è verificato contro ANSYS
+nel piano. Mancano: confronto fuori piano, sezioni collegate al
+dimensionamento 2D, frame locale per bobine non planari (finite-build, non
+Frenet), carichi bobina per bobina senza simmetria di rotazione.
 
 ## Codice di riferimento (branch)
 
