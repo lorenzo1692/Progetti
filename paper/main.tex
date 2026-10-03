@@ -1,0 +1,67 @@
+% =====================================================================
+%  MADE 2.0 - Magnet Design Explorer
+%  Target journal: Nuclear Fusion (IOP Publishing / IAEA)
+%
+%  Class: iopart.cls (IOP journals). Download the official author
+%  template from IOP Publishing (Nuclear Fusion -> "Author guidelines")
+%  and drop iopart.cls + iopart10.clo + iopart12.clo in this folder.
+%  If the class is not available, switch to the fallback line below
+%  (plain article) to keep drafting.
+% =====================================================================
+\documentclass[12pt]{iopart}
+% \documentclass[11pt]{article}\usepackage{amsmath}  % <- fallback
+
+\usepackage{graphicx}
+\usepackage{iopams}       % AMS symbols compatible with iopart
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+
+% --- Drafting helpers (remove before submission) ---------------------
+\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
+\newcommand{\note}[1]{\textcolor{blue}{[NOTE: #1]}}
+\newcommand{\MADE}{\textsc{MADE~2.0}}
+
+\begin{document}
+
+\title[MADE 2.0: from magnetic configuration to magnet design]%
+{MADE 2.0: a Magnet Design Explorer to derive superconducting magnet
+systems from a target magnetic configuration for tokamaks, mirrors and
+stellarators}
+
+\author{L.~Giannini$^{1}$ \todo{co-authors}}
+\address{$^{1}$\todo{affiliation}}
+\ead{lorenzogiannini92@gmail.com}
+
+\begin{abstract}
+\input{sections/00_abstract}
+\end{abstract}
+
+\vspace{2pc}
+\noindent{\it Keywords}: superconducting magnets, magnet design, tokamak,
+stellarator, magnetic mirror, systems code, CICC, structural analysis
+
+\submitto{\NF}
+\maketitle
+
+\input{sections/01_introduction}
+\input{sections/02_philosophy}
+\input{sections/03_conductor}
+\input{sections/04_tf}
+\input{sections/05_cs_pf}
+\input{sections/06_mirror}
+\input{sections/07_stellarator_global_model}
+\input{sections/08_verification}
+\input{sections/09_applications}
+\input{sections/10_conclusions}
+\ack
+\todo{Funding statement. If EUROfusion-funded, use the mandatory
+EUROfusion disclaimer text verbatim.}
+
+\input{sections/appendix}
+
+\section*{References}
+\bibliographystyle{iopart-num}
+\bibliography{references}
+
+\end{document}

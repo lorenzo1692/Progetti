@@ -1,0 +1,47 @@
+\section{Design philosophy and code architecture}
+\label{sec:philosophy}
+
+\subsection{From magnetic configuration to magnets}
+% Core message of the paper. Make it a figure (Fig. 1): left = target
+% configuration (what physics asks), centre = MADE modules, right = magnet
+% design (what engineering builds).
+The starting point of \MADE{} is the magnetic configuration the device aims
+at. Table~\ref{tab:inputs} lists, for each coil family, the configuration
+quantities taken as input and the magnet quantities returned as output.
+
+\begin{table}[h]
+\caption{\label{tab:inputs}Configuration inputs and magnet outputs per coil
+family. \todo{complete CS/PF/mirror rows with the actual input names of
+the CS/PF solvers.}}
+\begin{indented}
+\item[]\begin{tabular}{@{}lll}
+\br
+Coil family & Configuration input & Magnet output\\
+\mr
+TF  & $R_0$, $A$, $B_0$, $N_\mathrm{TF}$, ripple, inboard build &
+      $I_\mathrm{op}$, turns/grades, CICC, case, nose, $B_\mathrm{peak}$, $L$, $E$\\
+CS  & flux swing, $R_\mathrm{CS}$, height, cycle & \todo{}\\
+PF  & coil currents and positions from equilibrium & \todo{}\\
+Mirror & axial field profile $B(z)$, mirror ratio & set of solenoids/rings\\
+Stellarator & coil filaments (centrelines) and currents & \todo{in progress}\\
+\br
+\end{tabular}
+\end{indented}
+\end{table}
+
+\subsection{Explore rather than optimise}
+% Explain the exhaustive scan: case wedge thickness x turns/layers layouts,
+% each candidate sized and checked; feasible ones stored in a table and
+% browsed. Pros: transparency, trade-off maps, no local minima, the
+% designer chooses. Cons: cost -> discuss run times and bounds that keep
+% the search finite (wp_envelope).
+
+\subsection{Modular architecture}
+% Figure 2: block diagram.
+%  input (Excel) -> operating parameters -> envelope -> combinations
+%  -> [conductor module] -> [winding pack module] -> [structural module]
+%  -> feasible design table -> browser/plots
+% Emphasise that conductor and structural modules are shared across coil
+% families, and that only "envelope + load model" is coil-specific.
+\todo{block diagram, list of modules mapped to code (io/, physics/,
+search/, postprocess/).}

@@ -1,0 +1,28 @@
+\section{Central solenoid and poloidal field coils}
+\label{sec:cspf}
+% NB: the CS/PF solvers are not yet in this repository
+% (MADE-2.0/matlab contains only the TF chain). Import them before
+% writing this section so equations match the code.
+
+\subsection{Central solenoid}
+% Input: flux swing (from scenario: ramp-up + flat-top + Ejima), CS
+% radius/height from inboard build, number of modules, cycles.
+% Physics: B_peak from flux and geometry; conductor via the shared
+% module; jacket/structure sized on hoop + vertical (separating) loads,
+% Tresca and fatigue (cyclic loading -> crack growth / allowable
+% reduction). Pre-compression structure.
+\todo{equations and design flow from the CS solver.}
+
+\subsection{Poloidal field coils}
+% Input: PF currents (per scenario snapshot) and positions from the
+% free-boundary equilibrium. Field on coil from Biot-Savart of the full
+% CS+PF+plasma set (or envelope). Conductor via shared module;
+% rectangular WP; hoop stress in the jacket (ring); support loads.
+\todo{equations and design flow from the PF solver.}
+
+\subsection{Field on coil for axisymmetric sets}
+% Common sub-module: field of thick axisymmetric coils (elliptic
+% integrals / filament discretisation) -> peak field per coil and
+% per grade. Also the loads (radial hoop, vertical) per coil.
+% This is the sub-module re-used for mirrors (section 6).
+\todo{describe the method used in the code (xbr.m/xbz.m?).}

@@ -1,0 +1,37 @@
+\section{Introduction}
+\label{sec:intro}
+
+% Paragraph plan (one idea per paragraph):
+% 1. Magnets as cost/size driver of a fusion device: field on coil limits
+%    B0, hence fusion power and machine size. HTS opening new design space
+%    (compact high-field tokamaks, VNS, ...). \todo{refs}
+% 2. Where magnet design sits today: systems codes (PROCESS-like, with
+%    simplified magnet models) vs. detailed engineering design (FEM, coil
+%    by coil, months). Gap: a fast but physically grounded tool that maps
+%    a configuration into a buildable magnet. \todo{refs to systems codes
+%    and to magnet pre-design tools}
+% 3. Key idea of MADE: the magnetic configuration is the INPUT. The user
+%    fixes what the plasma physicist asks (B0, R0, A, ripple, flux swing,
+%    PF currents, mirror ratio...) and MADE returns the magnets
+%    (conductor, winding pack, structure) that deliver it.
+% 4. Second idea: explore, do not optimise. All feasible design points
+%    are kept -> trade-off maps (radial build vs current vs Jeng vs
+%    stress vs hot spot), robustness to assumptions.
+% 5. Third idea: one set of modules, many devices (tokamak TF/CS/PF,
+%    mirror, stellarator in progress).
+% 6. What is new in 2.0 w.r.t. MADE 1.0 \todo{cite/describe v1.0}:
+%    modular architecture, Excel-driven input, HTS/LTS/hybrid grading,
+%    hot-spot ODE, CS/PF/mirror, roadmap for global model.
+% 7. Paper outline.
+
+\todo{Write from the paragraph plan above.}
+
+The rest of the paper is organised as follows.
+Section~\ref{sec:philosophy} describes the design philosophy and the
+architecture of \MADE{}. Section~\ref{sec:conductor} presents the
+coil-agnostic conductor module. Sections~\ref{sec:tf}
+and~\ref{sec:cspf} describe the TF and the CS/PF solvers, and
+section~\ref{sec:mirror} shows how they are reused for mirror machines.
+Section~\ref{sec:stellarator} introduces the global beam--shell model and
+the path towards stellarator coils. Verification and applications are
+given in sections~\ref{sec:verification} and~\ref{sec:applications}.

@@ -1,0 +1,58 @@
+\section{Conductor module}
+\label{sec:conductor}
+% Coil-agnostic: given (B_peak, I_op, tau_dump, SC option) returns the
+% cable. Same function is called by TF, CS, PF, mirror and (future)
+% stellarator solvers. Code: cicc.m, heat_balance_cicc_ode.m, Ic_*.m,
+% Jc_REBCO.m, size_cicc_cable.m.
+
+\subsection{Superconductor selection and critical current}
+Three options are available: pure LTS, pure HTS (REBCO) and hybrid. In the
+LTS option NbTi is used below \todo{6~T (code) -- comment in code says 5~T:
+fix one of the two} and Nb$_3$Sn above; in the hybrid option REBCO is used
+above 15~T and LTS below, with a fallback to REBCO when the LTS cable would
+exceed the maximum number of strands. Critical-current parametrisations:
+\begin{itemize}
+\item Nb$_3$Sn: \todo{scaling law and strand data sets (DTT TF, ITER, WST)
+-- cite source of each fit};
+\item NbTi: \todo{scaling law};
+\item REBCO: $I_c(B,T)$ fit at $T=20$~K with field angle dependence
+\todo{cite fit origin}.
+\end{itemize}
+The number of superconducting strands/tapes is $N_\mathrm{sc}=\lceil
+I_\mathrm{op}/I_c(B_\mathrm{peak})\rceil$ \todo{discuss operating margin:
+temperature margin / I/Ic fraction -- currently implicit}.
+
+\subsection{Quench protection: copper from hot-spot analysis}
+The segregated copper is sized by integrating the adiabatic heat balance of
+the cable during an exponential current dump,
+\begin{equation}
+  \sum_k A_k\,\rho_k c_{p,k}(T)\,\frac{\mathrm{d}T}{\mathrm{d}t} =
+  \eta_\mathrm{Cu}(T,B)\,\frac{I(t)^2}{A_\mathrm{Cu}},\qquad
+  I(t)=I_\mathrm{op}\,\mathrm{e}^{-(t-\tau_\mathrm{del})/\tau_\mathrm{dump}},
+\end{equation}
+\todo{check exact form against heat\_balance\_cicc\_ode.m: materials
+included, helium, RRR, magnetoresistance.}
+The number of copper strands is found by bisection until the hot-spot
+temperature equals $T_\mathrm{lim}$ (250~K for LTS, 150~K for HTS).
+The dump time constant is
+$\tau_\mathrm{dump}=\max(\tau_\mathrm{VV},\,L I_\mathrm{op}/V_\mathrm{max},\,4~\mathrm{s})$,
+i.e. limited by the vacuum-vessel loads, the terminal voltage and a
+minimum value \todo{justify 4 s and the $\tau_\mathrm{VV}$ expression}.
+
+\subsection{Cable and jacket cross-section}
+The cable area includes strands (void fraction, twist factor), the central
+cooling channel and a 0.4~mm wrap. The jacket is sized for a given
+conductor width $w_c$ (imposed by the winding-pack layout): for a
+rectangular conductor the jacket thickness is increased until the radial
+membrane stress in the innermost jacket layer,
+\begin{equation}
+  \sigma_\mathrm{rm} = p_\mathrm{m}\,\frac{w_c-2t_\mathrm{ins}}{2t_J}\,
+  \frac{K_\mathrm{jacket}}{K_\mathrm{e,rad}} + \sigma_{z},\qquad
+  p_\mathrm{m}=\frac{B_\mathrm{peak}^2}{2\mu_0},
+\end{equation}
+falls below $\sigma_\mathrm{allow}/s_m$. The equivalent radial and
+toroidal stiffnesses $K_\mathrm{e,rad}$, $K_\mathrm{e,tor}$ of the
+jacket--insulation--cable composite are obtained from series/parallel
+spring models (Appendix~\ref{app:stiffness}). These smeared stiffnesses
+are the same quantities that feed the beam sections of the global model
+(section~\ref{sec:stellarator}).

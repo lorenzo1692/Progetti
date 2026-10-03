@@ -1,0 +1,20 @@
+\section{Magnetic mirror machines}
+\label{sec:mirror}
+% Key message: no new module is needed. A mirror machine (simple or
+% tandem, e.g. high-field HTS mirrors) is a sequence of coaxial
+% solenoids and rings: plug/choke coils = high-field solenoids (CS-like),
+% central-cell coils = rings (PF-like).
+%
+% Design flow:
+%  1. Input: target axial profile B(z) (B_min central cell, B_max at the
+%     mirror throat -> mirror ratio R_m = B_max/B_min), bore radius
+%     (plasma + shield/blanket), length.
+%  2. Coil-set synthesis: positions/currents that reproduce B(z)
+%     (least-squares fit on axis) -> \todo{is this already in the code or
+%     to be added?}
+%  3. Each coil sized with the axisymmetric field-on-coil sub-module and
+%     the conductor + structural modules of the CS/PF solvers.
+%  4. Specific checks: large axial (attractive) forces between coils of
+%     the choke and the central cell -> inter-coil structure.
+\todo{Demonstration case: a high-field HTS mirror (e.g. throat field
+$\sim$17~T class) with public reference parameters \todo{choose and cite}.}

@@ -1,0 +1,14 @@
+\appendix
+\section{Equivalent stiffness of the conductor}
+\label{app:stiffness}
+For a conductor of width $w_c$, height $h_c$, jacket thickness $t_J$,
+insulation $t_\mathrm{ins}$ and cable $w_s\times h_s$, the equivalent
+radial stiffness used in the load-sharing factors is
+\begin{equation}
+K_\mathrm{e,rad}=\frac{2E_J t_J}{h_c}+\frac{2E_\mathrm{ins}t_\mathrm{ins}}{h_c}
++\left[\frac{1}{E_\mathrm{cbl}w_s/h_s}+\frac{2}{E_J w_c/t_J}
++\frac{2}{E_\mathrm{ins}w_c/t_\mathrm{ins}}\right]^{-1},
+\end{equation}
+and $K_\mathrm{e,tor}$ follows by exchanging the roles of $w$ and $h$.
+\todo{derivation / spring sketch; stress concentration factor fit
+(scf) for the jacket corners.}

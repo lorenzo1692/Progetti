@@ -1,0 +1,70 @@
+\section{Towards stellarators: a global beam--shell model}
+\label{sec:stellarator}
+% This section is the forward-looking part of the paper: it states the
+% method and shows first results of the global model on a tokamak TF
+% D-coil (where a reference exists), and the plan for stellarators.
+
+\subsection{Why the TF approach does not transfer directly}
+Stellarator coils are non-planar and carry, besides the in-plane forces of
+a TF coil, large out-of-plane and locally varying net forces. There is no
+wedged inner vault: each coil is held by a coil case and by an
+inter-coil support structure, and the loads cannot be reduced to a
+membrane hoop tension plus a centring force. The 1D/2D radial-build
+treatment of section~\ref{sec:tf} is therefore not applicable as is.
+
+\subsection{Proposed approach}
+We split the problem in two levels:
+\begin{enumerate}
+\item \textbf{Local level (conductor and winding pack).} The cable and the
+winding pack are designed exactly as in the TF solver --- same conductor
+module, same jacket sizing, same grading on the local peak field --- but
+\emph{without the wedge}: the winding pack cross-section is no longer
+bounded by the wedge angle $2\pi/N_\mathrm{TF}$, but by a prescribed
+rectangular envelope around the filament (the coil-to-coil and
+coil-to-plasma clearances from the coil optimisation).
+\item \textbf{Global level (structure).} The coil and its support are
+modelled with beams along the coil centreline (winding pack + case,
+smeared section properties from the local level) and shells for the
+inter-coil structure. Line loads come from Biot--Savart on the full coil
+set. The model returns section forces and moments along the coil, which
+are fed back to the local level to check jacket and case stresses.
+\end{enumerate}
+
+\subsection{Beam--shell formulation}
+% - Curved 3D beam (Timoshenko) along an arbitrary space curve r(s):
+%   local frame from the filament (tangent + winding-pack orientation /
+%   finite-build frame used by the coil optimisation code), not Frenet
+%   (ill-defined where curvature -> 0).
+% - Section stiffness EA, EI_n, EI_b, GJ, GA from homogenisation of the
+%   WP (K_e,rad, K_e,tor already computed in the conductor module) and
+%   of the case.
+% - Shell elements for inter-coil structure and, for tokamak TF, the
+%   outer intercoil structure; beam-shell coupling by rigid/elastic
+%   links at the support locations.
+% - Loads: f(s) = I t(s) x B(r(s)), B from Biot-Savart of all coils
+%   (finite build / multi-filament near the coil itself).
+% - Boundary conditions: gravity supports, symmetry (field periods,
+%   stellarator symmetry; N_TF sectors for a tokamak).
+% - Outputs: N, V, M, T along s -> stresses in WP and case via section
+%   recovery -> Tresca/von Mises checks -> iterate case thickness.
+\todo{equations; choice of solver (own FE in MATLAB vs external
+FE code driven by MADE).}
+
+\subsection{First application: D-shaped TF coil}
+The same model applies to the D-shaped TF coil, which is planar but not
+straight: it removes the Princeton-D assumption, captures the bending
+introduced by a non-ideal D (e.g. shape constrained by the build), and
+provides out-of-plane loads when PF fields are included. It is the
+natural verification case before moving to stellarators, since
+reference FE results exist for tokamak TF coils \todo{choose reference:
+EU-DEMO / ITER / DTT TF FE analyses}.
+\todo{Fig. 6: TF D-coil beam model, bending moment along s vs reference.}
+
+\subsection{Roadmap for stellarator coils}
+% 1. Reader for coil filaments (e.g. coils-file format used by
+%    stellarator optimisation codes) + finite-build frame.
+% 2. Local level: TF chain without wedge -> WP + cable on local B_peak.
+% 3. Global level: beam-shell model, loads from Biot-Savart.
+% 4. Benchmark on a published stellarator coil set
+%    \todo{choose: e.g. W7-X non-planar coil (published FE data)}.
+\todo{status of each step at submission time.}

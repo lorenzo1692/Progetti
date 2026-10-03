@@ -1,0 +1,66 @@
+\section{Toroidal field coils}
+\label{sec:tf}
+% Code: physics/compute_operating_params.m, wp_envelope.m,
+% search/generate_combinations.m, scan_wp_designs.m, size_case_vault.m
+
+\subsection{From configuration to operating parameters}
+With $a=R_0/A$ and inboard build $w_b$, the inner-leg outer radius and the
+outer-leg inner radius are
+\begin{equation}
+  R_1 = R_0-a-w_b,\qquad R_2=(R_0+a)\,\delta^{-1/N_\mathrm{TF}},
+\end{equation}
+where $\delta$ is the allowed ripple at the plasma edge
+\todo{state the ripple approximation and its validity}. The current per
+coil is $NI = 2\pi R_0 B_0/(\mu_0 N_\mathrm{TF})$ and the peak field on the
+winding pack follows from the field at $R_1$ corrected for the finite
+number of coils and for the winding-pack position
+\todo{write the correction factor; NB the code uses
+$2\pi R_1-\Delta r_\mathrm{ps}$ in the denominator: check whether it
+should be $2\pi(R_1-\Delta r_\mathrm{ps})$}.
+
+The coil is assumed to follow a bending-free (Princeton-D) shape between
+$R_1$ and $R_2$, with $k=\tfrac12\ln(R_2/R_1)$
+\todo{cite File, Mills \& Sheffield; Gralnick \& Tenney}. This gives in
+closed form the centring-free hoop tension
+$T=\tfrac12\,k\,N_\mathrm{TF}\,\mu_0 (NI)^2/(2\pi)$ and the inductance
+\begin{equation}
+L=\frac{\mu_0 (N_t k)^2 \sqrt{R_1R_2}}{2N_\mathrm{TF}}
+\big[I_0(k)+2I_1(k)+I_2(k)\big].
+\end{equation}
+\note{This is where the global beam--shell model enters later: the
+Princeton-D assumption gives membrane-only loads; the global model
+removes it (section~\ref{sec:stellarator}).}
+
+\subsection{Winding-pack layout and grading}
+% - WP envelope: case width at R1, wedge (lateral) thickness range,
+%   plasma-side case thickness, ground insulation, toroidal gaps
+% - Turns per layer x number of layers -> NI/I_op within [Iop_min, Iop_max]
+% - Field per grade assumed linear with the enclosed turns
+% - 2 or 3 grades, grade boundaries at target fields
+% - Turn reduction when the radial position shrinks the available width
+%   (wedge geometry), extra layers added to recover the turns
+\todo{text + Fig. 3: example WP cross-section with grades.}
+
+\subsection{Case and inner vault}
+The nose thickness is increased until both the vault and the innermost
+jacket satisfy their Tresca allowables,
+\begin{equation}
+  \sigma_\mathrm{T,vault}=\sigma_z+\frac{2}{1-\beta^2}\,p_\mathrm{m}\,
+  d_\mathrm{vault} \le \sigma_\mathrm{allow},\qquad
+  \sigma_\mathrm{T,jacket}=\sigma_z+\sigma_\mathrm{rm}\,d_\mathrm{WP}
+  \le \sigma_\mathrm{allow},
+\end{equation}
+with $\beta=R_k/R_1$, $\sigma_z=T/(A_\mathrm{jacket}+A_\mathrm{case})$ and
+$d_\mathrm{vault}$, $d_\mathrm{WP}$ load-sharing factors from the
+toroidal and radial stiffness of vault, case and winding pack.
+\textbf{The wedged inner vault is what makes the tokamak TF tractable with
+a 1D/2D model}: the centring force is reacted by the vault in toroidal
+compression. This is precisely the assumption that fails for stellarator
+coils.
+
+\subsection{Design-space exploration}
+% All combinations (wedge thickness x layouts) -> feasible table with
+% sigma_T, I_op, J_eng, L, E, radial build, nose, WP h/w, turns, cable
+% type, Cu/SC strands, hot-spot T, tau. Show a trade-off map (Fig. 4),
+% e.g. radial build vs I_op coloured by J_eng, Pareto front.
+\todo{Fig. 4: trade-off map for a reference machine.}

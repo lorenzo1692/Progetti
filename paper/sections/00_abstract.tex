@@ -1,0 +1,25 @@
+% Target: ~200-250 words, single paragraph. Rewrite last, once results exist.
+The design of the superconducting magnet system of a fusion device is usually
+carried out downstream of the plasma and magnetic configuration studies, and
+iterated by hand between conductor, winding-pack and structural analyses. We
+present \MADE{} (Magnet Design Explorer), a code that closes this gap by taking
+the \emph{target magnetic configuration} as input --- field on axis, coil
+number and ripple for the toroidal field, flux swing for the central solenoid,
+coil currents and positions from the equilibrium for the poloidal field, the
+axial field profile for a magnetic mirror --- and returning the set of
+feasible magnet designs that realise it. \MADE{} is organised in coil-agnostic
+modules: (i) conductor sizing (superconductor selection among NbTi, Nb$_3$Sn
+and REBCO, cable cross-section, copper for quench protection via hot-spot
+analysis), (ii) winding-pack grading, and (iii) structural sizing against
+Tresca allowables. These modules are combined into coil-specific solvers for
+toroidal field (TF), central solenoid (CS) and poloidal field (PF) coils, and
+--- since a mirror machine is a series of solenoids and rings --- the same
+modules design mirror magnets without new physics. Rather than a single
+optimum, \MADE{} exhaustively explores the design space and returns every
+feasible design point, allowing trade-off studies. \todo{verification result,
+e.g. agreement with reference designs within X\%}. Finally, we lay out the
+extension to stellarators, where non-planar coils lose the wedged support of
+tokamak TF coils: the conductor is sized as in the TF solver without the
+wedge, and the structural verification is delegated to a global beam--shell
+model able to follow non-planar centrelines, which also generalises the
+analysis of D-shaped TF coils.
