@@ -141,15 +141,16 @@ Tempi: circa 4 minuti per design in Octave, con i due casi di carico.
 - **Consegna all'utente:** a ogni gruppo di modifiche l'utente riceve lo zip della cartella `MADE-2.0/matlab`.
 - **Commit:** su `claude/code-improvement-3cmng0`, messaggi descrittivi.
 
-### Bug noto non ancora corretto
+### Bug `B_PHI_TF` — corretto (2026-10-03, confermato dall'utente: era un refuso)
 
-`physics/compute_operating_params.m` contiene:
-
-```matlab
-B_PHI_TF = g.Mu_0*p.n_TF*NI_MA*1e6/(2*pi*g.RTFi - p.dr_plasma_side);
-```
-
-Probabilmente mancano le parentesi: dovrebbe essere `2*pi*(g.RTFi - p.dr_plasma_side)`. L'effetto è piccolo (0.02 m contro 2π·1.2 m) ma cambia il campo spalmato della scansione. **Da confermare con l'utente prima di correggere**, perché sposta i risultati salvati.
+`physics/compute_operating_params.m` ora usa il campo di Ampère al lato
+plasma del WP, `2*pi*(g.RTFi - p.dr_plasma_side)`, e calcola `B_PHI_0` dal
+campo a `RTFi` (eq. 1-4 di FED 193 (2023) 113659), così che `B_PHI_0`
+ritorni ≈ `B0`. Corretti anche gli script in `legacy/scripts` (CEFTR, VNS).
+Con `field_model` 1/2 il campo di dimensionamento non cambia (il fattore k
+si ricalibra), cambia con `field_model = 0`. Nello stesso giro è stato
+tolto il minimo di 4 s sul tempo di scarica (refuso): `Tau_discharge =
+max(Tau_discharge1, L*Iop/V_MAX)`, caso per caso.
 
 ---
 
@@ -160,7 +161,7 @@ Probabilmente mancano le parentesi: dovrebbe essere `2*pi*(g.RTFi - p.dr_plasma_
    - (b) usare il modello FE come filtro obbligatorio sulle soluzioni fattibili;
    - (c) tarare sul modello FE una stima analitica veloce da usare al posto di `SCF_transition_provisional`.
 2. **Sm:** confermare Sm = 667 MPa per jacket e case, e la classificazione del raffreddamento come carico secondario. Il verdetto sul design 7 dipende da entrambe.
-3. **Bug `B_PHI_TF`** (vedi §3).
+3. ~~Bug `B_PHI_TF`~~ corretto (vedi §3).
 
 ---
 

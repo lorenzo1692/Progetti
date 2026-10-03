@@ -57,24 +57,22 @@ Frenet), carichi bobina per bobina senza simmetria di rotazione.
 
 | Parte | Branch | Cartella |
 |---|---|---|
-| TF (versione evoluta), conduttore, modulo 3D, modello globale beam+shell | `claude/code-improvement-3cmng0` | `MADE-2.0/matlab/` (`physics/`, `conductor/`, `coil3d/`, `validation/`) |
+| TF (versione evoluta, con correzioni), conduttore, modulo 3D, modello globale beam+shell | `ccr-165c7b01-g5w4kx` (= `claude/code-improvement-3cmng0` + fix) | `MADE-2.0/matlab/` (`physics/`, `conductor/`, `coil3d/`, `validation/`) |
 | CS e PF | `claude/tf-cs-pfc-folders-ih6f07` | `MADE-2.0/matlab/CS`, `MADE-2.0/matlab/PFC` |
-| Vecchi script per macchina (CEFTR 2025, VNS, DEMO…) | `master` | `MADE-2.0/matlab/*.m` |
+| Vecchi script per macchina (CEFTR 2025, VNS, DEMO…) | stesso branch | `MADE-2.0/matlab/legacy/scripts` |
 
-## Stato dei problemi nel codice (verificato il 2026-10-03 sui branch sopra)
+## Stato dei problemi nel codice (aggiornato 2026-10-03)
 
-| # | Problema | TF evoluto (`code-improvement`) | CS / PFC | Vecchi script (`master`) |
-|---|---|---|---|---|
-| 1 | Campo di Ampère `2*pi*RTFi - dr_plasma_side` invece di `2*pi*(RTFi - dr_plasma_side)` (FED 2023 eq. 3 usa `2πR_i`) | **Ancora nel codice** (`physics/compute_operating_params.m:29`). Con `field_model = 1` (default, calibrato) o `2` (discreto) il campo di dimensionamento **non ne dipende**: `k = B_discreto / B_Amp`, quindi `B_Amp` si cancella. Resta nel modello `smeared` (`field_model = 0`), nell'output `B_PHI_0` e nel cavo di riferimento della calibrazione (`1.1*B_Amp`) | non applicabile | **Attivo**: `WP_TF_CEFTR_Design_Design_Point_2025.m`, `WP_TF_VNS_*`, `PLOT_TF_CEFTR/VNS` (sottostima ~3%); gli script DEMO usano `2*pi*RTFi` senza `dr` |
-| 2 | Soglia NbTi/Nb3Sn: commento 5 T, codice 6 T | **Risolto**: parametro `cp.B_NbTi_max = 6` in `conductor/cicc_params.m` | soglie diverse dal TF: NbTi < **6.2 T**, HTS > **14.5 T** (TF: 6 / 15 T); anche `d_fili` 0.82 vs 1 mm, VF 0.8 vs 0.7 | `cicc.m` commento sbagliato, `CICC_CEFTR.m` 6 / 6.5 T |
-| 3 | Minimo di 4 s su `Tau_discharge` cablato | **Ancora presente** (`search/scan_wp_designs.m:217`, `physics/wp_field_calibration.m:65`) | CS/PF usano `L*Iop/V` | presente |
-| 4 | Margine operativo implicito | da dichiarare | da dichiarare | — |
+Il branch `ccr-165c7b01-g5w4kx` contiene ora il TF evoluto
+(`claude/code-improvement-3cmng0` mergiato) con le correzioni:
 
-`Tau_discharge1` è l'eq. (9) di FED 2023 (`S_VV` = ammissibile del vacuum vessel, 120 MPa): ora è citata nel paper.
-
-Per il paper il punto 2 conta: se diciamo "modulo conduttore condiviso", oggi
-in realtà ci sono tre copie con parametri diversi. Conviene unificarle in
-`conductor/` con le soglie come input.
+| # | Problema | Stato |
+|---|---|---|
+| 1 | Campo di Ampère `2*pi*RTFi - dr` | **Corretto**: `2*pi*(RTFi - dr)`; `B_PHI_0` dal campo a `RTFi` (ora ≈ B0: 5.706 vs 5.7 T sul template). Corretti anche `legacy/scripts` CEFTR/VNS. Template VNS: B_Amp +1.4% |
+| 2 | Soglie conduttore | TF risolto (parametro); CS/PFC hanno ancora 6.2/14.5 T, d 0.82 mm, VF 0.8 → da unificare |
+| 3 | Minimo 4 s su τ scarica | **Tolto** (refuso): `τ = max(τ_VV, L·Iop/V_max)` caso per caso (template: τ_VV = 1.63 s) |
+| 4 | τ delay | **Proposta di criterio** in `MADE-2.0/matlab/docs/TAU_DELAY.md` (`conductor/quench_delay_time.m`, opzionale) |
+| 5 | Margine operativo implicito | da dichiarare |
 
 ## Lavoro MADE già pubblicato (base del paper 2.0)
 
@@ -91,11 +89,10 @@ verificato contro ANSYS (STR_360); mirror; percorso verso stellarator.
 
 DTT, ITER, CEFTR. ITER ha già il caso PF in Macro-block III (Tab. II) e il
 DDD pubblico; DTT ha i paper CS. Servono dati e riferimenti citabili per DTT
-e CEFTR (il CEFTR nello script: R0 = 8 m, A = 2.7, B0 = 6 T, 16 TF, ripple 1%).
+e CEFTR. CEFTR: per ora si usa il design point dello script (R0 = 8 m, A = 2.7, B0 = 6 T, 16 TF, ripple 1%); il riferimento pubblicato arriva dall'utente.
 
 ## Domande aperte
 
-1. CEFTR: qual è il riferimento pubblicato del design magnetico?
 2. Il confronto out-of-plane del modello globale con ANSYS è stato fatto?
 3. Autori, affiliazioni, funding (EUROfusion → disclaimer obbligatorio).
 4. Caso mirror di riferimento.

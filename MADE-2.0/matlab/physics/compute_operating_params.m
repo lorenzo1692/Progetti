@@ -26,8 +26,13 @@ amp_corr_R0 = 1/(p.R0/g.RTFi) * ...
 
 NI_MA = (2*pi*p.R0*p.B0/g.Mu_0)/p.n_TF*1e-6;             % [MA] total TF current
 
-B_PHI_TF = g.Mu_0*p.n_TF*NI_MA*1e6/(2*pi*g.RTFi - p.dr_plasma_side); % Max field on TF
-g.B_PHI_0 = B_PHI_TF*amp_corr_R0;
+% Ampere field at the case outer radius RTFi: with the ripple correction it
+% gives the field on the plasma axis (FED 193 (2023) 113659, eqs. 1-4)
+B_PHI_RTFi = g.Mu_0*p.n_TF*NI_MA*1e6/(2*pi*g.RTFi);
+g.B_PHI_0 = B_PHI_RTFi*amp_corr_R0;
+% Ampere field at the plasma side of the WP, RTFi - dr_plasma_side (the
+% previous 2*pi*RTFi - dr_plasma_side was a typo for 2*pi*(RTFi - dr_plasma_side))
+B_PHI_TF = g.Mu_0*p.n_TF*NI_MA*1e6/(2*pi*(g.RTFi - p.dr_plasma_side)); % Max field on TF
 g.NI = NI_MA*1e6;                                        % [A] total TF current
 
 g.R_TF_Outerleg = g.RTFo;                                % Outer-leg inner radius

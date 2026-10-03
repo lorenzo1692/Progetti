@@ -35,16 +35,34 @@ the cable during an exponential current dump,
 included, helium, RRR, magnetoresistance.}
 The number of copper strands is found by bisection until the hot-spot
 temperature equals $T_\mathrm{lim}$ (250~K for LTS, 150~K for HTS).
-The dump time constant is
-$\tau_\mathrm{dump}=\max(\tau_\mathrm{VV},\,L I_\mathrm{op}/V_\mathrm{max},\,4~\mathrm{s})$.
+The dump time constant is obtained case by case as
+$\tau_\mathrm{dump}=\max(\tau_\mathrm{VV},\,L I_\mathrm{op}/V_\mathrm{max})$.
 The first term is the shortest discharge compatible with the eddy-current
 loads on the vacuum vessel \cite{Giannini2023MADE,Bachmann_aspect},
 \begin{equation}
 \tau_\mathrm{VV}=\frac{B_0\,NI\,N_\mathrm{TF}\,(R_0/A)^2}{R_\mathrm{VV}\,\sigma_\mathrm{a,VV}},
 \end{equation}
 with $\sigma_\mathrm{a,VV}=120$~MPa; the second is set by the maximum
-terminal voltage. \todo{justify the 4~s floor (hard-coded) or make it an
-input.}
+terminal voltage.
+
+\paragraph{Delay time.} The current stays at $I_\mathrm{op}$ from the
+quench onset for $\tau_\mathrm{del}=t_\mathrm{det}+t_\mathrm{hold}+t_\mathrm{act}$:
+detection, validation (holding) and actuation of the dump circuit. With
+voltage detection the normal zone, growing with two fronts at speed $v_q$,
+reaches the threshold $V_\mathrm{th}$ after
+\begin{equation}
+t_\mathrm{det}=\frac{V_\mathrm{th}\,A_\mathrm{Cu}}{2\,v_q\,I_\mathrm{op}\,\rho_\mathrm{Cu}(T_0,B)},
+\end{equation}
+so that $t_\mathrm{det}$ grows with the stabilizer it protects; it is
+evaluated inside the copper search, making copper and delay consistent.
+For LTS CICCs $t_\mathrm{det}$ is small compared with
+$t_\mathrm{hold}+t_\mathrm{act}$ and the copper changes by a few per cent
+over a wide range of $v_q$; for HTS cables, with propagation speeds of
+centimetres per second, voltage detection diverges and the delay is set
+by the detection technology, MADE returning the maximum admissible delay
+as a protection requirement. \todo{fix $V_\mathrm{th}$, $t_\mathrm{hold}$,
+$t_\mathrm{act}$, $v_q$ with references; table/figure from
+validation/study\_tau\_delay.m.}
 
 \subsection{Cable and jacket cross-section}
 The cable area includes strands (void fraction, twist factor), the central

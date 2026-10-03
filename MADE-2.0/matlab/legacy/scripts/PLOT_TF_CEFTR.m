@@ -56,7 +56,7 @@ NI = (2*pi*R0(dp)*B0(dp)/Mu_0)/n_TF*1e-6;        % Total TF current [MA]
 
 dr_plasma_side  = 0.05; % [m] Spessore case fronte plasma
 
-B_PHI_TF = Mu_0*n_TF*NI*1e6/(2*pi*RTFi(dp)-dr_plasma_side);     % Max field on TF
+B_PHI_TF = Mu_0*n_TF*NI*1e6/(2*pi*(RTFi(dp)-dr_plasma_side));     % Max field on TF
 B_PHI_0 = B_PHI_TF*amp_corr_R0;
 B_PHI_TF = B_PHI_TF*corr_B_WP;   % Max field on TF correction
 NI = NI*1e6;                              % Total TF current [A]

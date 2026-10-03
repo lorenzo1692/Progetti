@@ -214,7 +214,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                     (besseli(0, g.k_bf) + 2*besseli(1, g.k_bf) + besseli(2, g.k_bf)) / p.n_TF;
 
                 Tau_discharge2 = L*Iop/p.V_MAX; % [s] - discharge in groups of n coils
-                Tau_discharge = max([g.Tau_discharge1, Tau_discharge2, 4]);
+                Tau_discharge = max(g.Tau_discharge1, Tau_discharge2); % vessel-load limit vs terminal voltage, case by case
 
                 % Field each grade is sized for: first pass = smeared model;
                 % then the per-layer peak of the discrete model on the

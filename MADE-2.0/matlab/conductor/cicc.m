@@ -1,12 +1,13 @@
-function [type_cable,N_Cu,N_Sc,N_tot,S_Cable,S_REBCO,S_Cu_HTS,THS,mat,Ic_sc] = cicc(B,Iop,Tau_discharge,WP_SC_type,THS_max_LTS,THS_max_HTS)
+function [type_cable,N_Cu,N_Sc,N_tot,S_Cable,S_REBCO,S_Cu_HTS,THS,mat,Ic_sc] = cicc(B,Iop,Tau_discharge,WP_SC_type,THS_max_LTS,THS_max_HTS,cp)
 %CICC Size one CICC grade (SC strands/tapes + segregated Cu) at field B.
 %
 %   The hot-spot limit is type-specific: THS_max_LTS for LTS (default
 %   250 K) and THS_max_HTS for HTS (default 150 K). Pass them explicitly
 %   (e.g. p.THS_max_LTS/p.THS_max_HTS from the input Excel) to override
-%   the defaults in cicc_params.m. All other constants: cicc_params.m.
+%   the defaults in cicc_params.m. All other constants: cicc_params.m,
+%   or the optional struct cp (same fields) to override them in a study.
 
-cp = cicc_params();
+if nargin < 7 || isempty(cp), cp = cicc_params(); end
 if nargin < 5 || isempty(THS_max_LTS), THS_max_LTS = cp.THS_max_LTS; end
 if nargin < 6 || isempty(THS_max_HTS), THS_max_HTS = cp.THS_max_HTS; end
 
@@ -124,7 +125,7 @@ end
 % transient solutions instead of the 30-40 of the former 10-point grid
 % refinement, which also stopped on the coarse grid (up to ~1100 strands of
 % extra copper) once the bracket passed 980 strands.
-ths = @(n) heat_balance_cicc_ode(N_Sc,n,d_fili,CunonCu,Iop,B,Tau_discharge,mat,d_cc,VF,cos_theta,S_tapes,cp.Tau_delay,2*Tlim);
+ths = @(n) heat_balance_cicc_ode(N_Sc,n,d_fili,CunonCu,Iop,B,Tau_discharge,mat,d_cc,VF,cos_theta,S_tapes,cicc_tau_delay(cp,Iop,B,mat,N_Sc,n),2*Tlim);
 N_Cu_max = 10000;
 hi = N_Cu_max; T_hi = ths(hi);
 if T_hi > Tlim
@@ -171,3 +172,17 @@ S_Cable =  pi/4*D_eqv^2+A_w;            % Correggo area equivalente del cavo LTS
 end
 
 
+function t_delay = cicc_tau_delay(cp, Iop, B, mat, N_Sc, N_Cu)
+%CICC_TAU_DELAY Tau_delay for the hot-spot transient (cicc_params.m: Tau_delay_mode).
+if strcmpi(cp.Tau_delay_mode, 'detection')
+    A_seg = N_Cu*pi*cp.d_fili^2/4;
+    if mat == 2
+        A_non = 0;
+    else
+        A_non = N_Sc*pi*cp.d_fili^2/(4*(1 + cp.CunonCu));
+    end
+    t_delay = quench_delay_time(Iop, A_seg, A_non, B, mat, cp.quench);
+else
+    t_delay = cp.Tau_delay;
+end
+end

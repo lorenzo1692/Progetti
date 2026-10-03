@@ -14,9 +14,10 @@ where $\delta$ is the allowed ripple at the plasma edge
 coil is $NI = 2\pi R_0 B_0/(\mu_0 N_\mathrm{TF})$. In MADE~1.0 the peak
 field was obtained from Amp\`ere's law at $R_1$ with a ripple correction
 and a linear gradient across the winding pack \cite{Giannini2023MADE}.
-\todo{Amp\`ere field at the plasma side of the WP must read
-$\mu_0 N_\mathrm{TF} NI/[2\pi(R_1-\Delta r_\mathrm{ps})]$; the code has
-$2\pi R_1-\Delta r_\mathrm{ps}$ -- fix before producing numbers.}
+The Amp\`ere field is evaluated at the plasma side of the winding pack,
+$B_\mathrm{Amp}=\mu_0 N_\mathrm{TF} NI/[2\pi(R_1-\Delta r_\mathrm{ps})]$,
+while the field at $R_1$, multiplied by the ripple correction, returns
+the field on axis as a consistency check.
 
 \paragraph{Calibrated discrete field model (new in 2.0).}
 The smeared linear profile under-predicts the inner layers by up to
