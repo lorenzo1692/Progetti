@@ -64,8 +64,18 @@ if scf_model == 1 && p.shape_cable == 200
     scf_model = 0;
 end
 Sm_jacket = p.S_amm_JT; if isfield(p, 'Sm_jacket') && ~isempty(p.Sm_jacket), Sm_jacket = p.Sm_jacket; end
+Sm_case = p.S_amm_VT; if isfield(p, 'Sm_case') && ~isempty(p.Sm_case), Sm_case = p.Sm_case; end
 jacket_margin = 1.10; if isfield(p, 'jacket_margin') && ~isempty(p.jacket_margin), jacket_margin = p.jacket_margin; end   % docs/DIMENSIONAMENTO_JACKET.md
 JT_max = 0.010; if isfield(p, 'JT_max') && ~isempty(p.JT_max), JT_max = p.JT_max; end
+% case nose: 1 = sized with the case stress surrogate calibrated on the 2D
+% FE (SIZE_CASE_SURROGATE: max case Pm and Pm+Pb, docs/MODELLO_A_STRATI.md
+% section 11); 0 = analytic vault formula of SIZE_CASE_VAULT
+case_model = 1; if isfield(p, 'case_model') && ~isempty(p.case_model), case_model = p.case_model; end
+if case_model == 1 && p.shape_cable == 200
+    warning('scan_wp_designs:case_model_ris', ['case_model = 1: the case stress surrogate is calibrated on ' ...
+        'rectangular cables only; RIS (shape_cable = 200) uses the analytic vault formula (case_model = 0).']);
+    case_model = 0;
+end
 jacket_max_passes = 4; if isfield(p, 'jacket_max_passes') && ~isempty(p.jacket_max_passes), jacket_max_passes = p.jacket_max_passes; end
 n_jacket_rejected = 0;
 % maximum cell aspect ratio Cond_w/Cond_h (input files without it: 2)
@@ -489,6 +499,24 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                 ctx.jacket_in_loop = scf_model == 0;
 
                 cv = size_case_vault(ctx);
+                Case_PmPb = NaN; case_x = NaN;
+                if case_model == 1
+                    % nose sized with the case stress surrogate (layered model
+                    % corrected on the 2D FE): case_margin x Pm <= Sm_case and
+                    % case_margin_PmPb x (Pm+Pb) <= 1.5 Sm_case. The axial
+                    % stress S_z follows the new case area (arc bore).
+                    crow = struct('Iop', Iop, 'n_layers', n_layers, 'n_turns', n_turns(1:n_layers), ...
+                        'Cond_w', Cond_w(1:n_layers), 'Cond_h', Cond_h(1:n_layers), 'JT', JT(1:n_layers), ...
+                        'Ri_', Ri_, 'type_cable', {type_cable(1:n_layers)}, 'shape_cable', p.shape_cable);
+                    cs = size_case_surrogate(crow, p);
+                    if ~cs.ok
+                        reject = true; rej_why = 8; break
+                    end
+                    A_CASE_cs = Ri_^2*tan(theta_TF/2) - theta_TF/2*cs.R_bore^2 - A_WP;
+                    cv.S_z = cv.S_z*(A_JT_tot + cv.A_CASE)/(A_JT_tot + A_CASE_cs);
+                    cv.A_CASE = A_CASE_cs; cv.DTF = cs.DTF; cv.Rk_ = cs.Rk_; cv.R_bore = cs.R_bore;
+                    cv.S_T_VT = cs.Pm; Case_PmPb = cs.PmPb; case_x = cs.x;
+                end
                 Rk_ = cv.Rk_; R_bore = cv.R_bore; S_T_VT = cv.S_T_VT; S_T_JT = cv.S_T_JT;
 
                 JT_Pm = NaN; JT_PmPb = NaN;
@@ -532,7 +560,9 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                     S_T_JT = JT_Pm;
                 end
 
-                if ~(S_T_VT < p.S_amm_VT && S_T_JT < p.S_amm_JT && S_T_JT > 0 && S_T_VT > 0)   % vault vs its own allowable (review C07)
+                S_amm_case = p.S_amm_VT;
+                if case_model == 1, S_amm_case = Sm_case + 1; end   % sized by the surrogate to Sm_case/case_margin
+                if ~(S_T_VT < S_amm_case && S_T_JT < p.S_amm_JT && S_T_JT > 0 && S_T_VT > 0)   % vault vs its own allowable (review C07)
                     reject = true; rej_why = 8; break
                 end
 
@@ -575,6 +605,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
             S_T_VT = S_T_VT*1e-6;
             S_T_JT = S_T_JT*1e-6;
             JT_Pm = JT_Pm*1e-6; JT_PmPb = JT_PmPb*1e-6;   % [MPa], surrogate jacket stresses (NaN with scf_model = 0)
+            Case_PmPb = Case_PmPb*1e-6;                   % [MPa], surrogate case Pm+Pb (NaN with case_model = 0); S_T_VT = case Pm
             % arc bore (as the FE and ANSYS): nose thickness at the centre
             % plane and radial build from the bore arc R_bore = Rk_/cos(pi/n_TF)
             Nose = Rj_-R_bore;
@@ -596,11 +627,11 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
             field_iter = field_it;
             row = table(S_T_VT,S_T_JT,R_0,g.B_PHI_0,B_TF,Iop,JENG,L,E,Ri_,Rj_,Rk_,R_bore,radial_build,Nose,WP_h,WP_w,...
                 lateral_w,n_cond,n_layers,n_turns,type_cable,Cond_w,Cond_h,JT,r_cable,N_Sc,N_Cu,S_Cable,S_REBCO,S_Cu_HTS,THS,B_grade,Tau_discharge, ...
-                shape_cable, B_peak, B_peak_layers, field_iter, B_cal, JT_Pm, JT_PmPb, JT_crit_layer, ...
+                shape_cable, B_peak, B_peak_layers, field_iter, B_cal, JT_Pm, JT_PmPb, JT_crit_layer, Case_PmPb, case_x, ...
                 'VariableNames', {'S_T_VT','S_T_JT','R_0','B_PHI_0','B_TF','Iop','JENG','L','E','Ri_','Rj_','Rk_','R_bore', ...
                 'radial_build','Nose','WP_h','WP_w','lateral_w','n_cond','n_layers','n_turns','type_cable','Cond_w', ...
                 'Cond_h','JT','r_cable','N_Sc','N_Cu','S_Cable','S_REBCO','S_Cu_HTS','THS','B_grade','Tau_discharge', ...
-                'shape_cable','B_peak','B_peak_layers','field_iter','B_cal','JT_Pm','JT_PmPb','JT_crit_layer'});
+                'shape_cable','B_peak','B_peak_layers','field_iter','B_cal','JT_Pm','JT_PmPb','JT_crit_layer','Case_PmPb','case_x'});
             DATA(counter,:) = row;
         end
     end
