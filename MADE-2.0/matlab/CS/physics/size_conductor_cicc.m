@@ -89,7 +89,7 @@ N_Cu0 = linspace(1, 1000, div);
 while true
     THS = zeros(size(N_Cu0,2), 1);
     for j = 1:size(N_Cu0,2)
-        THS(j) = heat_balance_cicc_ode(N_Sc, N_Cu0(j), d_fili, CunonCu, Iop, B_local, Tau_discharge, mat, d_cc, VF, cos_theta, S_tapes, 0.5, [], 15); % CS: 0.5 s delay, REBCO from 15 K (as before)
+        THS(j) = heat_balance_cicc_ode(N_Sc, N_Cu0(j), d_fili, CunonCu, Iop, B_local, Tau_discharge, mat, d_cc, VF, cos_theta, S_tapes); % default 1 s delay, REBCO from 20 K: what the CS has always run with (its own 0.5 s / 15 K copy was shadowed by the root-level ODE)
     end
     [~, indx] = min(abs(THS-Tlim));
     if THS(indx) > Tlim
