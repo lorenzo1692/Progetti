@@ -47,25 +47,26 @@ vanishes.
 
 \paragraph{Section from the selected MADE design.} The beam section is not
 an input: it is the inner-leg cross-section of the design point selected
-in the TF solver. The case is the wedge between $R_k$ and $R_i$; the
-winding pack is the stack of layers $n_{t,k}\,w_{c,k}\times h_{c,k}$ with
-ground and grade insulation, each layer with the longitudinal modulus of
-its turn,
-\begin{equation}
-E_{L,k}=\frac{E_J A_{J,k}+E_{\mathrm{cbl},k}A_{\mathrm{cbl},k}+E_\mathrm{ins}A_{\mathrm{ins},k}}{w_{c,k}h_{c,k}},
-\end{equation}
-since the beam axis follows the conductor. Area and bending stiffnesses
-are modulus-weighted ($E_\mathrm{ref}=E_\mathrm{case}$) about the elastic
-centroid: $I_z$ (in-plane bending, radial lever arm) and $I_y$
-(out-of-plane bending, toroidal lever arm). The torsional constant follows
-Bredt's formula for the closed case (plasma-side plate, lateral walls,
-nose), $J=4A_m^2/\oint \mathrm{d}s/t$, neglecting the winding pack; the
-shear areas are those of the lateral walls (in-plane) and of plasma-side
-plate and nose (out-of-plane). The vault shells take the nose thickness
-$R_j-R_k$, i.e. the ring that carries the centring force in the 2D sizing,
-so that the 2D and 3D models share one geometry. The eccentricity between
-elastic centroid and current centre line is reported and, at present, not
-modelled.
+in the TF solver, integrated numerically. The case is the wedge sector
+$|x|\le y\tan(\pi/N_\mathrm{TF})$ between the bore arc and the
+plasma-side face, minus the winding-pack cavity (layers widened by the
+ground insulation, as in the 2D FE model); the jackets of each layer are
+smeared over the layer and weighted by $E_J/E_\mathrm{case}$. Cable,
+insulation and filler carry no load, consistently with the steel area of
+the 2D sizing ($\sigma_z=T/(A_\mathrm{jacket}+A_\mathrm{case})$). The
+section gives the area, the in-plane and out-of-plane bending stiffnesses
+about the centroid, the torsional constant (Bredt's formula on the closed
+case box) and the extreme-fibre distances. The vault shells take the
+radial steel crossing the coil mid-plane (nose, plasma-side plate and
+jacket walls), so that the 2D and 3D models share one geometry.
+
+\paragraph{Coupling with the 2D sizing.} The 2D sizing loads the inner
+leg with the bending-free tension $T$; the global model gives the force
+the inner leg actually carries (beam axial force plus vault membrane
+force over one chord). Their ratio, the axial load factor
+$k=F_\mathrm{inner}/T$, is fed back to every sizing step and the loop
+sizing $\leftrightarrow$ global model is iterated to convergence
+(about 1.2 on the reference design).
 
 \paragraph{Outer intercoil structures chosen and checked before the run.}
 The OIS are not found by a radius window as in the reference ANSYS model,
