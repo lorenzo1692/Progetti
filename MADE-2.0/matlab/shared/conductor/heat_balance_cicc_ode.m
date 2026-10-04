@@ -1,10 +1,13 @@
-function [THS, t, TF] = heat_balance_cicc_ode(N_Sc,N_Cu,d_fili,CunonCu,Iop0,B0,Tau_discharge,mat,d_cc,VF,costheta,S_tapes,Tau_delay,T_stop)
+function [THS, t, TF] = heat_balance_cicc_ode(N_Sc,N_Cu,d_fili,CunonCu,Iop0,B0,Tau_discharge,mat,d_cc,VF,costheta,S_tapes,Tau_delay,T_stop,T0_HTS)
 %HEAT_BALANCE_CICC_ODE Adiabatic hot-spot transient of a CICC after a quench.
 %
 %   THS = HEAT_BALANCE_CICC_ODE(...) returns the peak hot-spot temperature [K].
 %   [THS, t, TF] = HEAT_BALANCE_CICC_ODE(...) also returns the full
 %   temperature history TF(t), used by postprocess/plot_hotspot_transient.m.
 %   Tau_delay [s] is optional (default 1 s, see cicc_params.m).
+%   T0_HTS [K] is optional: initial temperature of a REBCO cable (default
+%   20 K; the CS uses 15 K).
+%   Shared by TF (conductor/cicc.m), CS and PFC (size_conductor_cicc.m).
 %   T_stop [K] is optional: the integration stops as soon as the hot spot
 %   exceeds it (THS >= T_stop is returned). CICC uses it in the copper
 %   search, where a runaway transient only needs to be recognized as above
@@ -19,6 +22,7 @@ function [THS, t, TF] = heat_balance_cicc_ode(N_Sc,N_Cu,d_fili,CunonCu,Iop0,B0,T
     % Initial temperature -> Tc
     if mat == 2 
         T0 = 20.0;
+        if nargin >= 15 && ~isempty(T0_HTS), T0 = T0_HTS; end
     else
         T0 = 6.8;
     end

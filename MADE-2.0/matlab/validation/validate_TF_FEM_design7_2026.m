@@ -11,7 +11,7 @@
 
 clearvars; clc
 this_dir = fileparts(mfilename('fullpath'));
-addpath(genpath(fullfile(this_dir, '..'))); rmpath(genpath(fullfile(this_dir, '..', 'legacy')));
+addpath(fullfile(this_dir, '..')); made_paths('TF');
 
 %% Design point 7 (row of the scan results file, WP_TF_input_template_design_7.xlsx)
 row = struct();

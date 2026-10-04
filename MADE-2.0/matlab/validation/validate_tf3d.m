@@ -4,7 +4,7 @@ function report = validate_tf3d(run_design)
 % validate_tf3d(true): also run Design 7 at two resolutions and export check.
 % These tests do not constitute 3D FEM validation or mechanical approval.
 if nargin<1,run_design=false;end
-here=fileparts(mfilename('fullpath'));addpath(genpath(fullfile(here,'..')));rmpath(genpath(fullfile(here,'..','legacy')));
+here=fileparts(mfilename('fullpath'));addpath(fullfile(here,'..'));made_paths('TF');
 report=struct();
 A=[0 0 -1];C=[0 0 1];P=[1 0 0];expected=[0 2e-7/sqrt(2) 0];
 B=biot_savart_segments(P,A,C,1);

@@ -7,7 +7,7 @@
 % Run from MADE-2.0/matlab:  study_tau_delay
 
 this_dir = fileparts(fileparts(mfilename('fullpath')));
-addpath(genpath(this_dir)); rmpath(genpath(fullfile(this_dir, 'legacy')));
+addpath(this_dir); made_paths('TF');
 
 Iop = 60e3; tau_dis = 20;   % [A], [s] illustrative grade
 cases = {

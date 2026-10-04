@@ -32,7 +32,7 @@
 
 clearvars; clc
 this_dir = fileparts(mfilename('fullpath'));
-addpath(genpath(fullfile(this_dir, '..'))); rmpath(genpath(fullfile(this_dir, '..', 'legacy')));
+addpath(fullfile(this_dir, '..')); made_paths('TF');
 Mu_0 = 4e-7*pi;
 pp = struct('n_TF', 12, 'dr_plasma_side', 0.02, 'GoundIns', 0.005, 'INS_grades', 0.0005, ...
     'turn_insulation_nominal', 0.001, 'Increm', 1, 'shape_cable', 201);   % both FEM runs: Rect

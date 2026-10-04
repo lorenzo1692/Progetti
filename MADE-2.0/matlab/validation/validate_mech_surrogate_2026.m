@@ -20,7 +20,7 @@
 
 clearvars; clc
 this_dir = fileparts(mfilename('fullpath'));
-addpath(genpath(fullfile(this_dir, '..'))); rmpath(genpath(fullfile(this_dir, '..', 'legacy')));
+addpath(fullfile(this_dir, '..')); made_paths('TF');
 p = read_machine_input(fullfile(this_dir, '..', 'input', 'WP_TF_input_template.xlsx'));
 
 TOL.eps_z = 0.02;                 % |relative error| on the axial strain
