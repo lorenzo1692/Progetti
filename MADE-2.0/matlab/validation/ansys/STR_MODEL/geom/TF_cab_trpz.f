@@ -1,3 +1,10 @@
+!=======================================================================
+! TF_cab_trpz.f - Conductors (cable areas) of every turn, rectangular cable with rounded
+! corners (fillet R = jacket internal radius). Layers of different width
+! (stepped WP). Also defines the local CS of every cable (CSYS_CABLE),
+! used by the following macros and for the orthotropic materials.
+! Called by STR_MODEL.f and EM_MODEL.f (WP_TOPOLOGY other than RIS_only).
+!=======================================================================
 /PREP7
 *GET,CFRG_TYPE,PARM,CFRG,TYPE		! 1 = per-grade jacket internal radius array defined in ParametriTF
 /PSYMB,CSYS,0

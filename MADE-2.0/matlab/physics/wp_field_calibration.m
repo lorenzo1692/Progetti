@@ -70,7 +70,7 @@ p_rs = (1.1*B_amp)^2/(2*Mu_0);           % as the scan: pressure from the (calib
 for i = 1:nW
     for j = 1:nI
         N = ceil(g.NI/Iop(j));
-        T_bf = 0.5*(g.k_bf*p.n_TF*(N*Iop(j))^2*Mu_0/(2*pi));
+        T_bf = axial_load_factor(p)*0.5*(g.k_bf*p.n_TF*(N*Iop(j))^2*Mu_0/(2*pi));
         S_z_JT = T_bf/(W(i)^2)/2;
         kk = []; ff = [];
         for nt = env.turns_comb

@@ -75,7 +75,8 @@ while S_T_VT > in.S_amm_VT || S_c_VT > in.S_amm_VT/in.safety_membrane || ...
     S_c_VT = 2/(1-beta^2)*in.p_rs*dcr_vault_tor;
 
     k_bf = 0.5*log(in.RTFo/in.RTFi);                                     % k bending free
-    T_bf = 0.5*(k_bf*in.n_TF*(in.n_spire1*in.Iop)^2*in.Mu_0/(2*pi));      % Hoop tension along TF longitudinal axis
+    k_axial = 1; if isfield(in, 'k_axial') && ~isempty(in.k_axial), k_axial = in.k_axial; end   % AXIAL_LOAD_FACTOR
+    T_bf = k_axial*0.5*(k_bf*in.n_TF*(in.n_spire1*in.Iop)^2*in.Mu_0/(2*pi));      % Hoop tension along TF longitudinal axis
     S_z = T_bf/(in.A_JT_tot + A_CASE);
 
     S_T_VT = S_z + S_c_VT;   % Vault Tresca stress

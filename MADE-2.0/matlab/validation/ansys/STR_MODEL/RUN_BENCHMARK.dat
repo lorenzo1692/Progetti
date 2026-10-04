@@ -1,0 +1,21 @@
+!=======================================================================
+! RUN_BENCHMARK.dat - diagnostic exports of an existing solution
+!
+! Re-opens STR_2D.db / STR_2D.rst and EM_2D.db / EM_2D.rst and writes the
+! TFBM_*.txt files (EXPORT_TF_BENCHMARK.mac, EXPORT_TF_EM_BENCHMARK.mac).
+! No solution is computed. Launch it from the model folder: the files are
+! read from and written to .\output, like RUN.dat.
+!=======================================================================
+FINISH
+/CLEAR,ALL
+/INQUIRE,MODEL_ROOT,DIRECTORY
+/CWD,'%MODEL_ROOT(1)%\output'                ! the folder written by RUN.dat
+MDIR = '..\'
+RESUME,STR_2D,db
+MDIR = '..\'
+/INPUT,'%MDIR%EXPORT_TF_BENCHMARK','mac'
+
+FINISH
+RESUME,EM_2D,db
+MDIR = '..\'
+/INPUT,'%MDIR%EXPORT_TF_EM_BENCHMARK','mac'

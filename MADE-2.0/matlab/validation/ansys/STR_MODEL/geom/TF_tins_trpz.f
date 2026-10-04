@@ -1,3 +1,7 @@
+!=======================================================================
+! TF_tins_trpz.f - Turn insulation (thickness ICIT) around every jacket. Stepped WP.
+! Called by STR_MODEL.f (WP_TOPOLOGY other than RIS_only).
+!=======================================================================
 /PREP7
 *GET,CFRG_TYPE,PARM,CFRG,TYPE		! 1 = per-grade jacket internal radius array defined in ParametriTF
 LSEL,,LCCAT
@@ -59,7 +63,7 @@ n=0
 			
 			THIS_CS = CSYS_CABLE(n,k)
 			
-			! create turn insultion areas
+			! create turn insulation areas
 			! TOP
 			KSEL,ALL
 			*GET,ULT_KP,KP,,NUM,MAX	

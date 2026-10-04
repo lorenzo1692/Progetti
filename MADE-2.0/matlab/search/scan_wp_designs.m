@@ -1,4 +1,4 @@
-function [DATA, cal] = scan_wp_designs(p, g, env, combT)
+function [DATA, cal] = scan_wp_designs(p, g, env, combT, opts)
 %SCAN_WP_DESIGNS Explore every case-wedge x turns/layers candidate design.
 %
 %   DATA = SCAN_WP_DESIGNS(p, g, env, combT) plays out each candidate
@@ -22,7 +22,17 @@ function [DATA, cal] = scan_wp_designs(p, g, env, combT)
 %   control flow, only delegating the three duplicated jacket-sizing
 %   while-loops to SIZE_CICC_CABLE and the case/vault sizing while-loop to
 %   SIZE_CASE_VAULT.
+%
+%   [DATA, cal] = SCAN_WP_DESIGNS(p, g, env, combT, opts) with opts
+%   (optional): cal - field calibration of a previous scan of the same
+%   machine (WP_FIELD_CALIBRATION is then skipped); quiet - true: no
+%   progress line and no tables (RESIZE_DESIGN_POINT re-sizes one layout).
+%   The column n_turns0 is the starting turns/layers combination of the
+%   design point (before turns are moved between grades): with lateral_w
+%   it identifies the candidate, to size it again (RESIZE_DESIGN_POINT).
 
+if nargin < 5 || isempty(opts), opts = struct(); end
+quiet = isfield(opts, 'quiet') && opts.quiet;
 maxdim = p.maxdim;
 theta_TF = g.theta_TF;
 Mu_0 = g.Mu_0;
@@ -76,6 +86,9 @@ if case_model == 1 && p.shape_cable == 200
         'rectangular cables only; RIS (shape_cable = 200) uses the analytic vault formula (case_model = 0).']);
     case_model = 0;
 end
+% vertical force of the inner leg: bending-free T_bf x axial_load_factor
+% (1 = T_bf; from the 3D global model, TF3D_GLOBAL_FROM_DESIGN)
+k_axial = axial_load_factor(p);
 jacket_max_passes = 4; if isfield(p, 'jacket_max_passes') && ~isempty(p.jacket_max_passes), jacket_max_passes = p.jacket_max_passes; end
 n_jacket_rejected = 0;
 % maximum cell aspect ratio Cond_w/Cond_h (input files without it: 2)
@@ -85,7 +98,11 @@ field_verify = 1; if isfield(p, 'field_verify') && ~isempty(p.field_verify), fie
 use_discrete_field = field_model == 2 || (field_model == 1 && field_verify);
 cal = [];                 % returned: the start-of-scan field calibration (field_model = 1)
 if field_model == 1
-    cal = wp_field_calibration(p, g, env);
+    if isfield(opts, 'cal') && ~isempty(opts.cal)
+        cal = opts.cal;
+    else
+        cal = wp_field_calibration(p, g, env);
+    end
 end
 field_tol = 0.05;     if isfield(p, 'field_tol') && ~isempty(p.field_tol), field_tol = p.field_tol; end           % [T]
 field_max_iter = 6;   if isfield(p, 'field_max_iter') && ~isempty(p.field_max_iter), field_max_iter = p.field_max_iter; end
@@ -120,14 +137,14 @@ examined = 0;
 progress_every = max(1, round(total_candidates/500)); % ~500 console updates over the whole scan
 progress_msg_len = 0;
 progress_t0 = tic;
-fprintf('Scanning %d candidate(s)...\n', total_candidates);
+if ~quiet, fprintf('Scanning %d candidate(s)...\n', total_candidates); end
 
 for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
     for i = 1:numel(combT)
         for j = 1:size(combT{i}, 1)
 
             examined = examined + 1;
-            if mod(examined, progress_every) == 0 || examined == total_candidates
+            if ~quiet && (mod(examined, progress_every) == 0 || examined == total_candidates)
                 elapsed = toc(progress_t0);
                 remaining = total_candidates - examined;
                 rate = examined / max(elapsed, eps);
@@ -266,7 +283,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                 end
 
                 % Define cable cross-sections in each layer
-                T_bf = 0.5*(g.k_bf*p.n_TF*(n_spire_(1)*Iop)^2*Mu_0/(2*pi)); % Hoop tension along TF longitudinal axis
+                T_bf = k_axial*0.5*(g.k_bf*p.n_TF*(n_spire_(1)*Iop)^2*Mu_0/(2*pi)); % Hoop tension along TF longitudinal axis (x global-model factor)
 
                 WP_w0(1) = 2*Re(1)*tan(theta_TF/2) - lateral_w*2 - p.GoundIns*2; % maximum toroidal WP envelope
                 S_z_JT = T_bf/(WP_w0(1)^2)/2;
@@ -489,7 +506,7 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
                 ctx.WP_h = WP_h; ctx.lateral_w = lateral_w;
                 ctx.E_case = p.E_case; ctx.E_cbl = E_cbl; ctx.E_jckt = p.E_jckt;
                 ctx.p_rs = p_rs; ctx.S_rm = S_rm;
-                ctx.n_TF = p.n_TF; ctx.RTFo = g.RTFo; ctx.RTFi = g.RTFi;
+                ctx.n_TF = p.n_TF; ctx.RTFo = g.RTFo; ctx.RTFi = g.RTFi; ctx.k_axial = k_axial;
                 ctx.n_spire1 = n_spire_(1); ctx.Iop = Iop; ctx.Mu_0 = Mu_0;
                 ctx.dr_plasma_side = p.dr_plasma_side;
                 ctx.S_amm_VT = p.S_amm_VT; ctx.S_amm_JT = p.S_amm_JT; ctx.safety_membrane = p.safety_membrane;
@@ -626,41 +643,44 @@ for lateral_w = env.lateral_w_min:p.lateral_w_step:env.lateral_w_max
             % calibrated estimate of the first pass (NaN unless field_model = 1)
             B_cal = max(B_cal_layer);
             field_iter = field_it;
+            n_turns0 = n_turns_start;   % starting combination (RESIZE_DESIGN_POINT)
             row = table(S_T_VT,S_T_JT,R_0,g.B_PHI_0,B_TF,Iop,JENG,L,E,Ri_,Rj_,Rk_,R_bore,radial_build,Nose,WP_h,WP_w,...
                 lateral_w,n_cond,n_layers,n_turns,type_cable,Cond_w,Cond_h,JT,r_cable,N_Sc,N_Cu,S_Cable,S_REBCO,S_Cu_HTS,THS,B_grade,Tau_discharge, ...
-                shape_cable, B_peak, B_peak_layers, field_iter, B_cal, JT_Pm, JT_PmPb, JT_crit_layer, Case_PmPb, case_x, ...
+                shape_cable, B_peak, B_peak_layers, field_iter, B_cal, JT_Pm, JT_PmPb, JT_crit_layer, Case_PmPb, case_x, n_turns0, ...
                 'VariableNames', {'S_T_VT','S_T_JT','R_0','B_PHI_0','B_TF','Iop','JENG','L','E','Ri_','Rj_','Rk_','R_bore', ...
                 'radial_build','Nose','WP_h','WP_w','lateral_w','n_cond','n_layers','n_turns','type_cable','Cond_w', ...
                 'Cond_h','JT','r_cable','N_Sc','N_Cu','S_Cable','S_REBCO','S_Cu_HTS','THS','B_grade','Tau_discharge', ...
-                'shape_cable','B_peak','B_peak_layers','field_iter','B_cal','JT_Pm','JT_PmPb','JT_crit_layer','Case_PmPb','case_x'});
+                'shape_cable','B_peak','B_peak_layers','field_iter','B_cal','JT_Pm','JT_PmPb','JT_crit_layer','Case_PmPb','case_x','n_turns0'});
             DATA(counter,:) = row;
         end
     end
 end
 
-if progress_msg_len > 0 && examined < total_candidates
-    fprintf('\n'); % make sure the cursor isn't left mid-progress-line on an early return path
-end
+if ~quiet
+    if progress_msg_len > 0 && examined < total_candidates
+        fprintf('\n'); % make sure the cursor isn't left mid-progress-line on an early return path
+    end
 
-if use_discrete_field && n_field_rejected > 0
-    fprintf(['%d candidate(s) passed every check but their grade fields did not converge to the ' ...
-        'discrete peak within %.3g T in %d passes: rejected.\n'], n_field_rejected, field_tol, field_max_iter);
-end
-% which checks removed the candidates, per lateral case width (toroidal WP
-% width W1 = WP envelope at the plasma side)
-Re1 = g.R_TF_Innerleg - p.dr_plasma_side - p.GoundIns;
-fprintf('\nCandidates per lateral case width: passed and rejected by check\n');
-fprintf('%9s %7s %6s', 'lateral_w', 'W1 [mm]', 'pass');
-for k = 1:numel(rej_names), fprintf(' %*s', max(6, numel(rej_names{k})), rej_names{k}); end
-fprintf('\n');
-for i = 1:numel(lw_list)
-    fprintf('%9.4f %7.0f %6d', lw_list(i), 1e3*(2*Re1*tan(theta_TF/2) - 2*lw_list(i) - 2*p.GoundIns), pass_count(i));
-    for k = 1:numel(rej_names), fprintf(' %*d', max(6, numel(rej_names{k})), rej_count(i, k)); end
+    if use_discrete_field && n_field_rejected > 0
+        fprintf(['%d candidate(s) passed every check but their grade fields did not converge to the ' ...
+            'discrete peak within %.3g T in %d passes: rejected.\n'], n_field_rejected, field_tol, field_max_iter);
+    end
+    % which checks removed the candidates, per lateral case width (toroidal WP
+    % width W1 = WP envelope at the plasma side)
+    Re1 = g.R_TF_Innerleg - p.dr_plasma_side - p.GoundIns;
+    fprintf('\nCandidates per lateral case width: passed and rejected by check\n');
+    fprintf('%9s %7s %6s', 'lateral_w', 'W1 [mm]', 'pass');
+    for k = 1:numel(rej_names), fprintf(' %*s', max(6, numel(rej_names{k})), rej_names{k}); end
     fprintf('\n');
-end
-if scf_model == 1 && n_jacket_rejected > 0
-    fprintf('%d candidate(s) rejected: no jacket thickness up to JT_max = %.1f mm satisfies the surrogate criteria.\n', ...
-        n_jacket_rejected, 1e3*JT_max);
+    for i = 1:numel(lw_list)
+        fprintf('%9.4f %7.0f %6d', lw_list(i), 1e3*(2*Re1*tan(theta_TF/2) - 2*lw_list(i) - 2*p.GoundIns), pass_count(i));
+        for k = 1:numel(rej_names), fprintf(' %*d', max(6, numel(rej_names{k})), rej_count(i, k)); end
+        fprintf('\n');
+    end
+    if scf_model == 1 && n_jacket_rejected > 0
+        fprintf('%d candidate(s) rejected: no jacket thickness up to JT_max = %.1f mm satisfies the surrogate criteria.\n', ...
+            n_jacket_rejected, 1e3*JT_max);
+    end
 end
 if counter == 0
     DATA = table();
@@ -673,7 +693,7 @@ else
     if isstruct(DATA), rb = [DATA.radial_build]; else, rb = DATA.radial_build; end
     [~, order] = sort(rb(:));
     DATA = DATA(order, :);
-    if scf_model == 1 || case_model == 1
+    if ~quiet && (scf_model == 1 || case_model == 1)
         % calibration range of the FE surrogates (n_TF, Ri, Iop, WP width,
         % layers, h_WP/t_nose): outside it they extrapolate
         surrogate_validity(DATA, p);

@@ -1,0 +1,59 @@
+! MADE TF electromagnetic benchmark - supplied Solution_EM.f (PLANE233).
+! Run IN PLACE after SOLVE / FINISH in Solution_EM.f, before Solution_STR.f.
+! Do not RESUME the pre-solution EM_2D.db: it still contains MESH200.
+! Uses existing result file; no solution, element conversion or load changes.
+! Output forces retain the model's real-constant depth scaling (SL_LENGTH).
+! No additional thickness multiplier is applied.
+! Inspect the output for unavailable-result warnings.
+FINISH
+/POST1
+*GET,TBET,ETYP,1,ATTR,ENAM
+*IF,TBET,NE,233,THEN
+  /COM,ERROR: Type 1 is not PLANE233. Run immediately after the EM solve.
+  *RETURN
+*ENDIF
+! *GET,TBK8,ETYP,1,KOP,8
+! *IF,TBK8,NE,1,THEN
+  ! /COM,ERROR: Expected Lorentz forces KEYOPT(8)=1 for supplied model.
+  ! *RETURN
+! *ENDIF
+FILE,EM_2D,rst
+SET,LAST
+CSYS,0
+RSYS,0
+/GRAPHICS,FULL
+ALLSEL,ALL
+ESEL,S,TYPE,,1
+ESEL,R,MAT,,1
+NSLE,S,ALL
+*GET,TBNE,ELEM,0,COUNT
+*IF,TBNE,LE,0,THEN
+  /COM,ERROR: No conductor elements selected.
+  ALLSEL,ALL
+  *RETURN
+*ENDIF
+/OUTPUT,TFBM_em_plane233,txt
+/COM,Conductor-only PLANE233 benchmark. Global Cartesian results.
+/COM,Units and force depth scaling follow the solved model.
+SET,LIST
+ETLIST,ALL
+RLIST,ALL
+MPLIST,ALL
+NLIST,ALL
+ELIST,ALL
+/COM,Nodal field (averaged) and assembled nodal electromagnetic forces.
+PRNSOL,B,COMP
+PRNSOL,FMAG,COMP
+/COM,Element-nodal field: retain discontinuities for peak comparison.
+PRESOL,B,COMP
+/COM,Element force resultants: FMAG is summed within each element.
+ETABLE,TBFX,FMAG,X
+ETABLE,TBFY,FMAG,Y
+PRETAB,TBFX,TBFY
+SSUM
+/COM,Any unavailable-result warning invalidates the affected export.
+/OUTPUT
+ETABLE,TBFX,ERAS
+ETABLE,TBFY,ERAS
+ALLSEL,ALL
+/COM,Export completed: inspect TFBM_em_plane233.txt for warnings.

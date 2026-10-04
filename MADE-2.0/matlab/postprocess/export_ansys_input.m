@@ -133,7 +133,7 @@ fprintf(fid, 'N_TF = %d \t\t\t\t! number of TF magnets\n', p.n_TF);
 fprintf(fid, 'ANG_DIV = 360/N_TF \t\t! angular separation of TF magnets\n');
 fprintf(fid, 'AIR_HEIGHT = 2.0*(2670.00*1.E-3**SI_UNIT)\t! FEM-only, not derived from MATLAB - review\n');
 fprintf(fid, '!-----------------------------------------------------------------------!\n');
-fprintf(fid, 'SL_LENGTH = 1 ! invariante se non applico momenti al gps\n');
+fprintf(fid, 'SL_LENGTH = 1 ! out-of-plane depth [m]: results do not depend on it unless moments act on the GPS\n');
 fprintf(fid, '!-----------------------------------------------------------------------!\n');
 fprintf(fid, 'WP_TOPOLOGY = ''standard''\n\n');
 fprintf(fid, 'GRADES = %d\n\n', n_grades_fem);
@@ -158,6 +158,10 @@ fprintf(fid, 'DPIT = SCALEF*0\nDLIT = DPIT\t\t\t\t\t\t\t!Double layers insulatio
 fprintf(fid, 'LWIT = SCALEF*%.6g*1.E-3**SI_UNIT\t!Layer wound insulation thickness\n', p.INS_grades*1e3);
 fprintf(fid, 'CFR = SCALEF*%.6g*1.E-3**SI_UNIT       !Cable Fillet Radius = jacket internal radius\n\n', CFR*1e3);
 fprintf(fid, 'TF_CURRENT = %.1f\n\n', -row.Iop);
+% vertical force of the inner leg = AXIAL_LOAD_FACTOR x T_bf (Solution_STR.f):
+% the factor the design was sized with (3D global model, COUPLE_GLOBAL_SIZING)
+fprintf(fid, 'AXIAL_LOAD_FACTOR = %.6g\t\t! inner-leg vertical force / T_bf (MADE 3D global model; 1 = formula)\n\n', ...
+    axial_load_factor(p));
 fprintf(fid, '!-----------------------------------------------------------------------!\n!!! ARRAY DEFINITION\n!-----------------------------------------------------------------------!\n');
 fprintf(fid, 'NT_G = NT(1)\n*VSCFUN,NL_G,SUM,NL\n\n');
 dims = {'CSYS_CABLE','JT_h','JT_w','JH','JW','DPTH','HCH','HCW','HCL','HJH','HJW','JIR','JER','LHI','LWI','R','dJR','GIR'};

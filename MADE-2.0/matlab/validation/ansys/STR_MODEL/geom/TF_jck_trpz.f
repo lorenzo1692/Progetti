@@ -1,3 +1,8 @@
+!=======================================================================
+! TF_jck_trpz.f - Jackets of every turn (constant thickness JT_w/JT_h of the layer,
+! internal radius R, external radius R+JT). Stepped WP.
+! Called by STR_MODEL.f (WP_TOPOLOGY other than RIS_only).
+!=======================================================================
 /PREP7
 *GET,CFRG_TYPE,PARM,CFRG,TYPE		! 1 = per-grade jacket internal radius array defined in ParametriTF
 LSEL,,LCCAT
